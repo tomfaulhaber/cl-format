@@ -1,4 +1,4 @@
-;; TODO: think through exception tyeps
+;; TODO: think through exception types
 ;; TODO: thread format string position through to all exceptions and add 
 ;; positional errors
 
@@ -11,14 +11,15 @@
 ;;; Forward references
 (def compile-format)
 (def execute-format)
+(def arg-navigator)
 ;;; End forward references
 
 (defn cl-format 
   "An implementation of a (mostly) Common Lisp compatible format function"
   [stream format-in & args]
   (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	arg-navigator { :seq args :rest args :pos 0 } ]
-    (execute-format stream compiled-format arg-navigator))
+	navigator (struct arg-navigator args args 0) ]
+    (execute-format stream compiled-format navigator))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -59,7 +60,14 @@
    #{ :at }
    (fn [ arg-navigator ]
      (let [ [arg arg-navigator] (next-arg arg-navigator) ]
-       (pr arg)				; TODO: support padding and columns
+       (print arg)				; TODO: support padding and columns
+       arg-navigator)))
+  (\% 
+   [ :count [1 Integer] ] 
+   #{ }
+   (fn [ arg-navigator ]
+     (dotimes [i (:count params)]	; TODO: read parameter for repeat count
+       (prn)
        arg-navigator)))
 )
  
@@ -156,23 +164,22 @@
 	]
     [[ ((:generator-fn def) params) directive params] (subs rest 1)]))
     
-(defn breakup-string [ s ]
-  (loop [ m (re-matcher directive-pattern s)
-	 start 0
-	 directive (re-find m)
-	 acc []
-	 ]
-    (if (not directive)
-      (concat acc [ (subs s start) ])
-      (let [ prestr (subs s start (.start m)) 
-	    this-iter (if (> (.length prestr) 0) [ prestr directive] [ directive ]) ]
-	(recur m (. m end) (re-find m) (concat acc this-iter))))))
+(defn compile-raw-string [s]
+  [ (fn [a] (print s) a) nil nil])
 
 (defn compile-format [ format-str ]
-;; TODO: Implement
-)
+  (loop [result [], rest format-str]
+    (let [tilde (.indexOf rest (int \~))]
+      (if (neg? tilde)
+	(conj result (compile-raw-string rest))
+	(let [prestr (subs rest 0 tilde)
+	      [directive rest] (compile-directive (subs rest (inc tilde)))]
+	  (recur (conj result (compile-raw-string prestr) directive) rest))))))
 
 (defn execute-format [stream format args]
-;; TODO: Implement
-)
+  (loop [rst format, args args]
+    (if (empty? rst)
+      nil ; TODO return a string when stream is nil
+      (let [args (apply (first (first rst)) [args])]
+	(recur (rest rst) args)))))
 
