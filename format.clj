@@ -27,10 +27,12 @@
 ;;; (possibly going forwards and backwards as it does so)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defstruct arg-navigator :seq :rest :pos )
+
 (defn next-arg [ navigator ]
   (let [ rst (:rest navigator) ]
     (if rst
-      ((first rst) { :seq (:seq navigator ) :rest (rest rst)  :pos (inc (:pos navigator)) })
+      [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
 
@@ -45,7 +47,7 @@
    {:directive char,
     :params `(array-map ~@params),
     :flags flags,
-    :generator-fn (concat '(fn [ params flags ]) generator-fn) }])
+    :generator-fn (concat '(fn [ params ]) generator-fn) }])
 
 (defmacro defdirectives 
   [ & directives ]
@@ -152,7 +154,7 @@
 	def (get directive-table directive)
 	params (map-params def (map translate-param raw-params) flags)
 	]
-    [[ ((:generator-fn def) params flags) directive params] (subs rest 1)]))
+    [[ ((:generator-fn def) params) directive params] (subs rest 1)]))
     
 (defn breakup-string [ s ]
   (loop [ m (re-matcher directive-pattern s)
