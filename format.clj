@@ -71,14 +71,8 @@
        arg-navigator)))
 )
  
-(def 
- #^{ :doc "The pattern that matches a format directive (~...X) in a control string" }
- directive-pattern
- #"~((([vV]|#|(?:'.)|([+-]?\d+)),)*([vV]|#|(?:'.)|([+-]?\d+)))?([@:])*[A-Za-z]")
+(def param-pattern #"^([vV]|#|('.)|([+-]?\d+)|(?=,))")
 
-(def param-pattern #"^([vV]|#|('.)|([+-]?\d+))")
-
-;; TODO bug: handle skipped parameters
 (defn extract-params [s] 
   (loop [rest s
 	 m (re-matcher param-pattern rest)
@@ -101,6 +95,7 @@
   "Translate the string representation of a param to the internalized
   representation"
   (cond 
+   (= (.length p) 0) nil
    (and (= (.length p) 1) (contains? #{\v \V} (nth p 0))) :parameter-from-args
    (and (= (.length p) 1) (= \# (nth p 0))) :remaining-arg-count
    (and (= (.length p) 2) (= \' (nth p 0))) (nth p 1)
@@ -144,13 +139,13 @@
 			      "\": specified " (count params) " but received " 
 			      (count (:params def)))))
 
-   (filter not (map #(instance? (frest (frest %2)) %1) params (:params def)))
+   (filter not (map #(or (nil? %1) (instance? (frest (frest %2)) %1)) params (:params def)))
    (throw (new Exception (str "Bad parameter type for directive \"" (:directive def) "\""))) 
    
    true
    (merge ; create the result map
     (into {} (for [[name [default]] (:params def)] [name default])) ; start with the default values
-    (zipmap (keys (:params def)) params) ; add the specified parameters
+    (reduce #(apply assoc %1 %2) {} (filter #(nth % 1) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
     flags)) ; and finally add the flags
 )
 
