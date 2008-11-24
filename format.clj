@@ -177,9 +177,15 @@
 	  (recur (conj result (compile-raw-string prestr) directive) rest))))))
 
 (defn execute-format [stream format args]
-  (loop [rst format, args args]
-    (if (empty? rst)
-      nil ; TODO return a string when stream is nil
-      (let [args (apply (first (first rst)) [args])]
-	(recur (rest rst) args)))))
+  (let [real-stream (cond 
+		     (not stream) (new java.io.StringWriter)
+		     (= stream true) *out*
+		     true stream)]
+	(binding [*out* real-stream]
+	  (loop [rst format, args args]
+	    (if (empty? rst)
+	      (if (not stream) 
+		(.toString real-stream))
+	      (let [args (apply (first (first rst)) [args])]
+		(recur (rest rst) args)))))))
 
