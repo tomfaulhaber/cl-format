@@ -9,9 +9,9 @@
 (def teststr1 "The answer is ~7,3,'*@D.")
 
 ;;; Forward references
-(def compile-format)
-(def execute-format)
-(def arg-navigator)
+(declare compile-format)
+(declare execute-format)
+(declare arg-navigator)
 ;;; End forward references
 
 (defn cl-format 
