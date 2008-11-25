@@ -36,7 +36,38 @@
       [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; When looking at the parameter list, we may need to manipulate
+;;; the argument list as well (for 'V' and '#' parameter types).
+;;; We hide all of this behind a function, but clients need to
+;;; manage changing arg navigator
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; TODO: is there a defined order between 'v' and '#'??
+;; TODO: validate parameters when they come from arg list
+(defn realize-parameter-list [parameter-map navigator]
+  (loop [keys (keys parameter-map)
+	 navigator navigator
+	 outmap {} ]
+    (if (nil? keys)
+      [outmap navigator]
+      (let [head (first keys)
+	    raw-val (get parameter-map head)]
+	(let [[real-param new-navigator]
+	      (cond 
+	       (contains? #{ :at :colon } head) ;pass flags through unchanged - this really isn't necessary
+	       [raw-val navigator]
+
+	       (= raw-val :parameter-from-args) 
+	       (next-arg navigator)
+
+	       (= raw-val :remaining-arg-count) 
+	       [(count (:rest navigator)) navigator]
+
+	       true 
+	       [raw-val navigator])]
+	  (recur (rest keys) new-navigator (assoc outmap head real-param)))))))
+      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
@@ -58,20 +89,21 @@
   (\A 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
    #{ :at }
-   (fn [ arg-navigator ]
+   (fn [ params arg-navigator ]
      (let [ [arg arg-navigator] (next-arg arg-navigator) ]
        (print arg)				; TODO: support padding and columns
        arg-navigator)))
   (\% 
    [ :count [1 Integer] ] 
    #{ }
-   (fn [ arg-navigator ]
-     (dotimes [i (:count params)]	; TODO: read parameter for repeat count
+   (fn [ params arg-navigator ]
+     (dotimes [i (:count params)]
        (prn)
        arg-navigator)))
 )
  
 (def param-pattern #"^([vV]|#|('.)|([+-]?\d+)|(?=,))")
+(def special-params #{ :parameter-from-args :remaining-arg-count })
 
 (defn extract-params [s] 
   (loop [rest s
@@ -139,12 +171,17 @@
 			      "\": specified " (count params) " but received " 
 			      (count (:params def)))))
 
-   (filter not (map #(or (nil? %1) (instance? (frest (frest %2)) %1)) params (:params def)))
+   (filter not (map #(or 
+		      (nil? %1) 
+		      (contains? special-params %1)
+		      (instance? (frest (frest %2)) %1)) 
+		    params (:params def)))
    (throw (new Exception (str "Bad parameter type for directive \"" (:directive def) "\""))) 
    
    true
    (merge ; create the result map
-    (into {} (for [[name [default]] (:params def)] [name default])) ; start with the default values
+    (into (array-map)  ; start with the default values, make sure the order is right
+	  (reverse (for [[name [default]] (:params def)] [name default])))
     (reduce #(apply assoc %1 %2) {} (filter #(nth % 1) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
     flags)) ; and finally add the flags
 )
@@ -160,7 +197,7 @@
     [[ ((:generator-fn def) params) directive params] (subs rest 1)]))
     
 (defn compile-raw-string [s]
-  [ (fn [a] (print s) a) nil nil])
+  [ (fn [_ a] (print s) a) nil nil])
 
 (defn compile-format [ format-str ]
   (loop [result [], rest format-str]
@@ -181,6 +218,7 @@
 	    (if (empty? rst)
 	      (if (not stream) 
 		(.toString real-stream))
-	      (let [args (apply (first (first rst)) [args])]
+	      (let [[params args] (realize-parameter-list (nth (first rst) 2) args)
+		    args (apply (first (first rst)) [params args])]
 		(recur (rest rst) args)))))))
 
