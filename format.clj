@@ -2,8 +2,8 @@
 ;; TODO: thread format string position through to all exceptions and add 
 ;; positional errors
 
-(ns format)
-
+(ns format
+  (:import [format InternalFormatException]))
 
 (def teststr "The answer is ~7D.")
 (def teststr1 "The answer is ~7,3,'*@D.")
