@@ -23,6 +23,33 @@
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Helper functions for digesting formats in the various
+;;; phases of their lives.
+;;; These functions are actually pretty general.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn map-passing-context [func initial-context lis]
+  (loop [context initial-context
+	 lis lis
+	 acc []]
+    (if (not lis)
+      [acc context]
+    (let [this (first lis)
+	  remainder (rest lis)
+	  [result new-context] (apply func [this context])]
+      (recur new-context remainder (conj acc result))))))
+
+(defn consume [func initial-context]
+  (loop [context initial-context
+	 acc []]
+    (let [[result new-context] (apply func [context])]
+      (if (not result)
+	[acc context]
+      (recur new-context (conj acc result))))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
 ;;; as the format statement moves through the list
 ;;; (possibly going forwards and backwards as it does so)
@@ -105,23 +132,23 @@
 (def param-pattern #"^([vV]|#|('.)|([+-]?\d+)|(?=,))")
 (def special-params #{ :parameter-from-args :remaining-arg-count })
 
+(defn extract-param [[s offset saw-comma]]
+  (let [m (re-matcher param-pattern s)
+	param (re-find m)]
+    (if param
+      (let [token-str (first (re-groups m))
+	    remainder (subs s (.end m))
+	    new-offset (+ offset (.end m))]
+	(if (not (= \, (nth remainder 0)))
+	  [ token-str [remainder new-offset false]]
+	  [ token-str [(subs remainder 1) (inc new-offset) true]]))
+      (if saw-comma 
+	(throw (InternalFormatException. "Badly formed parameters in format directive" offset))
+	[ nil [s offset]]))))
+
+
 (defn extract-params [s] 
-  (loop [rest s
-	 m (re-matcher param-pattern rest)
-	 acc []
-	 ]
-    (let [param (re-find m)]
-      (if (and (not param) (not (first acc)))
-	[ acc rest ]
-	(if (not param)
-	  (throw (new Exception (str "Badly formed parameters in format directive \"~" s "\"")))  
-	  (let [token-str (first (re-groups m))
-		rest (subs rest (.end m))
-		acc (conj acc token-str)]
-	    (if (not (= \, (nth rest 0)))
-	      [ acc rest ]
-	      (let [rest (subs rest 1)]
-		(recur rest (re-matcher param-pattern rest) acc)))))))))
+  (consume extract-param [s 0 false]))
 
 (defn translate-param [p]
   "Translate the string representation of a param to the internalized
@@ -188,7 +215,7 @@
 
 ;; TODO helpful error handling
 (defn compile-directive [s]
-  (let [[raw-params rest] (extract-params s)
+  (let [[raw-params [rest]] (extract-params s)
 	[flags rest] (extract-flags rest)
 	directive (nth rest 0)
 	def (get directive-table directive)
@@ -200,13 +227,16 @@
   [ (fn [_ a] (print s) a) nil nil])
 
 (defn compile-format [ format-str ]
-  (loop [result [], rest format-str]
-    (let [tilde (.indexOf rest (int \~))]
-      (if (neg? tilde)
-	(conj result (compile-raw-string rest))
-	(let [prestr (subs rest 0 tilde)
-	      [directive rest] (compile-directive (subs rest (inc tilde)))]
-	  (recur (conj result (compile-raw-string prestr) directive) rest))))))
+  (first (consume 
+	  (fn [s]
+	    (if (= 0 (.length s))
+	      [nil s]
+	      (let [tilde (.indexOf s (int \~))]
+		(cond
+		 (neg? tilde) [(compile-raw-string s) ""]
+		 (zero? tilde)  (compile-directive (subs s 1))
+		 true [(compile-raw-string (subs s 0 tilde)) (subs s tilde)]))))
+	  format-str)))
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
@@ -214,11 +244,12 @@
 		     (= stream true) *out*
 		     true stream)]
 	(binding [*out* real-stream]
-	  (loop [rst format, args args]
-	    (if (empty? rst)
-	      (if (not stream) 
-		(.toString real-stream))
-	      (let [[params args] (realize-parameter-list (nth (first rst) 2) args)
-		    args (apply (first (first rst)) [params args])]
-		(recur (rest rst) args)))))))
+	  (map-passing-context 
+	   (fn [element context] 
+	     (let [[params args] (realize-parameter-list (nth element 2) context)]
+	       [nil (apply (first element) [params args])] ))
+	   args
+	   format)
+	  (if (not stream) (.toString real-stream)))))
+
 
