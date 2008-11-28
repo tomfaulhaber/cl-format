@@ -70,31 +70,28 @@
 ;;; manage changing arg navigator
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: is there a defined order between 'v' and '#'??
 ;; TODO: validate parameters when they come from arg list
+(defn realize-parameter [[param raw-val] navigator]
+  (let [[real-param new-navigator]
+	(cond 
+	 (contains? #{ :at :colon } param) ;pass flags through unchanged - this really isn't necessary
+	 [raw-val navigator]
+
+	 (= raw-val :parameter-from-args) 
+	 (next-arg navigator)
+
+	 (= raw-val :remaining-arg-count) 
+	 [(count (:rest navigator)) navigator]
+
+	 true 
+	 [raw-val navigator])]
+    [[param real-param] new-navigator]))
+	 
 (defn realize-parameter-list [parameter-map navigator]
-  (loop [keys (keys parameter-map)
-	 navigator navigator
-	 outmap {} ]
-    (if (nil? keys)
-      [outmap navigator]
-      (let [head (first keys)
-	    raw-val (get parameter-map head)]
-	(let [[real-param new-navigator]
-	      (cond 
-	       (contains? #{ :at :colon } head) ;pass flags through unchanged - this really isn't necessary
-	       [raw-val navigator]
+  (let [[pairs new-navigator] 
+	(map-passing-context realize-parameter navigator parameter-map)]
+    [(into {} pairs) new-navigator]))
 
-	       (= raw-val :parameter-from-args) 
-	       (next-arg navigator)
-
-	       (= raw-val :remaining-arg-count) 
-	       [(count (:rest navigator)) navigator]
-
-	       true 
-	       [raw-val navigator])]
-	  (recur (rest keys) new-navigator (assoc outmap head real-param)))))))
-      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
@@ -162,17 +159,21 @@
  
 (def flag-defs { \: :colon, \@ :at })
 
-(defn extract-flags [s] 
-  (loop [rest s
-	 flags {}]
-    (if (= 0 (.length rest))
-      [flags rest]
-      (let [flag (get flag-defs (first rest))]
-	(if (not flag)
-	  [flags rest]
+(defn extract-flags [s offset]
+  (consume
+   (fn [[s offset flags]]
+    (if (= 0 (.length s))
+      [nil [s offset flags]]
+      (let [flag (get flag-defs (first s))]
+	(if flag
 	  (if (contains? flags flag)
-	    (throw (new Exception (str "Flag \"" flag "\" appears more than once in a directive")))
-	    (recur (subs rest 1) (assoc flags flag true))))))))
+	    (throw 
+	     (InternalFormatException. 
+	      (str "Flag \"" (first s) "\" appears more than once in a directive")
+	      offset))
+	    [true [(subs s 1) (inc offset) (assoc flags flag true)]])
+	  [nil [s offset flags]]))))
+   [s offset {}]))
 
 (defn check-flags [def flags]
   (let [allowed (:flags def)]
@@ -215,8 +216,8 @@
 
 ;; TODO helpful error handling
 (defn compile-directive [s]
-  (let [[raw-params [rest]] (extract-params s)
-	[flags rest] (extract-flags rest)
+  (let [[raw-params [rest offset]] (extract-params s)
+	[_ [rest offset flags]] (extract-flags rest offset)
 	directive (nth rest 0)
 	def (get directive-table directive)
 	params (map-params def (map translate-param raw-params) flags)
