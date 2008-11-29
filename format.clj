@@ -3,7 +3,7 @@
 ;; positional errors
 
 (ns format
-  (:import [format InternalFormatException]))
+  (:import [format FormatException InternalFormatException]))
 
 (def teststr "The answer is ~7D.")
 (def teststr1 "The answer is ~7,3,'*@D.")
@@ -71,7 +71,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; TODO: validate parameters when they come from arg list
-(defn realize-parameter [[param raw-val] navigator]
+(defn realize-parameter [[param [raw-val offset]] navigator]
   (let [[real-param new-navigator]
 	(cond 
 	 (contains? #{ :at :colon } param) ;pass flags through unchanged - this really isn't necessary
@@ -85,7 +85,7 @@
 
 	 true 
 	 [raw-val navigator])]
-    [[param real-param] new-navigator]))
+    [[param [real-param offset]] new-navigator]))
 	 
 (defn realize-parameter-list [parameter-map navigator]
   (let [[pairs new-navigator] 
@@ -121,11 +121,16 @@
    [ :count [1 Integer] ] 
    #{ }
    (fn [ params arg-navigator ]
-     (dotimes [i (:count params)]
+     (dotimes [i (first (:count params))]
        (prn)
        arg-navigator)))
 )
  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Code to manage the parameters and flags accociated with each
+;;; directive in the format string.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def param-pattern #"^([vV]|#|('.)|([+-]?\d+)|(?=,))")
 (def special-params #{ :parameter-from-args :remaining-arg-count })
 
@@ -137,25 +142,26 @@
 	    remainder (subs s (.end m))
 	    new-offset (+ offset (.end m))]
 	(if (not (= \, (nth remainder 0)))
-	  [ token-str [remainder new-offset false]]
-	  [ token-str [(subs remainder 1) (inc new-offset) true]]))
+	  [ [token-str offset] [remainder new-offset false]]
+	  [ [token-str offset] [(subs remainder 1) (inc new-offset) true]]))
       (if saw-comma 
 	(throw (InternalFormatException. "Badly formed parameters in format directive" offset))
 	[ nil [s offset]]))))
 
 
-(defn extract-params [s] 
-  (consume extract-param [s 0 false]))
+(defn extract-params [s offset] 
+  (consume extract-param [s offset false]))
 
-(defn translate-param [p]
+(defn translate-param [[p offset]]
   "Translate the string representation of a param to the internalized
   representation"
-  (cond 
-   (= (.length p) 0) nil
-   (and (= (.length p) 1) (contains? #{\v \V} (nth p 0))) :parameter-from-args
-   (and (= (.length p) 1) (= \# (nth p 0))) :remaining-arg-count
-   (and (= (.length p) 2) (= \' (nth p 0))) (nth p 1)
-   true (new Integer p)))
+  [(cond 
+    (= (.length p) 0) nil
+    (and (= (.length p) 1) (contains? #{\v \V} (nth p 0))) :parameter-from-args
+    (and (= (.length p) 1) (= \# (nth p 0))) :remaining-arg-count
+    (and (= (.length p) 2) (= \' (nth p 0))) (nth p 1)
+    true (new Integer p))
+   offset])
  
 (def flag-defs { \: :colon, \@ :at })
 
@@ -171,23 +177,27 @@
 	     (InternalFormatException. 
 	      (str "Flag \"" (first s) "\" appears more than once in a directive")
 	      offset))
-	    [true [(subs s 1) (inc offset) (assoc flags flag true)]])
+	    [true [(subs s 1) (inc offset) (assoc flags flag [true offset])]])
 	  [nil [s offset flags]]))))
    [s offset {}]))
 
 (defn check-flags [def flags]
   (let [allowed (:flags def)]
     (if (and (not (:at allowed)) (:at flags))
-      (throw (new Exception 
-		  (str "@ is an illegal flag for format directive \"" (:directive def) "\""))))
+      (throw (InternalFormatException.
+		  (str "\"@\" is an illegal flag for format directive \"" (:directive def) "\"")
+		  (nth (:at flags) 1))))
     (if (and (not (:colon allowed)) (:colon flags))
-      (throw (new Exception 
-		  (str ": is an illegal flag for format directive \"" (:directive def) "\""))))
+      (throw (InternalFormatException.
+		  (str "\":\" is an illegal flag for format directive \"" (:directive def) "\"")
+		  (nth (:colon flags) 1))))
     (if (and (not (:both allowed)) (:at flags) (:colon flags))
-      (throw (new Exception 
-		  (str "Cannot combine @ and : flags for format directive \"" (:directive def) "\""))))))
+      (throw (InternalFormatException.
+		  (str "Cannot combine \"@\" and \":\" flags for format directive \"" 
+		       (:directive def) "\"")
+		  (min (nth (:colon flags) 1) (nth (:at flags) 1)))))))
 
-(defn map-params [def params flags]
+(defn map-params [def params flags offset]
   "Takes a directive definition and the list of actual parameters and
    a map of flags and returns a map of the parameters and flags with defaults
    filled in. We check to make sure that there are the right types and number
@@ -195,49 +205,57 @@
   (check-flags def flags)
   (cond 
    (> (count params) (count (:params def)))
-   (throw (new Exception (str "Too many parameters for directive \"" (:directive def) 
-			      "\": specified " (count params) " but received " 
-			      (count (:params def)))))
+   (throw (InternalFormatException.
+	   (str "Too many parameters for directive \"" (:directive def) 
+		"\": specified " (count params) " but received " 
+		(count (:params def)))
+	   (frest params)))
 
-   (filter not (map #(or 
-		      (nil? %1) 
-		      (contains? special-params %1)
-		      (instance? (frest (frest %2)) %1)) 
+   (filter not (map #(let [val (frest %1)]
+			(or 
+			 (nil? val) 
+			 (contains? special-params val)
+			 (instance? (frest (frest %2)) val)) )
 		    params (:params def)))
    (throw (new Exception (str "Bad parameter type for directive \"" (:directive def) "\""))) 
    
    true
    (merge ; create the result map
     (into (array-map)  ; start with the default values, make sure the order is right
-	  (reverse (for [[name [default]] (:params def)] [name default])))
+	  (reverse (for [[name [default]] (:params def)] [name [default offset]])))
     (reduce #(apply assoc %1 %2) {} (filter #(nth % 1) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
     flags)) ; and finally add the flags
 )
 
-;; TODO helpful error handling
-(defn compile-directive [s]
-  (let [[raw-params [rest offset]] (extract-params s)
+(defn compile-directive [s offset]
+  (let [[raw-params [rest offset]] (extract-params s offset)
 	[_ [rest offset flags]] (extract-flags rest offset)
 	directive (nth rest 0)
 	def (get directive-table directive)
-	params (map-params def (map translate-param raw-params) flags)
+	params (map-params def (map translate-param raw-params) flags offset)
 	]
-    [[ ((:generator-fn def) params) directive params] (subs rest 1)]))
+    [[ ((:generator-fn def) params) directive params] [ (subs rest 1) (inc offset)]]))
     
 (defn compile-raw-string [s]
   [ (fn [_ a] (print s) a) nil nil])
 
 (defn compile-format [ format-str ]
-  (first (consume 
-	  (fn [s]
-	    (if (= 0 (.length s))
-	      [nil s]
-	      (let [tilde (.indexOf s (int \~))]
-		(cond
-		 (neg? tilde) [(compile-raw-string s) ""]
-		 (zero? tilde)  (compile-directive (subs s 1))
-		 true [(compile-raw-string (subs s 0 tilde)) (subs s tilde)]))))
-	  format-str)))
+  (try
+   (first (consume 
+	   (fn [[s offset]]
+	     (if (= 0 (.length s))
+	       [nil s]
+	       (let [tilde (.indexOf s (int \~))]
+		 (cond
+		  (neg? tilde) [(compile-raw-string s) ["" (+ offset (.length s))]]
+		  (zero? tilde)  (compile-directive (subs s 1) (inc offset))
+		  true 
+		  [(compile-raw-string (subs s 0 tilde)) [(subs s tilde) tilde]]))))
+	   [format-str 0]))
+   (catch InternalFormatException e 
+     (let [message (str (.getMessage e) \newline format-str \newline 
+			(apply str (take (.pos e) (repeat \space))) "^" \newline)]
+       (throw (FormatException. message))))))
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
