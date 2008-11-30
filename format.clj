@@ -1,7 +1,3 @@
-;; TODO: think through exception types
-;; TODO: thread format string position through to all exceptions and add 
-;; positional errors
-
 (ns format
   (:import [format FormatException InternalFormatException]))
 
@@ -57,6 +53,7 @@
 
 (defstruct arg-navigator :seq :rest :pos )
 
+;; TODO Include position in error w/InternalFormatException
 (defn next-arg [ navigator ]
   (let [ rst (:rest navigator) ]
     (if rst
@@ -203,29 +200,29 @@
    filled in. We check to make sure that there are the right types and number
    of parameters as well."
   (check-flags def flags)
-  (cond 
-   (> (count params) (count (:params def)))
-   (throw (InternalFormatException.
-	   (str "Too many parameters for directive \"" (:directive def) 
-		"\": specified " (count params) " but received " 
-		(count (:params def)))
-	   (frest params)))
+  (if (> (count params) (count (:params def)))
+    (throw (InternalFormatException.
+	    (str "Too many parameters for directive \"" (:directive def) 
+		 "\": specified " (count params) " but received " 
+		 (count (:params def)))
+	    (frest params))))
 
-   (filter not (map #(let [val (frest %1)]
-			(or 
-			 (nil? val) 
-			 (contains? special-params val)
-			 (instance? (frest (frest %2)) val)) )
-		    params (:params def)))
-   (throw (new Exception (str "Bad parameter type for directive \"" (:directive def) "\""))) 
-   
-   true
-   (merge ; create the result map
-    (into (array-map)  ; start with the default values, make sure the order is right
-	  (reverse (for [[name [default]] (:params def)] [name [default offset]])))
-    (reduce #(apply assoc %1 %2) {} (filter #(nth % 1) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
-    flags)) ; and finally add the flags
-)
+  (doall
+   (map #(let [val (first %1)]
+	   (if (not (or (nil? val) (contains? special-params val) 
+			(instance? (frest (frest %2)) val)))
+	     (throw (InternalFormatException.
+		     (str "Parameter " (name (first %2))
+			  " has bad type in directive \"" (:directive def) "\": "
+			  (class val))
+		     (frest %1)))) )
+	params (:params def)))
+     
+  (merge ; create the result map
+   (into (array-map)  ; start with the default values, make sure the order is right
+	 (reverse (for [[name [default]] (:params def)] [name [default offset]])))
+   (reduce #(apply assoc %1 %2) {} (filter #(nth % 1) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
+   flags)) ; and finally add the flags
 
 (defn compile-directive [s offset]
   (let [[raw-params [rest offset]] (extract-params s offset)
@@ -238,6 +235,11 @@
     
 (defn compile-raw-string [s]
   [ (fn [_ a] (print s) a) nil nil])
+
+(defn translate-internal-exception [format-str e]
+  (let [message (str (.getMessage e) \newline format-str \newline 
+		     (apply str (replicate (.pos e) \space)) "^" \newline)]
+    (throw (FormatException. message))))
 
 (defn compile-format [ format-str ]
   (try
@@ -253,9 +255,13 @@
 		  [(compile-raw-string (subs s 0 tilde)) [(subs s tilde) tilde]]))))
 	   [format-str 0]))
    (catch InternalFormatException e 
-     (let [message (str (.getMessage e) \newline format-str \newline 
-			(apply str (take (.pos e) (repeat \space))) "^" \newline)]
-       (throw (FormatException. message))))))
+     (translate-internal-exception format-str e))
+   (catch RuntimeException e ; Functions like map bury the thrown exception inside a
+			     ; RuntimeException, so we have to dig it out.
+     (let [cause (.getCause e)]
+       (if (instance? InternalFormatException cause)
+	 (translate-internal-exception format-str cause)
+	 (throw))))))
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
