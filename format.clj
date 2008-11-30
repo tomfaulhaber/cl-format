@@ -165,7 +165,7 @@
 (defn extract-flags [s offset]
   (consume
    (fn [[s offset flags]]
-    (if (= 0 (.length s))
+    (if (empty? s)
       [nil [s offset flags]]
       (let [flag (get flag-defs (first s))]
 	(if flag
@@ -245,7 +245,7 @@
   (try
    (first (consume 
 	   (fn [[s offset]]
-	     (if (= 0 (.length s))
+	     (if (empty? s)
 	       [nil s]
 	       (let [tilde (.indexOf s (int \~))]
 		 (cond
