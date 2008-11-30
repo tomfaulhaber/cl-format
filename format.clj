@@ -110,15 +110,28 @@
   (\A 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
    #{ :at }
-   (fn [ params arg-navigator ]
-     (let [ [arg arg-navigator] (next-arg arg-navigator) ]
-       (print arg)				; TODO: support padding and columns
+   (fn [ params arg-navigator offsets]
+     (let [ [arg arg-navigator] (next-arg arg-navigator) 
+	    base-output (print-str arg)
+	    base-width (.length base-output)
+	    min-width (+ base-width (:minpad params))
+	    width (if (>= min-width (:mincol params)) 
+		    min-width
+		    (+ min-width 
+		       (* (+ (quot (- (:mincol params) min-width 1) 
+				   (:colinc params) )
+			     1)
+			  (:colinc params))))
+	    chars (apply str (replicate (- width base-width) (:padchar params)))]
+       (if (:at params)
+	 (print (str chars base-output))
+	 (print (str base-output chars)))
        arg-navigator)))
   (\% 
    [ :count [1 Integer] ] 
    #{ }
-   (fn [ params arg-navigator ]
-     (dotimes [i (first (:count params))]
+   (fn [ params arg-navigator offsets]
+     (dotimes [i (:count params)]
        (prn)
        arg-navigator)))
 )
@@ -218,6 +231,7 @@
 		     (frest %1)))) )
 	params (:params def)))
      
+  ;;TODO this isn't handling nil paramters right (should set them to the default)
   (merge ; create the result map
    (into (array-map)  ; start with the default values, make sure the order is right
 	 (reverse (for [[name [default]] (:params def)] [name [default offset]])))
@@ -234,7 +248,7 @@
     [[ ((:generator-fn def) params) directive params] [ (subs rest 1) (inc offset)]]))
     
 (defn compile-raw-string [s]
-  [ (fn [_ a] (print s) a) nil nil])
+  [ (fn [_ a _] (print s) a) nil nil])
 
 (defn translate-internal-exception [format-str e]
   (let [message (str (.getMessage e) \newline format-str \newline 
@@ -263,6 +277,13 @@
 	 (translate-internal-exception format-str cause)
 	 (throw))))))
 
+(defn unzip-map [m]
+  "Take a  map that has pairs in the value slots and produce a pair of maps, 
+   the first having all the first elements of the pairs and the second all 
+   the second elements of the pairs"
+  [(into {} (for [[k [v1 v2]] m] [k v1]))
+   (into {} (for [[k [v1 v2]] m] [k v2]))])
+
 (defn execute-format [stream format args]
   (let [real-stream (cond 
 		     (not stream) (new java.io.StringWriter)
@@ -271,8 +292,9 @@
 	(binding [*out* real-stream]
 	  (map-passing-context 
 	   (fn [element context] 
-	     (let [[params args] (realize-parameter-list (nth element 2) context)]
-	       [nil (apply (first element) [params args])] ))
+	     (let [[params args] (realize-parameter-list (nth element 2) context)
+		   [params offsets] (unzip-map params)]
+	       [nil (apply (first element) [params args offsets])] ))
 	   args
 	   format)
 	  (if (not stream) (.toString real-stream)))))
