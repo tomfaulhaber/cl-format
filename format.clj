@@ -199,6 +199,16 @@
    #{ :at :colon :both }
    #(format-integer "%x" %1 %2 %3))
 
+  (\P
+   [ ]
+   #{ :at :colon :both }
+   (fn [params navigator offsets]
+     (let [navigator (if (:colon params) (relative-reposition navigator -1) navigator)
+	   strs (if (:at params) ["y" "ies"] ["" "s"])
+	   [arg navigator] (next-arg navigator)]
+       (print (if (= arg 1) (first strs) (frest strs)))
+       navigator)))
+
   (\% 
    [ :count [1 Integer] ] 
    #{ }
