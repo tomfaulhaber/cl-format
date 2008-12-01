@@ -90,6 +90,29 @@
     [(into {} pairs) new-navigator]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Functions that support individual directives
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Common handling code for ~A and ~S
+(defn format-ascii [print-func params arg-navigator offsets]
+  (let [ [arg arg-navigator] (next-arg arg-navigator) 
+	 base-output (print-func arg)
+	 base-width (.length base-output)
+	 min-width (+ base-width (:minpad params))
+	 width (if (>= min-width (:mincol params)) 
+		 min-width
+		 (+ min-width 
+		    (* (+ (quot (- (:mincol params) min-width 1) 
+				(:colinc params) )
+			  1)
+		       (:colinc params))))
+	 chars (apply str (replicate (- width base-width) (:padchar params)))]
+    (if (:at params)
+      (print (str chars base-output))
+      (print (str base-output chars)))
+    arg-navigator))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,23 +133,13 @@
   (\A 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
    #{ :at }
-   (fn [ params arg-navigator offsets]
-     (let [ [arg arg-navigator] (next-arg arg-navigator) 
-	    base-output (print-str arg)
-	    base-width (.length base-output)
-	    min-width (+ base-width (:minpad params))
-	    width (if (>= min-width (:mincol params)) 
-		    min-width
-		    (+ min-width 
-		       (* (+ (quot (- (:mincol params) min-width 1) 
-				   (:colinc params) )
-			     1)
-			  (:colinc params))))
-	    chars (apply str (replicate (- width base-width) (:padchar params)))]
-       (if (:at params)
-	 (print (str chars base-output))
-	 (print (str base-output chars)))
-       arg-navigator)))
+   #(format-ascii print-str %1 %2 %3))
+
+  (\S 
+   [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
+   #{ :at }
+   #(format-ascii pr-str %1 %2 %3))
+
   (\% 
    [ :count [1 Integer] ] 
    #{ }
