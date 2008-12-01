@@ -161,6 +161,14 @@
        (prn)
        arg-navigator)))
 
+  (\~ 
+   [ :n [1 Integer] ] 
+   #{ }
+   (fn [params arg-navigator offsets]
+     (let [n (:n params)]
+       (print (apply str (replicate n \~)))
+       arg-navigator)))
+
   (\* 
    [ :n [1 Integer] ] 
    #{ :colon :at }
