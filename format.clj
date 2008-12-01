@@ -125,6 +125,34 @@
       (print (str base-output chars)))
     arg-navigator))
 
+;; Support for the integer directives ~D, ~X, ~O, ~B and some of ~R
+(defn group-by [unit lis]
+  (reverse
+   (first
+    (consume (fn [x] [(reverse (take unit x)) (drop unit x)]) (reverse lis)))))
+
+(defn format-integer [ format-type params arg-navigator offsets]
+  (let [[arg arg-navigator] (next-arg arg-navigator) 
+	neg (neg? arg)
+	pos-arg (if neg (- arg) arg)
+	raw-str (clojure.core/format format-type pos-arg)
+	group-str (if (:colon params)
+		    (let [groups (map #(apply str %) (group-by (:commainterval params) raw-str))
+			  commas (replicate (count groups) (:commachar params))]
+		      (apply str (rest (interleave commas groups))))
+		    raw-str)
+	signed-str (cond
+		    neg (str "-" group-str)
+		    (:at params) (str "+" group-str)
+		    true group-str)
+	padded-str (if (< (.length signed-str) (:mincol params))
+		     (str (apply str (replicate (- (:mincol params) (.length signed-str)) 
+						(:padchar params)))
+			  signed-str)
+		     signed-str)]
+    (print padded-str)
+    arg-navigator))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
@@ -153,6 +181,24 @@
    #{ :at }
    #(format-ascii pr-str %1 %2 %3))
 
+  (\D
+   [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
+    :commainterval [ 3 Integer]]
+   #{ :at :colon :both }
+   #(format-integer "%d" %1 %2 %3))
+
+  (\O
+   [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
+    :commainterval [ 3 Integer]]
+   #{ :at :colon :both }
+   #(format-integer "%o" %1 %2 %3))
+
+  (\X
+   [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
+    :commainterval [ 3 Integer]]
+   #{ :at :colon :both }
+   #(format-integer "%x" %1 %2 %3))
+
   (\% 
    [ :count [1 Integer] ] 
    #{ }
@@ -179,7 +225,10 @@
 	 (relative-reposition navigator (if (:colon params) (- n) n)))
        )))
 )
- 
+
+(defn my-status [] 
+  (println "There are" (count directive-table) "out of 33 directives implemented"))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Code to manage the parameters and flags accociated with each
 ;;; directive in the format string.
@@ -285,7 +334,7 @@
   (let [[raw-params [rest offset]] (extract-params s offset)
 	[_ [rest offset flags]] (extract-flags rest offset)
 	directive (first rest)
-	def (get directive-table directive)
+	def (get directive-table (Character/toUpperCase directive))
 	params (if def (map-params def (map translate-param raw-params) flags offset))
 	]
     (if (not directive)
