@@ -231,20 +231,23 @@
 		     (frest %1)))) )
 	params (:params def)))
      
-  ;;TODO this isn't handling nil paramters right (should set them to the default)
   (merge ; create the result map
    (into (array-map)  ; start with the default values, make sure the order is right
 	 (reverse (for [[name [default]] (:params def)] [name [default offset]])))
-   (reduce #(apply assoc %1 %2) {} (filter #(nth % 1) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
+   (reduce #(apply assoc %1 %2) {} (filter #(first (nth % 1)) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
    flags)) ; and finally add the flags
 
 (defn compile-directive [s offset]
   (let [[raw-params [rest offset]] (extract-params s offset)
 	[_ [rest offset flags]] (extract-flags rest offset)
-	directive (nth rest 0)
+	directive (first rest)
 	def (get directive-table directive)
-	params (map-params def (map translate-param raw-params) flags offset)
+	params (if def (map-params def (map translate-param raw-params) flags offset))
 	]
+    (if (not directive)
+      (throw (InternalFormatException. "Format string ended in the middle of a directive" offset)))
+    (if (not def)
+      (throw (InternalFormatException. (str "Directive \"" directive "\" is undefined") offset)))
     [[ ((:generator-fn def) params) directive params] [ (subs rest 1) (inc offset)]]))
     
 (defn compile-raw-string [s]
