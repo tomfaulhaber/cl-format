@@ -60,6 +60,19 @@
       [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
+(declare relative-reposition)
+
+(defn absolute-reposition [navigator position]
+  (if (>= position (:pos navigator))
+    (relative-reposition navigator (- (:pos navigator) position))
+    (struct arg-navigator (:seq navigator) (drop position (:seq navigator)) position)))
+
+(defn relative-reposition [navigator position]
+  (let [newpos (+ (:pos navigator) position)]
+    (if (neg? position)
+      (absolute-reposition navigator newpos)
+      (struct arg-navigator (:seq navigator) (drop position (:rest navigator)) newpos))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; When looking at the parameter list, we may need to manipulate
 ;;; the argument list as well (for 'V' and '#' parameter types).
@@ -143,10 +156,20 @@
   (\% 
    [ :count [1 Integer] ] 
    #{ }
-   (fn [ params arg-navigator offsets]
+   (fn [params arg-navigator offsets]
      (dotimes [i (:count params)]
        (prn)
        arg-navigator)))
+
+  (\* 
+   [ :n [1 Integer] ] 
+   #{ :colon :at }
+   (fn [params navigator offsets]
+     (let [n (:n params)]
+       (if (:at params)
+	 (absolute-reposition navigator n)
+	 (relative-reposition navigator (if (:colon params) (- n) n)))
+       )))
 )
  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
