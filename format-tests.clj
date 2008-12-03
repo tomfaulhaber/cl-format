@@ -139,3 +139,62 @@ but it was called with an argument of type SHORT-FLOAT."
     (format nil foo 'foo 'bar) "Items: FOO and BAR." 
     (format nil foo 'foo 'bar 'baz) "Items: FOO, BAR, and BAZ." 
     (format nil foo 'foo 'bar 'baz 'quux) "Items: FOO, BAR, BAZ, and QUUX."))
+
+(simple-tests "cltl-curly-bracket-tests"
+  (format nil 
+        "The winners are:~{ ~S~}." 
+        '(fred harry jill)) 
+  "The winners are: FRED HARRY JILL." 
+
+  (format nil "Pairs:~{ <~S,~S>~}." '(a 1 b 2 c 3)) 
+  "Pairs: <A,1> <B,2> <C,3>."
+
+  (format nil "Pairs:~:{ <~S,~S>~}." '((a 1) (b 2) (c 3))) 
+  "Pairs: <A,1> <B,2> <C,3>."
+
+  (format nil "Pairs:~@{ <~S,~S>~}." 'a 1 'b 2 'c 3) 
+  "Pairs: <A,1> <B,2> <C,3>."
+
+  (format nil "Pairs:~:@{ <~S,~S>~}." '(a 1) '(b 2) '(c 3)) 
+  "Pairs: <A,1> <B,2> <C,3>.")
+
+(simple-tests "cltl-angle-bracket-tests"
+  (format nil "~10<foo~;bar~>")           "foo    bar" 
+  (format nil "~10:<foo~;bar~>")          "  foo  bar" 
+  (format nil "~10:@<foo~;bar~>")         "  foo bar " 
+  (format nil "~10<foobar~>")             "    foobar" 
+  (format nil "~10:<foobar~>")            "    foobar" 
+  (format nil "~10@<foobar~>")            "foobar    " 
+  (format nil "~10:@<foobar~>")           "  foobar  ")
+
+(let [donestr "Done.~^  ~D warning~:P.~^  ~D error~:P."
+      tellstr "~@(~@[~R~]~^ ~A.~)"]
+  (simple-tests "cltl-up-tests"
+    (format nil donestr) "Done." 
+    (format nil donestr 3) "Done.  3 warnings." 
+    (format nil donestr 1 5) "Done.  1 warning.  5 errors."
+    (format nil tellstr 23) "Twenty-three." 
+    (format nil tellstr nil "losers") "Losers." 
+    (format nil tellstr 23 "losers") "Twenty-three losers."
+    (format nil "~15<~S~;~^~S~;~^~S~>" 'foo) 
+    "            FOO" 
+    (format nil "~15<~S~;~^~S~;~^~S~>" 'foo 'bar) 
+    "FOO         BAR" 
+    (format nil "~15<~S~;~^~S~;~^~S~>" 'foo 'bar 'baz) 
+    "FOO   BAR   BAZ"))
+
+(simple-tests "cltl-up-x3j13-tests"
+  (format nil 
+	  "~:{/~S~^ ...~}" 
+	  '((hot dog) (hamburger) (ice cream) (french fries))) 
+  "/HOT .../HAMBURGER/ICE .../FRENCH ..."
+  (format nil 
+	  "~:{/~S~:^ ...~}" 
+	  '((hot dog) (hamburger) (ice cream) (french fries))) 
+  "/HOT .../HAMBURGER .../ICE .../FRENCH"
+
+  (format nil 
+	  "~:{/~S~:#^ ...~}" 
+	  '((hot dog) (hamburger) (ice cream) (french fries))) 
+  "/HOT .../HAMBURGER")
+
