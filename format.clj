@@ -73,6 +73,8 @@
       (absolute-reposition navigator newpos)
       (struct arg-navigator (:seq navigator) (drop position (:rest navigator)) newpos))))
 
+(defstruct compiled-directive :func :def :params :offset)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; When looking at the parameter list, we may need to manipulate
 ;;; the argument list as well (for 'V' and '#' parameter types).
@@ -159,11 +161,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; We start with a couple of helpers
-(defn process-directive-table-element [ [ char params flags & generator-fn ] ]
+(defn process-directive-table-element [ [ char params flags bracket-info & generator-fn ] ]
   [char, 
    {:directive char,
     :params `(array-map ~@params),
     :flags flags,
+    :bracket-info bracket-info,
     :generator-fn (concat '(fn [ params ]) generator-fn) }])
 
 (defmacro defdirectives 
@@ -173,35 +176,35 @@
 (defdirectives 
   (\A 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
-   #{ :at }
+   #{ :at } {}
    #(format-ascii print-str %1 %2 %3))
 
   (\S 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
-   #{ :at }
+   #{ :at } {}
    #(format-ascii pr-str %1 %2 %3))
 
   (\D
    [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
     :commainterval [ 3 Integer]]
-   #{ :at :colon :both }
+   #{ :at :colon :both } {}
    #(format-integer "%d" %1 %2 %3))
 
   (\O
    [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
     :commainterval [ 3 Integer]]
-   #{ :at :colon :both }
+   #{ :at :colon :both } {}
    #(format-integer "%o" %1 %2 %3))
 
   (\X
    [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
     :commainterval [ 3 Integer]]
-   #{ :at :colon :both }
+   #{ :at :colon :both } {}
    #(format-integer "%x" %1 %2 %3))
 
   (\P
    [ ]
-   #{ :at :colon :both }
+   #{ :at :colon :both } {}
    (fn [params navigator offsets]
      (let [navigator (if (:colon params) (relative-reposition navigator -1) navigator)
 	   strs (if (:at params) ["y" "ies"] ["" "s"])
@@ -211,7 +214,7 @@
 
   (\% 
    [ :count [1 Integer] ] 
-   #{ }
+   #{ } {}
    (fn [params arg-navigator offsets]
      (dotimes [i (:count params)]
        (prn)
@@ -219,7 +222,7 @@
 
   (\~ 
    [ :n [1 Integer] ] 
-   #{ }
+   #{ } {}
    (fn [params arg-navigator offsets]
      (let [n (:n params)]
        (print (apply str (replicate n \~)))
@@ -227,13 +230,22 @@
 
   (\* 
    [ :n [1 Integer] ] 
-   #{ :colon :at }
+   #{ :colon :at } {}
    (fn [params navigator offsets]
      (let [n (:n params)]
        (if (:at params)
 	 (absolute-reposition navigator n)
 	 (relative-reposition navigator (if (:colon params) (- n) n)))
        )))
+  (\[
+   [ ]
+   #{ :colon :at } { :right \], :max-seqs :any, :else true }
+   (fn [params navigator offsets]
+     (print "<bracket>")))
+
+   (\; [] #{ :colon } { :separator true } nil) 
+   
+   (\] [] #{} {} nil) 
 )
 
 (defn my-status [] 
@@ -351,11 +363,53 @@
       (throw (InternalFormatException. "Format string ended in the middle of a directive" offset)))
     (if (not def)
       (throw (InternalFormatException. (str "Directive \"" directive "\" is undefined") offset)))
-    [[ ((:generator-fn def) params) directive params] [ (subs rest 1) (inc offset)]]))
+    [(struct compiled-directive ((:generator-fn def) params) directive params offset)
+     [ (subs rest 1) (inc offset)]]))
     
-(defn compile-raw-string [s]
-  [ (fn [_ a _] (print s) a) nil nil])
+(defn compile-raw-string [s offset]
+  (struct compiled-directive (fn [_ a _] (print s) a) nil nil offset))
 
+(defn process-nesting-recurse [bracket-info offset remainder]
+  (consume 
+   (fn [remainder]
+     (if (nil? remainder)
+       (throw (InternalFormatException. "No closing bracket found." offset))
+       (let [this (first remainder)
+	     remainder (rest remainder)]
+	 (cond
+	  (:right (:bracket-info (:def this)))
+	   ;; TODO: factor this let out into a func?
+	  (let [[subex remainder] (process-nesting-recurse (:bracket-info (:def this))
+							   (:offset this) remainder)]
+	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
+		     (:offset this))
+	     remainder])
+
+	  (= (:right bracket-info) (:directive (:def this)))
+	  [ nil remainder]
+
+	  true
+	  [ this remainder]))))))
+
+(defn process-nesting [format]
+  "Take a linearly compiled format and process the bracket directives to give it 
+   the appropriate tree structure"
+  (first
+   (consume 
+    (fn [remainder]
+      (let [this (first remainder)
+	    remainder (rest remainder)
+	    bracket (:bracket-info (:def this))]
+	(if (:right bracket)
+	  (let [[subex remainder] (process-nesting-recurse bracket (:offset this) remainder)]
+	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
+		     (:offset this))
+	     remainder])
+	  [this remainder])))
+    format)))
+
+	    
+      
 (defn translate-internal-exception [format-str e]
   (let [message (str (.getMessage e) \newline format-str \newline 
 		     (apply str (replicate (.pos e) \space)) "^" \newline)]
@@ -372,7 +426,7 @@
 		  (neg? tilde) [(compile-raw-string s) ["" (+ offset (.length s))]]
 		  (zero? tilde)  (compile-directive (subs s 1) (inc offset))
 		  true 
-		  [(compile-raw-string (subs s 0 tilde)) [(subs s tilde) tilde]]))))
+		  [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
 	   [format-str 0]))
    (catch InternalFormatException e 
      (translate-internal-exception format-str e))
@@ -381,7 +435,7 @@
      (let [cause (.getCause e)]
        (if (instance? InternalFormatException cause)
 	 (translate-internal-exception format-str cause)
-	 (throw))))))
+	 (throw (RuntimeException. (.getMessage e) e)))))))
 
 (defn unzip-map [m]
   "Take a  map that has pairs in the value slots and produce a pair of maps, 
@@ -398,9 +452,9 @@
 	(binding [*out* real-stream]
 	  (map-passing-context 
 	   (fn [element context] 
-	     (let [[params args] (realize-parameter-list (nth element 2) context)
+	     (let [[params args] (realize-parameter-list (:params element) context)
 		   [params offsets] (unzip-map params)]
-	       [nil (apply (first element) [params args offsets])] ))
+	       [nil (apply (:func element) [params args offsets])] ))
 	   args
 	   format)
 	  (if (not stream) (.toString real-stream)))))
