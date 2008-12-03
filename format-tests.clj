@@ -23,8 +23,7 @@
 
 
 (let [x 5, y "elephant", n 3]
-  (simple-tests 
-   "cltl-intro-tests"
+  (simple-tests cltl-intro-tests
    (format nil "foo")  "foo" 
    (format nil "The answer is ~D." x)  "The answer is 5." 
    (format nil "The answer is ~3D." x)  "The answer is   5." 
@@ -39,13 +38,13 @@
    (format nil "Here ~[are~;is~:;are~] ~:*~R pupp~:@P." n) "Here are three puppies."))
  
 ;; how do we do hex numbers??
-;; (simple-tests "cltl-B-tests"
+;; (simple-tests cltl-B-tests
 ;;   (format nil "~,,' ,4B" #xFACE) "1111 1010 1100 1110" 
 ;;   (format nil "~,,' ,4B" #x1CE) "1 1100 1110" 
 ;;   (format nil "~19,,' ,4B" #xFACE) "1111 1010 1100 1110" 
 ;;   (format nil "~19,,' ,4B" #x1CE) "0000 0001 1100 1110")
 
-(simple-tests "cltl-P-tests"
+(simple-tests cltl-P-tests
   (format nil "~D tr~:@P/~D win~:P" 7 1) "7 tries/1 win" 
   (format nil "~D tr~:@P/~D win~:P" 1 0) "1 try/0 wins" 
   (format nil "~D tr~:@P/~D win~:P" 1 3) "1 try/3 wins")
@@ -54,7 +53,7 @@
   (format nil "~6,2F|~6,2,1,'*F|~6,2,,'?F|~6F|~,2F|~F" 
           x x x x x x))
 
-(simple-tests "cltl-F-tests"
+(simple-tests cltl-F-tests
   (foo 3.14159)  "  3.14| 31.42|  3.14|3.1416|3.14|3.14159" 
   (foo -3.14159) " -3.14|-31.42| -3.14|-3.142|-3.14|-3.14159" 
   (foo 100.0)    "100.00|******|100.00| 100.0|100.00|100.0" 
@@ -66,7 +65,7 @@
           "~9,2,1,,'*E|~10,3,2,2,'?,,'$E|~9,3,2,-2,'%@E|~9,2E" 
           x x x x)) 
 
-(simple-tests "cltl-E-tests"
+(simple-tests cltl-E-tests
   (foo-e 3.14159)  "  3.14E+0| 31.42$-01|+.003E+03|  3.14E+0" 
   (foo-e -3.14159) " -3.14E+0|-31.42$-01|-.003E+03| -3.14E+0" 
   (foo-e 1100.0)   "  1.10E+3| 11.00$+02|+.001E+06|  1.10E+3" 
@@ -81,7 +80,7 @@
           "~9,2,1,,'*G|~9,3,2,3,'?,,'$G|~9,3,2,0,'%G|~9,2G" 
           x x x)) 
 
-(simple-tests "cltl-G-tests"
+(simple-tests cltl-G-tests
   (foo-g 0.0314159) "  3.14E-2|314.2$-04|0.314E-01|  3.14E-2" 
   (foo-g 0.314159)  "  0.31   |0.314    |0.314    | 0.31    " 
   (foo-g 3.14159)   "   3.1   | 3.14    | 3.14    |  3.1    " 
@@ -101,7 +100,7 @@
            with an argument of type ~S.~%" 
           fun (= nargs 1) argnum right-type wrong-type)) 
 
-(simple-tests "cltl-B-tests"
+(simple-tests cltl-B-tests
   (type-clash-error 'aref nil 2 'integer 'vector)
 "Function AREF requires its second argument to be of type INTEGER, 
 but it was called with an argument of type VECTOR."
@@ -110,7 +109,7 @@ but it was called with an argument of type VECTOR."
 but it was called with an argument of type SHORT-FLOAT."
 )
 
-(simple-tests "cltl-?-tests"
+(simple-tests cltl-?-tests
   (format nil "~? ~D" "<~A ~D>" '("Foo" 5) 7) "<Foo 5> 7" 
   (format nil "~? ~D" "<~A ~D>" '("Foo" 5 14) 7) "<Foo 5> 7"
   (format nil "~@? ~D" "<~A ~D>" "Foo" 5 7) "<Foo 5> 7" 
@@ -118,14 +117,14 @@ but it was called with an argument of type SHORT-FLOAT."
 
 (defn f [n] (format nil "~@(~R~) error~:P detected." n)) 
 
-(simple-tests "cltl-paren-tests"
+(simple-tests cltl-paren-tests
   (format nil "~@R ~(~@R~)" 14 14) "XIV xiv" 
   (f 0) "Zero errors detected." 
   (f 1) "One error detected." 
   (f 23) "Twenty-three errors detected.")
 
 (let [*print-level* nil *print-length* 5] 
-  (simple-tests "cltl-bracket-tests"
+  (simple-tests cltl-bracket-tests
     (format nil "~@[ print level = ~D~]~@[ print length = ~D~]" 
             *print-level* *print-length*) 
     " print length = 5"))
@@ -133,14 +132,14 @@ but it was called with an argument of type SHORT-FLOAT."
 (let [foo "Items:~#[ none~; ~S~; ~S and ~S~ 
            ~:;~@{~#[~; and~]
 ~S~^,~}~]."]
-  (simple-tests "cltl-bracket1-tests"
+  (simple-tests cltl-bracket1-tests
     (format nil foo) "Items: none." 
     (format nil foo 'foo) "Items: FOO." 
     (format nil foo 'foo 'bar) "Items: FOO and BAR." 
     (format nil foo 'foo 'bar 'baz) "Items: FOO, BAR, and BAZ." 
     (format nil foo 'foo 'bar 'baz 'quux) "Items: FOO, BAR, BAZ, and QUUX."))
 
-(simple-tests "cltl-curly-bracket-tests"
+(simple-tests cltl-curly-bracket-tests
   (format nil 
         "The winners are:~{ ~S~}." 
         '(fred harry jill)) 
@@ -158,7 +157,7 @@ but it was called with an argument of type SHORT-FLOAT."
   (format nil "Pairs:~:@{ <~S,~S>~}." '(a 1) '(b 2) '(c 3)) 
   "Pairs: <A,1> <B,2> <C,3>.")
 
-(simple-tests "cltl-angle-bracket-tests"
+(simple-tests cltl-angle-bracket-tests
   (format nil "~10<foo~;bar~>")           "foo    bar" 
   (format nil "~10:<foo~;bar~>")          "  foo  bar" 
   (format nil "~10:@<foo~;bar~>")         "  foo bar " 
@@ -169,7 +168,7 @@ but it was called with an argument of type SHORT-FLOAT."
 
 (let [donestr "Done.~^  ~D warning~:P.~^  ~D error~:P."
       tellstr "~@(~@[~R~]~^ ~A.~)"]
-  (simple-tests "cltl-up-tests"
+  (simple-tests cltl-up-tests
     (format nil donestr) "Done." 
     (format nil donestr 3) "Done.  3 warnings." 
     (format nil donestr 1 5) "Done.  1 warning.  5 errors."
@@ -183,7 +182,7 @@ but it was called with an argument of type SHORT-FLOAT."
     (format nil "~15<~S~;~^~S~;~^~S~>" 'foo 'bar 'baz) 
     "FOO   BAR   BAZ"))
 
-(simple-tests "cltl-up-x3j13-tests"
+(simple-tests cltl-up-x3j13-tests
   (format nil 
 	  "~:{/~S~^ ...~}" 
 	  '((hot dog) (hamburger) (ice cream) (french fries))) 
