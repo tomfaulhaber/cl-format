@@ -21,10 +21,12 @@ its relatives.
 ### Current Status ###
 
 cl-format is under active development. Currently it supports only simple, linear directives (no
-brackets) and does not yet support the various floting point formats. Next on the list is the
+brackets) and does not yet support the various floating point formats. Next on the list is the
 bracket constructions.
 
 ### How to use ###
+
+TBD
 
 ### Examples ###
 
@@ -32,3 +34,4 @@ TBD
 
 ### Differences from Common Lisp format ###
 
+TBD
