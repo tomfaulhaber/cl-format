@@ -40,10 +40,16 @@
 	 acc []]
     (let [[result new-context] (apply func [context])]
       (if (not result)
-	[acc context]
+	[acc new-context]
       (recur new-context (conj acc result))))))
 
-
+(defn consume-while [func initial-context]
+  (loop [context initial-context
+	 acc []]
+    (let [[result continue new-context] (apply func [context])]
+      (if (not continue)
+	[acc context]
+      (recur new-context (conj acc result))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
@@ -363,33 +369,87 @@
       (throw (InternalFormatException. "Format string ended in the middle of a directive" offset)))
     (if (not def)
       (throw (InternalFormatException. (str "Directive \"" directive "\" is undefined") offset)))
-    [(struct compiled-directive ((:generator-fn def) params) directive params offset)
+    [(struct compiled-directive ((:generator-fn def) params) def params offset)
      [ (subs rest 1) (inc offset)]]))
     
 (defn compile-raw-string [s offset]
   (struct compiled-directive (fn [_ a _] (print s) a) nil nil offset))
 
-(defn process-nesting-recurse [bracket-info offset remainder]
+(defn right-bracket [this] (:right (:bracket-info (:def this))))
+(defn separator? [this] (:separator (:bracket-info (:def this))))
+(defn else-separator? [this] 
+  (and (:separator (:bracket-info (:def this)))
+       (:colon (:params this))))
+  
+
+(declare collect-clauses)
+
+(defn process-clause [bracket-info offset remainder]
   (consume 
    (fn [remainder]
      (if (nil? remainder)
        (throw (InternalFormatException. "No closing bracket found." offset))
        (let [this (first remainder)
 	     remainder (rest remainder)]
+; TODO remove debugging
+;	 (println "This:" this)
+;	 (println "remainder:" remainder)
 	 (cond
-	  (:right (:bracket-info (:def this)))
+	  (right-bracket this)
 	   ;; TODO: factor this let out into a func?
-	  (let [[subex remainder] (process-nesting-recurse (:bracket-info (:def this))
+	  (let [[subex remainder] (collect-clauses (:bracket-info (:def this))
 							   (:offset this) remainder)]
 	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
 		     (:offset this))
 	     remainder])
 
 	  (= (:right bracket-info) (:directive (:def this)))
-	  [ nil remainder]
+	  [ nil [:right-bracket remainder]]
 
 	  true
-	  [ this remainder]))))))
+	  [ this remainder]))))
+   remainder))
+
+(defn collect-clauses [bracket-info offset remainder]
+  (frest
+   (consume
+    (fn [[clause-map saw-else remainder]]
+      (let [[clause [type remainder] :as myall] (process-clause bracket-info offset remainder)]
+	(cond
+	 (= type :right-bracket)
+	 [nil [(merge-with concat clause-map { (if saw-else :else :clause) [clause] })
+	       remainder]]
+
+	 (= type :else)
+	 (cond
+	  saw-else
+	  (throw (InternalFormatException.
+		  "Two else clauses (\"~:;\") inside bracket construction." offset))
+	 
+	  (not (:else bracket-info))
+	  (throw (InternalFormatException.
+		  "An else clause (\"~:;\") is in a bracket type that doesn't support it." 
+		  offset))
+	 
+	  true	  ; the else clause is next, this was a regular clause
+	  [true [(merge-with concat clause-map { :clause [clause] })
+		true remainder]])
+
+	 (= type :separator)
+	 (cond
+	  saw-else
+	  (throw (InternalFormatException.
+		  "A plain clause (with \"~;\") follows an else clause (\"~:;\") inside bracket construction." offset))
+	 
+	  (not (:separator bracket-info))
+	  (throw (InternalFormatException.
+		  "A separator (\"~;\") is in a bracket type that doesn't support it." 
+		  offset))
+	 
+	  true
+	  [true [(merge-with concat clause-map { :clause [clause] })
+		false remainder]]))))
+    [{} false remainder])))
 
 (defn process-nesting [format]
   "Take a linearly compiled format and process the bracket directives to give it 
@@ -397,11 +457,13 @@
   (first
    (consume 
     (fn [remainder]
+      (prn remainder)
       (let [this (first remainder)
 	    remainder (rest remainder)
 	    bracket (:bracket-info (:def this))]
 	(if (:right bracket)
-	  (let [[subex remainder] (process-nesting-recurse bracket (:offset this) remainder)]
+	  (let [[subex remainder] (collect-clauses bracket (:offset this) remainder)]
+	    (prn subex)
 	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
 		     (:offset this))
 	     remainder])
@@ -423,7 +485,7 @@
 	       [nil s]
 	       (let [tilde (.indexOf s (int \~))]
 		 (cond
-		  (neg? tilde) [(compile-raw-string s) ["" (+ offset (.length s))]]
+		  (neg? tilde) [(compile-raw-string s offset) ["" (+ offset (.length s))]]
 		  (zero? tilde)  (compile-directive (subs s 1) (inc offset))
 		  true 
 		  [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
