@@ -58,6 +58,10 @@
   [(into {} (for [[k [v1 v2]] m] [k v1]))
    (into {} (for [[k [v1 v2]] m] [k v2]))])
 
+(defn tuple-map [m v1]
+  "For all the values, v, in the map, replace them with [v v1]"
+  (into {} (for [[k v] m] [k [v v1]])))
+
 (defn prerr [& args]
   (binding [*out* *err*]
     (apply println args)))
@@ -177,7 +181,6 @@
   (frest
    (map-passing-context 
     (fn [element context] 
-      (prerr element)
       (let [[params args] (realize-parameter-list (:params element) context)
 	    [params offsets] (unzip-map params)]
 	[nil (apply (:func element) [params args offsets])] ))
@@ -194,7 +197,7 @@
 	[arg navigator] (if arg [arg arg-navigator] (next-arg arg-navigator))
 	clauses (:clauses params)
 	clause (if (>= arg (count clauses))
-		 (:else params)
+		 (first (:else params))
 		 (nth clauses arg))]
     (if clause
       (execute-sub-format clause navigator)
@@ -442,6 +445,15 @@
 
 (declare collect-clauses)
 
+(defn process-bracket [this remainder]
+  (let [[subex remainder] (collect-clauses (:bracket-info (:def this))
+					   (:offset this) remainder)]
+    [(struct compiled-directive 
+	     (:func this) (:def this) 
+	     (merge (:params this) (tuple-map subex (:offset this)))
+	     (:offset this))
+     remainder]))
+
 (defn process-clause [bracket-info offset remainder]
   (consume 
    (fn [remainder]
@@ -451,15 +463,16 @@
 	     remainder (rest remainder)]
 	 (cond
 	  (right-bracket this)
-	   ;; TODO: factor this let out into a func?
-	  (let [[subex remainder] (collect-clauses (:bracket-info (:def this))
-							   (:offset this) remainder)]
-	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
-		     (:offset this))
-	     remainder])
+	  (process-bracket this remainder)
 
 	  (= (:right bracket-info) (:directive (:def this)))
 	  [ nil [:right-bracket remainder]]
+
+	  (else-separator? this)
+	  [nil [:else remainder]]
+
+	  (separator? this)
+	  [nil [:separator remainder]]
 
 	  true
 	  [ this remainder]))))
@@ -469,10 +482,10 @@
   (frest
    (consume
     (fn [[clause-map saw-else remainder]]
-      (let [[clause [type remainder] :as myall] (process-clause bracket-info offset remainder)]
+      (let [[clause [type remainder]] (process-clause bracket-info offset remainder)]
 	(cond
 	 (= type :right-bracket)
-	 [nil [(merge-with conj clause-map { (if saw-else :else :clauses) [clause] })
+	 [nil [(merge-with concat clause-map { (if saw-else :else :clauses) [clause] })
 	       remainder]]
 
 	 (= type :else)
@@ -522,10 +535,7 @@
 	    remainder (rest remainder)
 	    bracket (:bracket-info (:def this))]
 	(if (:right bracket)
-	  (let [[subex remainder] (collect-clauses bracket (:offset this) remainder)]
-	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
-		     (:offset this))
-	     remainder])
+	  (process-bracket this remainder)
 	  [this remainder])))
     format)))
 
