@@ -51,6 +51,17 @@
 	[acc context]
       (recur new-context (conj acc result))))))
 
+(defn unzip-map [m]
+  "Take a  map that has pairs in the value slots and produce a pair of maps, 
+   the first having all the first elements of the pairs and the second all 
+   the second elements of the pairs"
+  [(into {} (for [[k [v1 v2]] m] [k v1]))
+   (into {} (for [[k [v1 v2]] m] [k v2]))])
+
+(defn prerr [& args]
+  (binding [*out* *err*]
+    (apply println args)))
+       
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
 ;;; as the format statement moves through the list
@@ -161,6 +172,45 @@
     (print padded-str)
     arg-navigator))
 
+;; Handle the execution of "sub-clauses" in bracket constructions
+(defn execute-sub-format [format args]
+  (frest
+   (map-passing-context 
+    (fn [element context] 
+      (prerr element)
+      (let [[params args] (realize-parameter-list (:params element) context)
+	    [params offsets] (unzip-map params)]
+	[nil (apply (:func element) [params args offsets])] ))
+    args
+    format)))
+
+;; Support for the '~[...~]' conditional construct in its different flavors
+
+;; ~[...~] without any modifiers chooses one of the clauses based on the param or 
+;; next argument
+;; TODO check arg is positive int
+(defn choice-conditional [params arg-navigator offsets]
+  (let [arg (:selector params)
+	[arg navigator] (if arg [arg arg-navigator] (next-arg arg-navigator))
+	clauses (:clauses params)
+	clause (if (>= arg (count clauses))
+		 (:else params)
+		 (nth clauses arg))]
+    (if clause
+      (execute-sub-format clause navigator)
+      navigator)))
+
+;; ~:[...~] with the colon reads the next argument treating it as a truth value
+(defn boolean-conditional [params arg-navigator offsets]
+  (print "<boolean bracket>")
+  )
+
+;; ~@[...~] with the at sign executes the conditional if the next arg is not
+;; nil/false without consuming the arg
+(defn check-arg-conditional [params arg-navigator offsets]
+  (print "<arg bracket>")
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
@@ -243,11 +293,19 @@
 	 (absolute-reposition navigator n)
 	 (relative-reposition navigator (if (:colon params) (- n) n)))
        )))
+
   (\[
-   [ ]
-   #{ :colon :at } { :right \], :max-seqs :any, :else true }
-   (fn [params navigator offsets]
-     (print "<bracket>")))
+   [ :selector [nil Integer] ]
+   #{ :colon :at } { :right \], :allows-separator true, :else :last }
+   (cond
+    (:colon params)
+    boolean-conditional
+
+    (:at params)
+    check-arg-conditional
+
+    true
+    choice-conditional))
 
    (\; [] #{ :colon } { :separator true } nil) 
    
@@ -391,9 +449,6 @@
        (throw (InternalFormatException. "No closing bracket found." offset))
        (let [this (first remainder)
 	     remainder (rest remainder)]
-; TODO remove debugging
-;	 (println "This:" this)
-;	 (println "remainder:" remainder)
 	 (cond
 	  (right-bracket this)
 	   ;; TODO: factor this let out into a func?
@@ -417,7 +472,7 @@
       (let [[clause [type remainder] :as myall] (process-clause bracket-info offset remainder)]
 	(cond
 	 (= type :right-bracket)
-	 [nil [(merge-with concat clause-map { (if saw-else :else :clause) [clause] })
+	 [nil [(merge-with conj clause-map { (if saw-else :else :clauses) [clause] })
 	       remainder]]
 
 	 (= type :else)
@@ -430,9 +485,15 @@
 	  (throw (InternalFormatException.
 		  "An else clause (\"~:;\") is in a bracket type that doesn't support it." 
 		  offset))
+
+	  (and (= :first (:else bracket-info)) (:clauses clause-map))
+	  (throw (InternalFormatException.
+		  "The else clause (\"~:;\") is only allowed in the first position for this directive." 
+		  offset))
 	 
 	  true	  ; the else clause is next, this was a regular clause
-	  [true [(merge-with concat clause-map { :clause [clause] })
+	  ; TODO support ~:; first for justification
+	  [true [(merge-with concat clause-map { :clauses [clause] })
 		true remainder]])
 
 	 (= type :separator)
@@ -441,15 +502,15 @@
 	  (throw (InternalFormatException.
 		  "A plain clause (with \"~;\") follows an else clause (\"~:;\") inside bracket construction." offset))
 	 
-	  (not (:separator bracket-info))
+	  (not (:allows-separator bracket-info))
 	  (throw (InternalFormatException.
 		  "A separator (\"~;\") is in a bracket type that doesn't support it." 
 		  offset))
 	 
 	  true
-	  [true [(merge-with concat clause-map { :clause [clause] })
+	  [true [(merge-with concat clause-map { :clauses [clause] })
 		false remainder]]))))
-    [{} false remainder])))
+    [{ :clauses [] } false remainder])))
 
 (defn process-nesting [format]
   "Take a linearly compiled format and process the bracket directives to give it 
@@ -457,13 +518,11 @@
   (first
    (consume 
     (fn [remainder]
-      (prn remainder)
       (let [this (first remainder)
 	    remainder (rest remainder)
 	    bracket (:bracket-info (:def this))]
 	(if (:right bracket)
 	  (let [[subex remainder] (collect-clauses bracket (:offset this) remainder)]
-	    (prn subex)
 	    [(struct compiled-directive (:func this) (:def this) (merge (:params this) subex)
 		     (:offset this))
 	     remainder])
@@ -479,17 +538,19 @@
 
 (defn compile-format [ format-str ]
   (try
-   (first (consume 
-	   (fn [[s offset]]
-	     (if (empty? s)
-	       [nil s]
-	       (let [tilde (.indexOf s (int \~))]
-		 (cond
-		  (neg? tilde) [(compile-raw-string s offset) ["" (+ offset (.length s))]]
-		  (zero? tilde)  (compile-directive (subs s 1) (inc offset))
-		  true 
-		  [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
-	   [format-str 0]))
+   (process-nesting
+    (first 
+     (consume 
+      (fn [[s offset]]
+	(if (empty? s)
+	  [nil s]
+	  (let [tilde (.indexOf s (int \~))]
+	    (cond
+	     (neg? tilde) [(compile-raw-string s offset) ["" (+ offset (.length s))]]
+	     (zero? tilde)  (compile-directive (subs s 1) (inc offset))
+	     true 
+	     [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
+      [format-str 0])))
    (catch InternalFormatException e 
      (translate-internal-exception format-str e))
    (catch RuntimeException e ; Functions like map bury the thrown exception inside a
@@ -499,12 +560,6 @@
 	 (translate-internal-exception format-str cause)
 	 (throw (RuntimeException. (.getMessage e) e)))))))
 
-(defn unzip-map [m]
-  "Take a  map that has pairs in the value slots and produce a pair of maps, 
-   the first having all the first elements of the pairs and the second all 
-   the second elements of the pairs"
-  [(into {} (for [[k [v1 v2]] m] [k v1]))
-   (into {} (for [[k [v1 v2]] m] [k v2]))])
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
