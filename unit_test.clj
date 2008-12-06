@@ -183,8 +183,8 @@
 (defn show-stacktraces 
   "Shows a stack trace that has been filtered to hopefully show only the useful information."
   [failures]
-  (let [f (fn [failure n]
-            (println (str (inc n) ")") 
+  (let [f (fn [[name failure] n]
+            (println (str (inc n) ") " name ": " \newline) 
                      (if (instance? java.lang.AssertionError failure)
                        (. failure getMessage)
                        (. failure toString)))
@@ -221,11 +221,11 @@ or a new test-result."
                   test-result)
               (catch java.lang.AssertionError a
                 (print "F")
-                (assoc-append test-result :failures a)
+                (assoc-append test-result :failures [(:name (meta test)) a])
                 )
               (catch Throwable t
                 (print "E")
-                (assoc-append test-result :errors t)
+                (assoc-append test-result :errors [(:name (meta test)) t])
                 )
               )]
        (assoc-append r :tests test))))
