@@ -19,8 +19,25 @@
 		    (assert-equal ~expected-result ~statement)))
 	       pairs (integers)))))
 
-(defn expt [base pow] (reduce * (replicate pow base)))
 
+(simple-tests square-bracket-tests
+  (cl-format nil "I ~[don't ~]have one~%" 0) "I don't have one\n"
+  (cl-format nil "I ~[don't ~]have one~%" 1) "I have one\n"
+  (cl-format nil "I ~[don't ~;do ~]have one~%" 0) "I don't have one\n"
+  (cl-format nil "I ~[don't ~;do ~]have one~%" 1) "I do have one\n"
+  (cl-format nil "I ~[don't ~;do ~]have one~%" 2) "I have one\n"
+  (cl-format nil "I ~[don't ~:;do ~]have one~%" 0) "I don't have one\n"
+  (cl-format nil "I ~[don't ~:;do ~]have one~%" 1) "I do have one\n"
+  (cl-format nil "I ~[don't ~:;do ~]have one~%" 2) "I do have one\n"
+  (cl-format nil "I ~[don't ~:;do ~]have one~%" 700) "I do have one\n"
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The following tests are the various examples from the format
+;; documentation in Common Lisp, the Language, 2nd edition, Chapter 22.3
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn expt [base pow] (reduce * (replicate pow base)))
 
 (let [x 5, y "elephant", n 3]
   (simple-tests cltl-intro-tests
