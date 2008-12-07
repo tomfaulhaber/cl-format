@@ -14,7 +14,7 @@
 (ns unit-test)
 
 (def #^{:doc "Ignore stack traces from these patterns"}ignore-files 
-     [".*\\.java" "swank-clojure\\.clj" "boot\\.clj" "unit-test\\.clj"])
+     [".*\\.java" "swank-clojure\\.clj" "boot\\.clj" "unit_test\\.clj"])
 
 (defmacro deftest
   "Defines a test by adding a :unit-test tag to the function's meta data."  
@@ -166,7 +166,8 @@
   "Filters a stacktrace removing file patterns defined in ignore-files."
   [t]
   (let [es (to-list (. t getStackTrace))
-        cljs (filter (comp not nil? (memfn getFileName)) es)
+	top (take-while #(not (.contains (.getClassName %) "unit_test$run_test__")) es)
+        cljs (filter (comp not nil? (memfn getFileName)) top)
         ignore-regex (str "(" (apply str (interpose "|" ignore-files)) ")")
         ignore-pattern (re-pattern ignore-regex)
         junk (filter (comp not 
@@ -188,7 +189,8 @@
                      (if (instance? java.lang.AssertionError failure)
                        (. failure getMessage)
                        (. failure toString)))
-            (doall (map (partial println "   ") (filter-stacktrace failure))))]
+            (doall (map (comp (partial println "   ") (memfn toString))
+			(filter-stacktrace failure))))]
     (doall (map f failures (range (count failures))))
     ))
 
