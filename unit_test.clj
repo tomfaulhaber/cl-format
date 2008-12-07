@@ -141,7 +141,7 @@
   ([] (all-tests (ns-name *ns*)))
   ([ns-sym] 
      (let [ns (or (find-ns ns-sym) (throw (new Exception "No such namespace")))
-           fns   (map second (ns-interns ns))
+           fns   (sort-by #(:name (meta %)) (map second (ns-interns ns)))
            metas (map meta fns)
            tests (filter (comp (rpartial contains? :unit-test) second) 
                          (map list fns metas))]
