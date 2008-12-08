@@ -61,6 +61,15 @@
 	     15, 0, 7, false)
   "Max 15: Blue team 7.\n"
 
+  ;; Test the selector as part of the argument
+  (cl-format nil "The answer is ~#[nothing~;~D~;~D out of ~D~:;something crazy~].")
+  "The answer is nothing."
+  (cl-format nil "The answer is ~#[nothing~;~D~;~D out of ~D~:;something crazy~]." 4)
+  "The answer is 4."
+  (cl-format nil "The answer is ~#[nothing~;~D~;~D out of ~D~:;something crazy~]." 7 22)
+  "The answer is 7 out of 22."
+  (cl-format nil "The answer is ~#[nothing~;~D~;~D out of ~D~:;something crazy~]." 1 2 3 4)
+  "The answer is something crazy."
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
