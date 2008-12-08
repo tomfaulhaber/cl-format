@@ -72,6 +72,15 @@
   "The answer is something crazy."
 )
 
+(simple-tests curly-brace-tests
+  ;; Iteration from sublist
+  (cl-format nil "Coordinates are~{ [~D,~D]~}~%" [ 0, 1, 1, 0, 3, 5, 2, 1 ])
+  "Coordinates are [0,1] [1,0] [3,5] [2,1]\n"
+
+  (cl-format nil "Coordinates are~2{ [~D,~D]~}~%" [ 0, 1, 1, 0, 3, 5, 2, 1 ])
+  "Coordinates are [0,1] [1,0]\n"
+)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following tests are the various examples from the format
 ;; documentation in Common Lisp, the Language, 2nd edition, Chapter 22.3

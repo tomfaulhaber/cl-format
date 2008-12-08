@@ -217,7 +217,7 @@
 ;; ~@[...~] with the at sign executes the conditional if the next arg is not
 ;; nil/false without consuming the arg
 (defn check-arg-conditional [params arg-navigator offsets]
-(let [[arg navigator] (next-arg arg-navigator)
+  (let [[arg navigator] (next-arg arg-navigator)
 	clauses (:clauses params)
 	clause (if arg (first clauses))]
     (if arg
@@ -225,6 +225,40 @@
 	(execute-sub-format clause arg-navigator)
 	arg-navigator)
       navigator)))
+
+;; Support for the '~{...~}' iteration construct in its different flavors
+
+;; ~{...~} without any modifiers uses the next argument as an argument list that 
+;; is consumed by all the iterations
+(defn iterate-sublist [params navigator offsets]
+  (let [max-count (:max-iterations params)
+	[arg-list navigator] (next-arg navigator)
+	args (struct arg-navigator arg-list arg-list 0)
+	clause (first (:clauses params))]
+    (loop [count 0
+	   args args]
+      (if (or (nil? (:rest args))
+	      (and max-count (>= count max-count)))
+	navigator
+	(recur (inc count) (execute-sub-format clause args))))))
+
+;; ~:{...~} with the colon treats the next argument as a list of sublists. Each of the
+;; sublists is used as the arglist for a single iteration.
+(defn iterate-list-of-sublists [params arg-navigator offsets]
+  (print "<list of sublists iterator>")
+)
+
+;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
+;; is consumed by all the iterations
+(defn iterate-main-list [params arg-navigator offsets]
+  (print "<main list iterator>")
+)
+
+;; ~@:{...~} with both colon and at sign uses the main argument list as a set of sublists, one
+;; of which is consumed with each iteration
+(defn iterate-main-sublists [params arg-navigator offsets]
+  (print "<main list has sublists iterator>")
+)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
@@ -347,6 +381,25 @@
    (\; [] #{ :colon } { :separator true } nil) 
    
    (\] [] #{} {} nil) 
+
+  (\{
+   [ :max-iterations [nil Integer] ]
+   #{ :colon :at :both} { :right \}, :allows-separator true, :else :last }
+   (cond
+    (:colon params)
+    iterate-list-of-sublists
+
+    (:at params)
+    iterate-main-list
+
+    (and (:at params) (:colon params))
+    iterate-main-sublists
+
+    true
+    iterate-sublist))
+
+   
+   (\} [] #{:colon} {} nil) 
 )
 
 (defn my-status [] 
