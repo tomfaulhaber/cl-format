@@ -248,7 +248,12 @@ or a new test-result."
 (defn run-all-tests 
   "Runs all the tests in the given or current namespace."
   ([] (run-all-tests (ns-name *ns*)))
-  ([ns-sym] (run-tests (all-tests ns-sym))))
+  ([ns-sym] (run-tests (all-tests ns-sym)))
+  ([ns-sym pattern] 
+     (run-tests 
+      (filter 
+       (comp (partial re-find pattern) name :name meta) 
+       (all-tests ns-sym)))))
 
 (defn exec-tests 
   "Runs the tests and returns the test result without any printing."
