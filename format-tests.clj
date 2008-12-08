@@ -42,22 +42,22 @@
   ;; Tests for format with an at sign
   (cl-format nil "We had ~D wins~@[ (out of ~D tries)~].~%" 15 nil) "We had 15 wins.\n"
   (cl-format nil "We had ~D wins~@[ (out of ~D tries)~].~%" 15 17)
-  "We had 15 wins (out of 17 tries.\n"
+  "We had 15 wins (out of 17 tries).\n"
 
   ;; Format tests with directives
   (cl-format nil "Max ~D: ~[Blue team ~D~;Red team ~D~:;No team ~A~].~%" 15, 0, 7)
   "Max 15: Blue team 7.\n"
   (cl-format nil "Max ~D: ~[Blue team ~D~;Red team ~D~:;No team ~A~].~%" 15, 1, 12)
-  "Max 15: Red team 12\n"
+  "Max 15: Red team 12.\n"
   (cl-format nil "Max ~D: ~[Blue team ~D~;Red team ~D~:;No team ~A~].~%" 
 	     15, -1, "(system failure)")
   "Max 15: No team (system failure).\n"
 
   ;; Nested format tests
-  (cl-format nil "Max ~D: ~[Blue team ~D~:[ (complete success)~]~;Red team ~D~:;No team ~].~%" 
+  (cl-format nil "Max ~D: ~[Blue team ~D~:[~; (complete success)~]~;Red team ~D~:;No team ~].~%" 
 	     15, 0, 7, true)
   "Max 15: Blue team 7 (complete success).\n"
-  (cl-format nil "Max ~D: ~[Blue team ~D~:[ (complete success)~]~;Red team ~D~:;No team ~].~%" 
+  (cl-format nil "Max ~D: ~[Blue team ~D~:[~; (complete success)~]~;Red team ~D~:;No team ~].~%" 
 	     15, 0, 7, false)
   "Max 15: Blue team 7.\n"
 

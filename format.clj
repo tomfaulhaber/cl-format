@@ -28,7 +28,7 @@
   (loop [context initial-context
 	 lis lis
 	 acc []]
-    (if (not lis)
+    (if (empty? lis)
       [acc context]
     (let [this (first lis)
 	  remainder (rest lis)
@@ -180,7 +180,7 @@
 (defn execute-sub-format [format args]
   (frest
    (map-passing-context 
-    (fn [element context] 
+    (fn [element context]
       (let [[params args] (realize-parameter-list (:params element) context)
 	    [params offsets] (unzip-map params)]
 	[nil (apply (:func element) [params args offsets])] ))
@@ -196,7 +196,7 @@
   (let [arg (:selector params)
 	[arg navigator] (if arg [arg arg-navigator] (next-arg arg-navigator))
 	clauses (:clauses params)
-	clause (if (>= arg (count clauses))
+	clause (if (or (neg? arg) (>= arg (count clauses)))
 		 (first (:else params))
 		 (nth clauses arg))]
     (if clause
@@ -205,14 +205,26 @@
 
 ;; ~:[...~] with the colon reads the next argument treating it as a truth value
 (defn boolean-conditional [params arg-navigator offsets]
-  (print "<boolean bracket>")
-  )
+  (let [[arg navigator] (next-arg arg-navigator)
+	clauses (:clauses params)
+	clause (if arg
+		 (frest clauses)
+		 (first clauses))]
+    (if clause
+      (execute-sub-format clause navigator)
+      navigator)))
 
 ;; ~@[...~] with the at sign executes the conditional if the next arg is not
 ;; nil/false without consuming the arg
 (defn check-arg-conditional [params arg-navigator offsets]
-  (print "<arg bracket>")
-  )
+(let [[arg navigator] (next-arg arg-navigator)
+	clauses (:clauses params)
+	clause (if arg (first clauses))]
+    (if arg
+      (if clause
+	(execute-sub-format clause arg-navigator)
+	arg-navigator)
+      navigator)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
