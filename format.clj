@@ -309,6 +309,28 @@
 	 (relative-reposition navigator (if (:colon params) (- n) n)))
        )))
 
+  (\? 
+   [ ] 
+   #{ :at } {}
+   (if (:at params)
+     (fn [params navigator offsets] ; args from main arg list
+       (let [[subformat navigator] (next-arg navigator)
+	     compiled-format (if (instance? String subformat) 
+			       (compile-format subformat)
+			       subformat)]
+	 (execute-sub-format compiled-format navigator)))
+     (fn [params navigator offsets] ; args from sub-list
+       (let [[subformat navigator] (next-arg navigator)
+	     compiled-format (if (instance? String subformat) 
+			       (compile-format subformat)
+			       subformat)
+	     [subargs navigator] (next-arg navigator)
+	     sub-navigator (struct arg-navigator subargs subargs 0)]
+	 
+	 (execute-sub-format compiled-format sub-navigator)
+	 navigator))))
+       
+
   (\[
    [ :selector [nil Integer] ]
    #{ :colon :at } { :right \], :allows-separator true, :else :last }
