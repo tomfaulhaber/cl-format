@@ -21,6 +21,7 @@ its relatives.
 ### Current Status ###
 
 cl-format is under active development. Currently, it supports the following directives:
+
 <table>
 <tr><td>~A</td><td>All except "~:A" which doesn't make sense in clojure</td></tr>
 <tr><td>~S</td><td>All except "~:S" which doesn't make sense in clojure</td></tr>
