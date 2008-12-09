@@ -20,17 +20,38 @@ its relatives.
 
 ### Current Status ###
 
-cl-format is under active development. Currently it supports only simple, linear directives (no
-brackets) and does not yet support the various floating point formats. Next on the list is the
-bracket constructions.
+cl-format is under active development. Currently, it supports the following directives:
+<table>
+<tr><td>~A</td><td>All except "~:A" which doesn't make sense in clojure</td></tr>
+<tr><td>~S</td><td>All except "~:S" which doesn't make sense in clojure</td></tr>
+<tr><td>~D</td><td>All</td></tr>
+<tr><td>~O</td><td>All</td></tr>
+<tr><td>~X</td><td>All</td></tr>
+<tr><td>~P</td><td>All</td></tr>
+<tr><td>~%</td><td>All</td></tr>
+<tr><td>~~</td><td>All</td></tr>
+<tr><td>~*</td><td>All</td></tr>
+<tr><td>~?</td><td>All</td></tr>
+<tr><td>~[</td><td>All</td></tr>
+<tr><td>~{</td><td>Plain ~{, but not yet ~:{ or ~@{. Closing with ~:} is ignored</td></tr>
+</table>
 
+Next up: Full support for ~{ and support for floating point.
 ### How to use ###
 
 TBD
 
 ### Examples ###
 
-TBD
+The following function uses cl-format to dump a columnized table of the Java system properties:
+
+    (defn show-props [stream]
+      (let [p (mapcat 
+    	       #(vector (key %) (val %)) 
+    	       (sort-by key (System/getProperties)))]
+        (cl-format true "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
+    	           "Property" "Value" ["" "" "" ""] p)))
+    
 
 ### Differences from Common Lisp format ###
 
