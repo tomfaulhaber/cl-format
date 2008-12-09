@@ -322,8 +322,8 @@
    #{ } {}
    (fn [params arg-navigator offsets]
      (dotimes [i (:count params)]
-       (prn)
-       arg-navigator)))
+       (prn))
+     arg-navigator))
 
   (\~ 
    [ :n [1 Integer] ] 
