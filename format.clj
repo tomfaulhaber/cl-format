@@ -237,7 +237,7 @@
 	clause (first (:clauses params))]
     (loop [count 0
 	   args args]
-      (if (or (nil? (:rest args))
+      (if (or (empty? (:rest args))
 	      (and max-count (>= count max-count)))
 	navigator
 	(recur (inc count) (execute-sub-format clause args))))))
