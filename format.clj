@@ -1,9 +1,6 @@
 (ns format
   (:import [format FormatException InternalFormatException]))
 
-(def teststr "The answer is ~7D.")
-(def teststr1 "The answer is ~7,3,'*@D.")
-
 ;;; Forward references
 (declare compile-format)
 (declare execute-format)
@@ -236,12 +233,16 @@
 	args (struct arg-navigator arg-list arg-list 0)
 	clause (first (:clauses params))]
     (loop [count 0
-	   args args]
+	   args args
+	   last-pos -1]
+      (prerr "Loop: count =" count " args =" args "pos =" last-pos)
+      (if (and (not max-count) (= (:pos args) last-pos) (> count 1))
+	(throw (FormatException. "%{ construct not consuming any arguments: Infinite loop!")))
       (if (or (and (empty? (:rest args))
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(recur (inc count) (execute-sub-format clause args))))))
+	(recur (inc count) (execute-sub-format clause args) (:pos args))))))
 
 ;; ~:{...~} with the colon treats the next argument as a list of sublists. Each of the
 ;; sublists is used as the arglist for a single iteration.
