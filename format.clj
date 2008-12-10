@@ -78,6 +78,14 @@
       [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
+;; Get an argument off the arg list and compile it if it's not already compiled
+(defn get-format-arg [navigator]
+  (let [[raw-format navigator] (next-arg navigator)
+	compiled-format (if (instance? String raw-format) 
+			       (compile-format raw-format)
+			       raw-format)]
+    [compiled-format navigator]))
+
 (declare relative-reposition)
 
 (defn absolute-reposition [navigator position]
@@ -230,12 +238,9 @@
 (defn iterate-sublist [params navigator offsets]
   (let [max-count (:max-iterations params)
 	param-clause (first (:clauses params))
-	[raw-clause navigator] (if (empty? param-clause) 
-				 (next-arg navigator)
-				 [param-clause navigator]) 
-	clause (if (instance? String raw-clause) 
-		 (compile-format raw-clause)
-		 raw-clause)
+	[clause navigator] (if (empty? param-clause) 
+			     (get-format-arg navigator)
+			     [param-clause navigator]) 
 	[arg-list navigator] (next-arg navigator)
 	args (struct arg-navigator arg-list arg-list 0)]
     (loop [count 0
@@ -355,20 +360,13 @@
    #{ :at } {}
    (if (:at params)
      (fn [params navigator offsets] ; args from main arg list
-       (let [[subformat navigator] (next-arg navigator)
-	     compiled-format (if (instance? String subformat) 
-			       (compile-format subformat)
-			       subformat)]
-	 (execute-sub-format compiled-format navigator)))
+       (let [[subformat navigator] (get-format-arg navigator)]
+	 (execute-sub-format subformat navigator)))
      (fn [params navigator offsets] ; args from sub-list
-       (let [[subformat navigator] (next-arg navigator)
-	     compiled-format (if (instance? String subformat) 
-			       (compile-format subformat)
-			       subformat)
+       (let [[subformat navigator] (get-format-arg navigator)
 	     [subargs navigator] (next-arg navigator)
 	     sub-navigator (struct arg-navigator subargs subargs 0)]
-	 
-	 (execute-sub-format compiled-format sub-navigator)
+	 (execute-sub-format subformat sub-navigator)
 	 navigator))))
        
 
