@@ -227,19 +227,19 @@ but it was called with an argument of type SHORT-FLOAT."
   (format nil 
         "The winners are:~{ ~S~}." 
         '(fred harry jill)) 
-  "The winners are: FRED HARRY JILL." 
+  "The winners are: fred harry jill." 
 
   (format nil "Pairs:~{ <~S,~S>~}." '(a 1 b 2 c 3)) 
-  "Pairs: <A,1> <B,2> <C,3>."
+  "Pairs: <a,1> <b,2> <c,3>."
 
   (format nil "Pairs:~:{ <~S,~S>~}." '((a 1) (b 2) (c 3))) 
-  "Pairs: <A,1> <B,2> <C,3>."
+  "Pairs: <a,1> <b,2> <c,3>."
 
   (format nil "Pairs:~@{ <~S,~S>~}." 'a 1 'b 2 'c 3) 
-  "Pairs: <A,1> <B,2> <C,3>."
+  "Pairs: <a,1> <b,2> <c,3>."
 
   (format nil "Pairs:~:@{ <~S,~S>~}." '(a 1) '(b 2) '(c 3)) 
-  "Pairs: <A,1> <B,2> <C,3>.")
+  "Pairs: <a,1> <b,2> <c,3>.")
 
 (simple-tests cltl-angle-bracket-tests
   (format nil "~10<foo~;bar~>")           "foo    bar" 
