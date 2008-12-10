@@ -22,20 +22,18 @@ its relatives.
 
 cl-format is under active development. Currently, it supports the following directives:
 
-<table>
-<tr><td>~A</td><td>All except "~:A" which doesn't make sense in clojure</td></tr>
-<tr><td>~S</td><td>All except "~:S" which doesn't make sense in clojure</td></tr>
-<tr><td>~D</td><td>All</td></tr>
-<tr><td>~O</td><td>All</td></tr>
-<tr><td>~X</td><td>All</td></tr>
-<tr><td>~P</td><td>All</td></tr>
-<tr><td>~%</td><td>All</td></tr>
-<tr><td>~~</td><td>All</td></tr>
-<tr><td>~*</td><td>All</td></tr>
-<tr><td>~?</td><td>All</td></tr>
-<tr><td>~[</td><td>All</td></tr>
-<tr><td>~{</td><td>Plain ~{, but not yet ~:{ or ~@{. Closing with ~:} is ignored</td></tr>
-</table>
+    ~A: All except "~:A" which doesn't make sense in clojure
+    ~S: All except "~:S" which doesn't make sense in clojure
+    ~D: All
+    ~O: All
+    ~X: All
+    ~P: All
+    ~%: All
+    ~~: All
+    ~*: All
+    ~?: All
+    ~[: All
+    ~{: Plain ~{, but not yet ~:{ or ~@{. Closing with ~:} is ignored
 
 Next up: Full support for ~{ and support for floating point.
 ### How to use ###
