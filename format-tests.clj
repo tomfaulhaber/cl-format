@@ -88,6 +88,15 @@
 
   (cl-format nil "Coordinates are~{ ~#[none~;<~D>~:;[~D,~D]~]~:}~%" [2 3 1])
   "Coordinates are [2,3] <1>\n"
+
+  (cl-format nil "Coordinates are~{~:}~%" "" [])
+  "Coordinates are\n"
+
+  (cl-format nil "Coordinates are~{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]" [2 3 1])
+  "Coordinates are [2,3] <1>\n"
+
+  (cl-format nil "Coordinates are~{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]" [ ])
+  "Coordinates are none\n"
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
