@@ -48,7 +48,7 @@ The following function uses cl-format to dump a columnized table of the Java sys
       (let [p (mapcat 
     	       #(vector (key %) (val %)) 
     	       (sort-by key (System/getProperties)))]
-        (cl-format true "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
+        (cl-format stream "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
     	           "Property" "Value" ["" "" "" ""] p)))
     
 
