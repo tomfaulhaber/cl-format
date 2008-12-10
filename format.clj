@@ -229,13 +229,18 @@
 ;; is consumed by all the iterations
 (defn iterate-sublist [params navigator offsets]
   (let [max-count (:max-iterations params)
+	param-clause (first (:clauses params))
+	[raw-clause navigator] (if (empty? param-clause) 
+				 (next-arg navigator)
+				 [param-clause navigator]) 
+	clause (if (instance? String raw-clause) 
+		 (compile-format raw-clause)
+		 raw-clause)
 	[arg-list navigator] (next-arg navigator)
-	args (struct arg-navigator arg-list arg-list 0)
-	clause (first (:clauses params))]
+	args (struct arg-navigator arg-list arg-list 0)]
     (loop [count 0
 	   args args
 	   last-pos -1]
-      (prerr "Loop: count =" count " args =" args "pos =" last-pos)
       (if (and (not max-count) (= (:pos args) last-pos) (> count 1))
 	(throw (FormatException. "%{ construct not consuming any arguments: Infinite loop!")))
       (if (or (and (empty? (:rest args))
