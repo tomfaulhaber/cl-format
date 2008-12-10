@@ -33,7 +33,7 @@ cl-format is under active development. Currently, it supports the following dire
     ~*: All
     ~?: All
     ~[: All
-    ~{: Plain ~{, but not yet ~:{ or ~@{. Closing with ~:} is ignored
+    ~{: Plain ~{, but not yet ~:{ or ~@{.
 
 Next up: Full support for ~{ and support for floating point.
 ### How to use ###

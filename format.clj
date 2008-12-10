@@ -237,7 +237,8 @@
 	clause (first (:clauses params))]
     (loop [count 0
 	   args args]
-      (if (or (empty? (:rest args))
+      (if (or (and (empty? (:rest args))
+		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
 	(recur (inc count) (execute-sub-format clause args))))))
@@ -553,13 +554,13 @@
 	  (process-bracket this remainder)
 
 	  (= (:right bracket-info) (:directive (:def this)))
-	  [ nil [:right-bracket remainder]]
+	  [ nil [:right-bracket (:colon (:params this)) remainder]]
 
 	  (else-separator? this)
-	  [nil [:else remainder]]
+	  [nil [:else nil remainder]]
 
 	  (separator? this)
-	  [nil [:separator remainder]]
+	  [nil [:separator nil remainder]]
 
 	  true
 	  [ this remainder]))))
@@ -569,10 +570,13 @@
   (frest
    (consume
     (fn [[clause-map saw-else remainder]]
-      (let [[clause [type remainder]] (process-clause bracket-info offset remainder)]
+      (let [[clause [type colon-right remainder]] 
+	    (process-clause bracket-info offset remainder)]
 	(cond
 	 (= type :right-bracket)
-	 [nil [(merge-with concat clause-map { (if saw-else :else :clauses) [clause] })
+	 [nil [(merge-with concat clause-map 
+			   {(if saw-else :else :clauses) [clause] 
+			    :colon-right colon-right})
 	       remainder]]
 
 	 (= type :else)
