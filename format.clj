@@ -4,14 +4,14 @@
 ;;; Forward references
 (declare compile-format)
 (declare execute-format)
-(declare arg-navigator)
+(declare init-navigator)
 ;;; End forward references
 
 (defn cl-format 
   "An implementation of a (mostly) Common Lisp compatible format function"
   [stream format-in & args]
   (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	navigator (struct arg-navigator args args 0) ]
+	navigator (init-navigator args) ]
     (execute-format stream compiled-format navigator))
 )
 
@@ -70,6 +70,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstruct arg-navigator :seq :rest :pos )
+
+(defn init-navigator [s]
+  "Create a new arg-navigator from the sequence with the position set to 0"
+  (struct arg-navigator s s 0))
 
 ;; TODO Include position in error w/InternalFormatException
 (defn next-arg [ navigator ]
@@ -242,7 +246,7 @@
 			     (get-format-arg navigator)
 			     [param-clause navigator]) 
 	[arg-list navigator] (next-arg navigator)
-	args (struct arg-navigator arg-list arg-list 0)]
+	args (init-navigator arg-list)]
     (loop [count 0
 	   args args
 	   last-pos -1]
@@ -256,9 +260,22 @@
 
 ;; ~:{...~} with the colon treats the next argument as a list of sublists. Each of the
 ;; sublists is used as the arglist for a single iteration.
-(defn iterate-list-of-sublists [params arg-navigator offsets]
-  (print "<list of sublists iterator>")
-)
+(defn iterate-list-of-sublists [params navigator offsets]
+  (let [max-count (:max-iterations params)
+	param-clause (first (:clauses params))
+	[clause navigator] (if (empty? param-clause) 
+			     (get-format-arg navigator)
+			     [param-clause navigator]) 
+	[arg-list navigator] (next-arg navigator)]
+    (loop [count 0
+	   arg-list arg-list]
+      (if (or (and (empty? arg-list)
+		   (or (not (:colon-right params)) (> count 0)))
+	      (and max-count (>= count max-count)))
+	navigator
+	(do 
+	  (execute-sub-format clause (init-navigator (first arg-list)))
+	  (recur (inc count) (rest arg-list)))))))
 
 ;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
 ;; is consumed by all the iterations
@@ -365,7 +382,7 @@
      (fn [params navigator offsets] ; args from sub-list
        (let [[subformat navigator] (get-format-arg navigator)
 	     [subargs navigator] (next-arg navigator)
-	     sub-navigator (struct arg-navigator subargs subargs 0)]
+	     sub-navigator (init-navigator subargs)]
 	 (execute-sub-format subformat sub-navigator)
 	 navigator))))
        
