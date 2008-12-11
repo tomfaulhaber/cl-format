@@ -20,20 +20,37 @@ its relatives.
 
 ### Current Status ###
 
-cl-format is under active development. Currently, it supports the following directives:
+cl-format is under active development. The following list shows what directives it supports
 
     ~A: All except "~:A" which doesn't make sense in clojure
     ~S: All except "~:S" which doesn't make sense in clojure
     ~D: All
+    ~B: *Not yet*
     ~O: All
     ~X: All
+    ~R: *Not yet*
     ~P: All
+    ~C: *Not yet*
+    ~F: *Not yet*
+    ~E: *Not yet*
+    ~G: *Not yet*
+    ~$: *Not yet*
     ~%: All
+    ~&: *Not yet*
+    ~|: *Not yet*
     ~~: All
+    ~<newline>: *Not yet*
+    ~T: *Not yet*
     ~*: All
     ~?: All
-    ~[: All
-    ~{: All
+    ~_: *Not yet*
+    ~W: *Not yet*
+    ~I: *Not yet*
+    ~(*str*~): *Not yet*
+    ~[*str0*~;*str1*~;*...*~;*strn*~]: All
+    ~{*str*~}: All
+    ~<*str*~>: *Not yet*
+    ~^: *Not yet*
 
 Next up: Support for floating point, ~R and ~^.
 ### How to use ###
