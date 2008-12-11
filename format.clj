@@ -279,9 +279,22 @@
 
 ;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
 ;; is consumed by all the iterations
-(defn iterate-main-list [params arg-navigator offsets]
-  (print "<main list iterator>")
-)
+(defn iterate-main-list [params navigator offsets]
+  (let [max-count (:max-iterations params)
+	param-clause (first (:clauses params))
+	[clause navigator] (if (empty? param-clause) 
+			     (get-format-arg navigator)
+			     [param-clause navigator])]
+    (loop [count 0
+	   navigator navigator
+	   last-pos -1]
+      (if (and (not max-count) (= (:pos navigator) last-pos) (> count 1))
+	(throw (FormatException. "%@{ construct not consuming any arguments: Infinite loop!")))
+      (if (or (and (empty? (:rest navigator))
+		   (or (not (:colon-right params)) (> count 0)))
+	      (and max-count (>= count max-count)))
+	navigator
+	(recur (inc count) (execute-sub-format clause navigator) (:pos navigator))))))
 
 ;; ~@:{...~} with both colon and at sign uses the main argument list as a set of sublists, one
 ;; of which is consumed with each iteration

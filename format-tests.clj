@@ -72,7 +72,7 @@
   "The answer is something crazy."
 )
 
-(simple-tests curly-brace-tests
+(simple-tests curly-brace-plain-tests
   ;; Iteration from sublist
   (cl-format nil "Coordinates are~{ [~D,~D]~}~%" [ 0, 1, 1, 0, 3, 5, 2, 1 ])
   "Coordinates are [0,1] [1,0] [3,5] [2,1]\n"
@@ -97,7 +97,10 @@
 
   (cl-format nil "Coordinates are~{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]" [ ])
   "Coordinates are none\n"
+)
 
+
+(simple-tests curly-brace-colon-tests
   ;; Iteration from list of sublists
   (cl-format nil "Coordinates are~:{ [~D,~D]~}~%" [ [0, 1], [1, 0], [3, 5], [2, 1] ])
   "Coordinates are [0,1] [1,0] [3,5] [2,1]\n"
@@ -124,6 +127,33 @@
   "Coordinates are [2,3] <1>\n"
 
   (cl-format nil "Coordinates are~:{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]" [ ])
+  "Coordinates are none\n"
+)
+
+(simple-tests curly-brace-at-tests
+  ;; Iteration from main list
+  (cl-format nil "Coordinates are~@{ [~D,~D]~}~%"  0, 1, 1, 0, 3, 5, 2, 1)
+  "Coordinates are [0,1] [1,0] [3,5] [2,1]\n"
+
+  (cl-format nil "Coordinates are~2@{ [~D,~D]~}~%" 0, 1, 1, 0, 3, 5, 2, 1)
+  "Coordinates are [0,1] [1,0]\n"
+
+  (cl-format nil "Coordinates are~@{ ~#[none~;<~D>~:;[~D,~D]~]~}~%")
+  "Coordinates are\n"
+
+  (cl-format nil "Coordinates are~@{ ~#[none~;<~D>~:;[~D,~D]~]~:}~%")
+  "Coordinates are none\n"
+
+  (cl-format nil "Coordinates are~@{ ~#[none~;<~D>~:;[~D,~D]~]~:}~%" 2 3 1)
+  "Coordinates are [2,3] <1>\n"
+
+  (cl-format nil "Coordinates are~@{~:}~%" "")
+  "Coordinates are\n"
+
+  (cl-format nil "Coordinates are~@{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]" 2 3 1)
+  "Coordinates are [2,3] <1>\n"
+
+  (cl-format nil "Coordinates are~@{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]")
   "Coordinates are none\n"
 )
 
