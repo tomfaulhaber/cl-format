@@ -157,6 +157,35 @@
   "Coordinates are none\n"
 )
 
+(simple-tests curly-brace-colon-at-tests
+  ;; Iteration from sublists on the main arg list
+  (cl-format nil "Coordinates are~@:{ [~D,~D]~}~%"  [0, 1], [1, 0], [3, 5], [2, 1] )
+  "Coordinates are [0,1] [1,0] [3,5] [2,1]\n"
+
+  (cl-format nil "Coordinates are~@:{ [~D,~D]~}~%" [0, 1, 0], [1, 0, 12], [3, 5], [2, 1] )
+  "Coordinates are [0,1] [1,0] [3,5] [2,1]\n"
+
+  (cl-format nil "Coordinates are~2@:{ [~D,~D]~}~%" [0, 1], [1, 0], [3, 5], [2, 1])
+  "Coordinates are [0,1] [1,0]\n"
+
+  (cl-format nil "Coordinates are~@:{ ~#[none~;<~D>~:;[~D,~D]~]~}~%")
+  "Coordinates are\n"
+
+  (cl-format nil "Coordinates are~@:{ ~#[none~;<~D>~:;[~D,~D]~]~:}~%")
+  "Coordinates are none\n"
+
+  (cl-format nil "Coordinates are~@:{ ~#[none~;<~D>~:;[~D,~D]~]~:}~%" [2 3] [1])
+  "Coordinates are [2,3] <1>\n"
+
+  (cl-format nil "Coordinates are~@:{~:}~%" "")
+  "Coordinates are\n"
+
+  (cl-format nil "Coordinates are~@:{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]" [2 3] [1])
+  "Coordinates are [2,3] <1>\n"
+
+  (cl-format nil "Coordinates are~@:{~:}~%" " ~#[none~;<~D>~:;[~D,~D]~]")
+  "Coordinates are none\n"
+)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following tests are the various examples from the format
 ;; documentation in Common Lisp, the Language, 2nd edition, Chapter 22.3

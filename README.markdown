@@ -33,9 +33,9 @@ cl-format is under active development. Currently, it supports the following dire
     ~*: All
     ~?: All
     ~[: All
-    ~{: Plain ~{, but not yet ~:{ or ~@{.
+    ~{: All
 
-Next up: Full support for ~{ and support for floating point.
+Next up: Support for floating point, ~R and ~^.
 ### How to use ###
 
 TBD

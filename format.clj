@@ -82,6 +82,12 @@
       [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
+(defn next-arg-or-nil [navigator]
+  (let [rst (:rest navigator)]
+    (if rst
+      [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
+      [nil navigator])))
+
 ;; Get an argument off the arg list and compile it if it's not already compiled
 (defn get-format-arg [navigator]
   (let [[raw-format navigator] (next-arg navigator)
@@ -298,9 +304,22 @@
 
 ;; ~@:{...~} with both colon and at sign uses the main argument list as a set of sublists, one
 ;; of which is consumed with each iteration
-(defn iterate-main-sublists [params arg-navigator offsets]
-  (print "<main list has sublists iterator>")
-)
+(defn iterate-main-sublists [params navigator offsets]
+  (let [max-count (:max-iterations params)
+	param-clause (first (:clauses params))
+	[clause navigator] (if (empty? param-clause) 
+			     (get-format-arg navigator)
+			     [param-clause navigator]) 
+	]
+    (loop [count 0
+	   navigator navigator]
+      (if (or (and (empty? (:rest navigator))
+		   (or (not (:colon-right params)) (> count 0)))
+	      (and max-count (>= count max-count)))
+	navigator
+	(let [[sublist navigator] (next-arg-or-nil navigator)]
+	  (execute-sub-format clause (init-navigator sublist))
+	  (recur (inc count) navigator))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
@@ -421,14 +440,14 @@
    [ :max-iterations [nil Integer] ]
    #{ :colon :at :both} { :right \}, :allows-separator true, :else :last }
    (cond
+    (and (:at params) (:colon params))
+    iterate-main-sublists
+
     (:colon params)
     iterate-list-of-sublists
 
     (:at params)
     iterate-main-list
-
-    (and (:at params) (:colon params))
-    iterate-main-sublists
 
     true
     iterate-sublist))
