@@ -202,7 +202,28 @@
     args
     format)))
 
-;; Support for the '~[...~]' conditional construct in its different flavors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for real number formats
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: remove trailing 0s and adjust for leading 0's in 0.0007
+(defn float-parts 
+  "Produce string parts for the mantissa (normalized 1-9) and exponent"
+  [f]
+  (let [s (.toLowerCase (.toString f))
+	exploc (.indexOf s (int \e))]
+    (if (neg? exploc)
+      (let [dotloc (.indexOf s (int \.))]
+	(if (neg? dotloc)
+	  [s (.toString (dec (count s)))]
+	  [(str (subs s 0 dotloc) (subs s (inc dotloc))) (dec dotloc)]))
+      [(str (subs s 0 1) (subs s 2 exploc)) (subs s (inc exploc))])))
+    
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for the '~[...~]' conditional construct in its
+;;; different flavors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ~[...~] without any modifiers chooses one of the clauses based on the param or 
 ;; next argument
@@ -241,7 +262,12 @@
 	arg-navigator)
       navigator)))
 
-;; Support for the '~{...~}' iteration construct in its different flavors
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for the '~{...~}' iteration construct in its
+;;; different flavors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;; ~{...~} without any modifiers uses the next argument as an argument list that 
 ;; is consumed by all the iterations
