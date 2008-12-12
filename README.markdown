@@ -51,6 +51,7 @@ cl-format is under active development. The following list shows what directives 
     ~{*str*~}: All
     ~<*str*~>: *Not yet*
     ~^: *Not yet*
+    ~/: *Not yet*
 
 Next up: Support for floating point, ~R and ~^.
 ### How to use ###
