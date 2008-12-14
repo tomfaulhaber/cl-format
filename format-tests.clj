@@ -208,12 +208,11 @@
    (format nil "~R dog~:*~[s are~; is~:;s are~] here." n) "three dogs are here."
    (format nil "Here ~[are~;is~:;are~] ~:*~R pupp~:@P." n) "Here are three puppies."))
  
-;; how do we do hex numbers??
-;; (simple-tests cltl-B-tests
-;;   (format nil "~,,' ,4B" #xFACE) "1111 1010 1100 1110" 
-;;   (format nil "~,,' ,4B" #x1CE) "1 1100 1110" 
-;;   (format nil "~19,,' ,4B" #xFACE) "1111 1010 1100 1110" 
-;;   (format nil "~19,,' ,4B" #x1CE) "0000 0001 1100 1110")
+(simple-tests cltl-B-tests
+  (format nil "~,,' ,4B" 0xFACE) "1111 1010 1100 1110" 
+  (format nil "~,,' ,4B" 0x1CE) "1 1100 1110" 
+  (format nil "~19,,' ,4B" 0xFACE) "1111 1010 1100 1110" 
+  (format nil "~19,,' ,4B" 0x1CE) "0000 0001 1100 1110")
 
 (simple-tests cltl-P-tests
   (format nil "~D tr~:@P/~D win~:P" 7 1) "7 tries/1 win" 
