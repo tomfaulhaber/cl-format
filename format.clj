@@ -59,6 +59,27 @@
   "For all the values, v, in the map, replace them with [v v1]"
   (into {} (for [[k v] m] [k [v v1]])))
 
+(defn rtrim [s c]
+  "Trim all instances of c from the end of sequence s"
+  (let [len (count s)]
+    (if (and (pos? len) (= (nth s (dec (count s))) c))
+      (loop [n (dec len)]
+	(cond 
+	 (neg? n) ""
+	 (not (= (nth s n) c)) (subs s 0 (inc n))
+	 true (recur (dec n))))
+      s)))
+
+(defn ltrim [s c]
+  "Trim all instances of c from the beginning of sequence s"
+  (let [len (count s)]
+    (if (and (pos? len) (= (nth s 0) c))
+      (loop [n 0]
+	(if (or (= n len) (not (= (nth s n) c)))
+	  (subs s n)
+	  (recur (inc n))))
+      s)))
+
 (defn prerr [& args]
   (binding [*out* *err*]
     (apply println args)))
@@ -144,7 +165,10 @@
 ;;; Functions that support individual directives
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Common handling code for ~A and ~S
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Common handling code for ~A and ~S
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn format-ascii [print-func params arg-navigator offsets]
   (let [ [arg arg-navigator] (next-arg arg-navigator) 
 	 base-output (print-func arg)
@@ -163,7 +187,10 @@
       (print (str base-output chars)))
     arg-navigator))
 
-;; Support for the integer directives ~D, ~X, ~O, ~B and some of ~R
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for the integer directives ~D, ~X, ~O, ~B and some of ~R
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn group-by [unit lis]
   (reverse
    (first
@@ -206,8 +233,7 @@
 ;;; Support for real number formats
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: remove trailing 0s and adjust for leading 0's in 0.0007
-(defn float-parts 
+(defn float-parts-base
   "Produce string parts for the mantissa (normalized 1-9) and exponent"
   [f]
   (let [s (.toLowerCase (.toString f))
@@ -218,8 +244,61 @@
 	  [s (.toString (dec (count s)))]
 	  [(str (subs s 0 dotloc) (subs s (inc dotloc))) (dec dotloc)]))
       [(str (subs s 0 1) (subs s 2 exploc)) (subs s (inc exploc))])))
-    
-    
+
+
+(defn float-parts [f]
+  "Take care of leading and trailing zeros in decomposed floats"
+  (let [[m e] (float-parts-base f)
+	m1 (rtrim m \0)
+	m2 (ltrim m1 \0)
+	delta (- (count m1) (count m2))]
+    [m2 (- (Integer/valueOf e) delta)]))
+
+(defn round-str [m e d]
+  (if d
+    (let [len (count m)
+	  round-pos (+ e d 1)]
+      (if (> len round-pos)
+	(let [round-char (nth m round-pos)
+	      result (subs m 0 round-pos)]
+	  (if (>= (int round-char) (int \5))
+	    (String/valueOf (inc (Integer/valueOf result)))
+	    result))
+	m))
+    m))
+	    
+
+(defn expand-fixed [m e d]
+  (let [m1 (if (neg? e) (str (apply str (replicate (dec (- e)) \0)) m) m)
+	len (count m1)
+	target-len (if d (+ e d 1) (inc e))]
+    (if (< len target-len) 
+      (str m1 (apply str (replicate (- target-len len) \0))) 
+      m1)))
+
+(defn insert-decimal [m e]
+  "Insert the decimal point at the right spot in the number"
+  (if (neg? e)
+    (str "." m)
+    (let [loc (inc e)]
+      (str (subs m 0 loc) "." (subs m loc)))))
+
+(defn get-fixed [m e d]
+  (insert-decimal (expand-fixed m e d) e))
+
+;; the function to render ~F directives
+;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
+(defn fixed-float [params navigator offsets]
+     (let [w (:w params)
+	   d (:d params)
+	   [arg navigator] (next-arg navigator)
+	   [mantissa exp] (float-parts arg)
+	   scaled-exp (+ exp (:k params))
+	   rounded-mantissa (round-str mantissa scaled-exp d)
+	   fixed-repr (get-fixed rounded-mantissa scaled-exp d)]
+       (print fixed-repr)
+       navigator))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for the '~[...~]' conditional construct in its
 ;;; different flavors
@@ -403,6 +482,12 @@
 	   [arg navigator] (next-arg navigator)]
        (print (if (= arg 1) (first strs) (frest strs)))
        navigator)))
+
+  (\F
+   [ :w [nil Integer] :d [nil Integer] :k [0 Integer] :overflowchar [nil Character] 
+    :padchar [\space Character] ]
+   #{ :at } {}
+   fixed-float)
 
   (\% 
    [ :count [1 Integer] ] 
