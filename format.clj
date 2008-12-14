@@ -254,19 +254,37 @@
 	delta (- (count m1) (count m2))]
     [m2 (- (Integer/valueOf e) delta)]))
 
-(defn round-str [m e d]
-  (if d
+(defn round-str [m e d w]
+  (if (or d w)
     (let [len (count m)
-	  round-pos (+ e d 1)]
-      (if (> len round-pos)
-	(let [round-char (nth m round-pos)
-	      result (subs m 0 round-pos)]
-	  (if (>= (int round-char) (int \5))
-	    (String/valueOf (inc (Integer/valueOf result)))
-	    result))
+	  round-pos (if d (+ e d 1))
+	  round-pos (if (and w (< (inc e) (dec w)) 
+			     (or (nil? round-pos) (< (dec w) round-pos)))
+		      (dec w)
+		      round-pos)]
+      (if round-pos
+	(if (> len round-pos)
+	  (let [round-char (nth m round-pos)
+		result (subs m 0 round-pos)]
+	    (if (>= (int round-char) (int \5))
+	      (let [result-val (Integer/valueOf result)]
+		(String/valueOf (+ result-val (if (neg? result-val) -1 1))))
+	      result))
+	  m)
 	m))
     m))
 	    
+(defn round-str1 [s w]
+  (let [len (count s)
+	round-pos w]
+    (prerr s w len round-pos)
+    (if (> len round-pos)
+      (let [round-char (nth s round-pos)
+	    result (subs s 0 round-pos)]
+	(if (>= (int round-char) (int \5))
+	  (String/valueOf (inc (Integer/valueOf result)))
+	  result))
+      s)))
 
 (defn expand-fixed [m e d]
   (let [m1 (if (neg? e) (str (apply str (replicate (dec (- e)) \0)) m) m)
@@ -294,9 +312,33 @@
 	   [arg navigator] (next-arg navigator)
 	   [mantissa exp] (float-parts arg)
 	   scaled-exp (+ exp (:k params))
-	   rounded-mantissa (round-str mantissa scaled-exp d)
+	   add-sign (and (:at params) (not (neg? arg)))
+	   prepend-zero (< (Math/abs arg) 1.0)
+	   append-zero (<= (dec (count mantissa)) scaled-exp)
+	   rounded-mantissa (round-str mantissa scaled-exp 
+				       d (if w (- w (if add-sign 1 0))))
 	   fixed-repr (get-fixed rounded-mantissa scaled-exp d)]
-       (print fixed-repr)
+       (if w
+	 (let [;;rounded-repr (round-str1 fixed-repr (- w (if add-sign 1 0)))
+	       foo (prerr fixed-repr)
+	       len (count fixed-repr)
+	       signed-len (if add-sign (inc len) len)
+	       prepend-zero (and prepend-zero (not (= signed-len) w))
+	       append-zero (and append-zero (not (= signed-len w)))
+	       full-len (if prepend-zero (inc signed-len) signed-len)]
+	   (if (and (> full-len w) (:overflowchar params))
+	     (print (apply str (replicate w (:overflowchar params))))
+	     (print (str
+		     (apply str (replicate (- w full-len) (:padchar params)))
+		     (if add-sign "+") 
+		     (if prepend-zero "0")
+		     fixed-repr
+		     (if append-zero "0")))))
+	 (print (str
+		 (if add-sign "+") 
+		 (if prepend-zero "0")
+		 fixed-repr
+		 (if append-zero "0"))))
        navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
