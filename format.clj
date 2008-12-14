@@ -273,18 +273,6 @@
 	  m)
 	m))
     m))
-	    
-(defn round-str1 [s w]
-  (let [len (count s)
-	round-pos w]
-    (prerr s w len round-pos)
-    (if (> len round-pos)
-      (let [round-char (nth s round-pos)
-	    result (subs s 0 round-pos)]
-	(if (>= (int round-char) (int \5))
-	  (String/valueOf (inc (Integer/valueOf result)))
-	  result))
-      s)))
 
 (defn expand-fixed [m e d]
   (let [m1 (if (neg? e) (str (apply str (replicate (dec (- e)) \0)) m) m)
@@ -319,9 +307,7 @@
 				       d (if w (- w (if add-sign 1 0))))
 	   fixed-repr (get-fixed rounded-mantissa scaled-exp d)]
        (if w
-	 (let [;;rounded-repr (round-str1 fixed-repr (- w (if add-sign 1 0)))
-	       foo (prerr fixed-repr)
-	       len (count fixed-repr)
+	 (let [len (count fixed-repr)
 	       signed-len (if add-sign (inc len) len)
 	       prepend-zero (and prepend-zero (not (= signed-len) w))
 	       append-zero (and append-zero (not (= signed-len w)))
