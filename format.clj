@@ -252,7 +252,9 @@
 	m1 (rtrim m \0)
 	m2 (ltrim m1 \0)
 	delta (- (count m1) (count m2))]
-    [m2 (- (Integer/valueOf e) delta)]))
+    (if (empty? m2)
+      ["0" 0]
+      [m2 (- (Integer/valueOf e) delta)])))
 
 (defn round-str [m e d w]
   (if (or d w)
@@ -261,18 +263,22 @@
 	  round-pos (if (and w (< (inc e) (dec w)) 
 			     (or (nil? round-pos) (< (dec w) round-pos)))
 		      (dec w)
-		      round-pos)]
+		      round-pos)
+	  [m1 e1 round-pos len] (if (= round-pos 0) 
+			     [(str "0" m) (inc e) 1 (inc len)]
+			     [m e round-pos len])]
+      
       (if round-pos
 	(if (> len round-pos)
-	  (let [round-char (nth m round-pos)
-		result (subs m 0 round-pos)]
+	  (let [round-char (nth m1 round-pos)
+		result (subs m1 0 round-pos)]
 	    (if (>= (int round-char) (int \5))
 	      (let [result-val (Integer/valueOf result)]
-		(String/valueOf (+ result-val (if (neg? result-val) -1 1))))
-	      result))
-	  m)
-	m))
-    m))
+		[(String/valueOf (+ result-val (if (neg? result-val) -1 1))) e1])
+	      [result e1]))
+	  [m e])
+	[m e]))
+    [m e]))
 
 (defn expand-fixed [m e d]
   (let [m1 (if (neg? e) (str (apply str (replicate (dec (- e)) \0)) m) m)
@@ -302,16 +308,18 @@
 	   scaled-exp (+ exp (:k params))
 	   add-sign (and (:at params) (not (neg? arg)))
 	   prepend-zero (< (Math/abs arg) 1.0)
-	   append-zero (<= (dec (count mantissa)) scaled-exp)
-	   rounded-mantissa (round-str mantissa scaled-exp 
-				       d (if w (- w (if add-sign 1 0))))
+	   append-zero (and (not d) (<= (dec (count mantissa)) scaled-exp))
+	   [rounded-mantissa scaled-exp] (round-str mantissa scaled-exp 
+						    d (if w (- w (if add-sign 1 0))))
 	   fixed-repr (get-fixed rounded-mantissa scaled-exp d)]
        (if w
 	 (let [len (count fixed-repr)
 	       signed-len (if add-sign (inc len) len)
-	       prepend-zero (and prepend-zero (not (= signed-len) w))
+	       prepend-zero (and prepend-zero (not (= signed-len w)))
 	       append-zero (and append-zero (not (= signed-len w)))
-	       full-len (if prepend-zero (inc signed-len) signed-len)]
+	       full-len (if (or prepend-zero append-zero)
+			  (inc signed-len) 
+			  signed-len)]
 	   (if (and (> full-len w) (:overflowchar params))
 	     (print (apply str (replicate w (:overflowchar params))))
 	     (print (str
