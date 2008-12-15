@@ -31,7 +31,7 @@ cl-format is under active development. The following list shows what directives 
     ~R: *Not yet*
     ~P: All
     ~C: *Not yet*
-    ~F: *Not yet*
+    ~F: All
     ~E: *Not yet*
     ~G: *Not yet*
     ~$: *Not yet*
@@ -51,6 +51,7 @@ cl-format is under active development. The following list shows what directives 
     ~{*str*~}: All
     ~<*str*~>: *Not yet*
     ~^: *Not yet*
+    ~/: *Not yet*
 
 Next up: Support for floating point, ~R and ~^.
 ### How to use ###
