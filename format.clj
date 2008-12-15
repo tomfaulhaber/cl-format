@@ -301,39 +301,39 @@
 ;; the function to render ~F directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
 (defn fixed-float [params navigator offsets]
-     (let [w (:w params)
-	   d (:d params)
-	   [arg navigator] (next-arg navigator)
-	   [mantissa exp] (float-parts arg)
-	   scaled-exp (+ exp (:k params))
-	   add-sign (and (:at params) (not (neg? arg)))
-	   prepend-zero (< (Math/abs arg) 1.0)
-	   append-zero (and (not d) (<= (dec (count mantissa)) scaled-exp))
-	   [rounded-mantissa scaled-exp] (round-str mantissa scaled-exp 
-						    d (if w (- w (if add-sign 1 0))))
-	   fixed-repr (get-fixed rounded-mantissa scaled-exp d)]
-       (if w
-	 (let [len (count fixed-repr)
-	       signed-len (if add-sign (inc len) len)
-	       prepend-zero (and prepend-zero (not (= signed-len w)))
-	       append-zero (and append-zero (not (= signed-len w)))
-	       full-len (if (or prepend-zero append-zero)
-			  (inc signed-len) 
-			  signed-len)]
-	   (if (and (> full-len w) (:overflowchar params))
-	     (print (apply str (replicate w (:overflowchar params))))
-	     (print (str
-		     (apply str (replicate (- w full-len) (:padchar params)))
-		     (if add-sign "+") 
-		     (if prepend-zero "0")
-		     fixed-repr
-		     (if append-zero "0")))))
-	 (print (str
-		 (if add-sign "+") 
-		 (if prepend-zero "0")
-		 fixed-repr
-		 (if append-zero "0"))))
-       navigator))
+  (let [w (:w params)
+	d (:d params)
+	[arg navigator] (next-arg navigator)
+	[mantissa exp] (float-parts arg)
+	scaled-exp (+ exp (:k params))
+	add-sign (and (:at params) (not (neg? arg)))
+	prepend-zero (< (Math/abs arg) 1.0)
+	append-zero (and (not d) (<= (dec (count mantissa)) scaled-exp))
+	[rounded-mantissa scaled-exp] (round-str mantissa scaled-exp 
+						 d (if w (- w (if add-sign 1 0))))
+	fixed-repr (get-fixed rounded-mantissa scaled-exp d)]
+    (if w
+      (let [len (count fixed-repr)
+	    signed-len (if add-sign (inc len) len)
+	    prepend-zero (and prepend-zero (not (= signed-len w)))
+	    append-zero (and append-zero (not (= signed-len w)))
+	    full-len (if (or prepend-zero append-zero)
+		       (inc signed-len) 
+		       signed-len)]
+	(if (and (> full-len w) (:overflowchar params))
+	  (print (apply str (replicate w (:overflowchar params))))
+	  (print (str
+		  (apply str (replicate (- w full-len) (:padchar params)))
+		  (if add-sign "+") 
+		  (if prepend-zero "0")
+		  fixed-repr
+		  (if append-zero "0")))))
+      (print (str
+	      (if add-sign "+") 
+	      (if prepend-zero "0")
+	      fixed-repr
+	      (if append-zero "0"))))
+    navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for the '~[...~]' conditional construct in its
