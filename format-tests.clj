@@ -4,22 +4,6 @@
 
 (def format cl-format)
 
-(defn integers
-  ([] (integers 1))
-  ([n] (lazy-cons n (integers (inc n)))))
-
-(defn group [unit lis]
-  (first (consume (fn [l] [ (take unit l) (drop unit l)]) lis)))
-
-(defmacro simple-tests [prefix & body]
-  (cons 'do 
-	(let [pairs (group 2 body)]
-	  (map (fn [[statement expected-result] test-num] 
-		 `(deftest ~(symbol (str prefix "-" test-num)) []
-		    (assert-equal ~expected-result ~statement)))
-	       pairs (integers)))))
-
-
 (simple-tests square-bracket-tests
   ;; Tests for format without modifiers
   (cl-format nil "I ~[don't ~]have one~%" 0) "I don't have one\n"
