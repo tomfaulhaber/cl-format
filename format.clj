@@ -84,6 +84,13 @@
   (binding [*out* *err*]
     (apply println args)))
        
+(defmacro aif
+  [test then-form else-form]
+  `(let [~'it ~test]
+     (if ~test
+       ~then-form
+       ~else-form)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
 ;;; as the format statement moves through the list
@@ -257,6 +264,7 @@
       [m2 (- (Integer/valueOf e) delta)])))
 
 (defn round-str [m e d w]
+  (prerr m e d w)
   (if (or d w)
     (let [len (count m)
 	  round-pos (if d (+ e d 1))
@@ -333,6 +341,55 @@
 	      (if prepend-zero "0")
 	      fixed-repr
 	      (if append-zero "0"))))
+    navigator))
+
+
+;; the function to render ~E directives
+;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
+(defn exponential-float [params navigator offsets]
+  (let [w (:w params)
+	d (:d params)
+	e (:e params)
+	k (:k params)
+	expchar (aif (:exponentchar params) it \E)
+	[arg navigator] (next-arg navigator)
+	[mantissa exp] (float-parts (Math/abs arg))
+	scaled-exp (- exp (dec k))
+	scaled-exp-str (str (Math/abs scaled-exp))
+	scaled-exp-str (str expchar (if (neg? scaled-exp) \- \+) 
+			    (if e (apply str (replicate (- e (count scaled-exp-str)) \0))) 
+			    scaled-exp-str)
+	exp-width (count scaled-exp-str)
+	base-mantissa-width (count mantissa)
+	scaled-mantissa (str (apply str (replicate (- k) \0)) mantissa)
+	add-sign (or (:at params) (neg? arg))
+	prepend-zero (<= k 0)
+	w-mantissa (if w (- w exp-width))
+	;; TODO: account for round-off forcing an incremented exponent
+	[rounded-mantissa incr-exp] (round-str 
+				       scaled-mantissa 0
+				       (if d (+ d k -1))
+				       (if w-mantissa (- w-mantissa (if add-sign 1 0))))
+	]
+    (prerr rounded-mantissa scaled-exp-str)
+    (if w
+      (let [len (+ (count rounded-mantissa) exp-width)
+	    signed-len (if add-sign (inc len) len)
+	    prepend-zero (and prepend-zero (not (= signed-len w)))
+	    full-len (if prepend-zero (inc signed-len) signed-len)]
+	(if (and (> full-len w) (:overflowchar params))
+	  (print (apply str (replicate w (:overflowchar params))))
+	  (print (str
+		  (apply str (replicate (- w full-len) (:padchar params)))
+		  (if add-sign (if (neg? arg) \- \+)) 
+		  (if prepend-zero "0")
+		  rounded-mantissa
+		  scaled-exp-str))))
+      (print (str
+	      (if add-sign (if (neg? arg) \- \+)) 
+	      (if prepend-zero "0")
+	      rounded-mantissa
+	      scaled-exp-str)))
     navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -524,6 +581,13 @@
     :padchar [\space Character] ]
    #{ :at } {}
    fixed-float)
+
+  (\E
+   [ :w [nil Integer] :d [nil Integer] :e [nil Integer] :k [1 Integer] 
+    :overflowchar [nil Character] :padchar [\space Character] 
+    :exponentchar [nil Character] ]
+   #{ :at } {}
+   exponential-float)
 
   (\% 
    [ :count [1 Integer] ] 

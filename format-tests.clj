@@ -4,6 +4,8 @@
 
 (def format cl-format)
 
+;; TODO add tests for ~F, ~E, etc.: 0.0, 9.9999 with rounding, 9.9999E99 with rounding
+ 
 (simple-tests square-bracket-tests
   ;; Tests for format without modifiers
   (cl-format nil "I ~[don't ~]have one~%" 0) "I don't have one\n"
@@ -347,7 +349,7 @@ but it was called with an argument of type SHORT-FLOAT."
   "/HOT .../HAMBURGER .../ICE .../FRENCH"
 
   (format nil 
-	  "~:{/~S~:#^ ...~}" 
+	  "~:{/~S~$:^ ...~}"  ;; This is wrong in CLtL
 	  '((hot dog) (hamburger) (ice cream) (french fries))) 
   "/HOT .../HAMBURGER")
 
