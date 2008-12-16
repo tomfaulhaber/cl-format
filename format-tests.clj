@@ -221,13 +221,16 @@
           "~9,2,1,,'*E|~10,3,2,2,'?,,'$E|~9,3,2,-2,'%@E|~9,2E" 
           x x x x)) 
 
+;; Clojure doesn't support float/double differences in representation
 (simple-tests cltl-E-tests
   (foo-e 3.14159)  "  3.14E+0| 31.42$-01|+.003E+03|  3.14E+0" 
   (foo-e -3.14159) " -3.14E+0|-31.42$-01|-.003E+03| -3.14E+0" 
   (foo-e 1100.0)   "  1.10E+3| 11.00$+02|+.001E+06|  1.10E+3" 
+; In Clojure, this is identical to the above
 ;  (foo-e 1100.0L0) "  1.10L+3| 11.00$+02|+.001L+06|  1.10L+3" 
   (foo-e 1.1E13)   "*********| 11.00$+12|+.001E+16| 1.10E+13" 
-;  (foo-e 1.1L120)  "*********|??????????|%%%%%%%%%|1.10L+120" 
+  (foo-e 1.1E120)  "*********|??????????|%%%%%%%%%|1.10E+120" 
+; Clojure doesn't support real numbers this large
 ;  (foo-e 1.1L1200) "*********|??????????|%%%%%%%%%|1.10L+1200"
 )
 
@@ -236,6 +239,7 @@
           "~9,2,1,,'*G|~9,3,2,3,'?,,'$G|~9,3,2,0,'%G|~9,2G" 
           x x x)) 
 
+;; Clojure doesn't support float/double differences in representation
 (simple-tests cltl-G-tests
   (foo-g 0.0314159) "  3.14E-2|314.2$-04|0.314E-01|  3.14E-2" 
   (foo-g 0.314159)  "  0.31   |0.314    |0.314    | 0.31    " 
@@ -243,9 +247,11 @@
   (foo-g 31.4159)   "   31.   | 31.4    | 31.4    |  31.    " 
   (foo-g 314.159)   "  3.14E+2| 314.    | 314.    |  3.14E+2" 
   (foo-g 3141.59)   "  3.14E+3|314.2$+01|0.314E+04|  3.14E+3" 
+; In Clojure, this is identical to the above
 ;  (foo-g 3141.59L0) "  3.14L+3|314.2$+01|0.314L+04|  3.14L+3" 
   (foo-g 3.14E12)   "*********|314.0$+10|0.314E+13| 3.14E+12" 
-;  (foo-g 3.14L120)  "*********|?????????|%%%%%%%%%|3.14L+120" 
+  (foo-g 3.14E120)  "*********|?????????|%%%%%%%%%|3.14E+120" 
+; Clojure doesn't support real numbers this large
 ;  (foo-g 3.14L1200) "*********|?????????|%%%%%%%%%|3.14L+1200"
 )
 

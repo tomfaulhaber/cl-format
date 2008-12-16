@@ -32,7 +32,7 @@ cl-format is under active development. The following list shows what directives 
     ~P: All
     ~C: *Not yet*
     ~F: All
-    ~E: *Not yet*
+    ~E: All
     ~G: *Not yet*
     ~$: *Not yet*
     ~%: All
@@ -72,4 +72,7 @@ The following function uses cl-format to dump a columnized table of the Java sys
 
 ### Differences from Common Lisp format ###
 
-TBD
+The floating point directives that show exponents (~E, ~G) show E for
+the exponent character in all cases (unless overridden with an
+*exponentchar*).  Clojure does not distinguish between floats and
+doubles in its printed representation and neither does cl-format.

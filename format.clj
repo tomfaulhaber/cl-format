@@ -264,7 +264,6 @@
       [m2 (- (Integer/valueOf e) delta)])))
 
 (defn round-str [m e d w]
-  (prerr m e d w)
   (if (or d w)
     (let [len (count m)
 	  round-pos (if d (+ e d 1))
@@ -297,7 +296,7 @@
       m1)))
 
 (defn insert-decimal [m e]
-  "Insert the decimal point at the right spot in the number"
+  "Insert the decimal point at the right spot in the number to match an exponent"
   (if (neg? e)
     (str "." m)
     (let [loc (inc e)]
@@ -305,6 +304,12 @@
 
 (defn get-fixed [m e d]
   (insert-decimal (expand-fixed m e d) e))
+
+(defn insert-scaled-decimal [m k]
+  "Insert the decimal point at the right spot in the number to match an exponent"
+  (if (neg? k)
+    (str "." m)
+    (str (subs m 0 k) "." (subs m k))))
 
 ;; the function to render ~F directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
@@ -346,6 +351,7 @@
 
 ;; the function to render ~E directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
+;; TODO: define ~E representation for Infinity
 (defn exponential-float [params navigator offsets]
   (let [w (:w params)
 	d (:d params)
@@ -361,34 +367,40 @@
 			    scaled-exp-str)
 	exp-width (count scaled-exp-str)
 	base-mantissa-width (count mantissa)
-	scaled-mantissa (str (apply str (replicate (- k) \0)) mantissa)
+	scaled-mantissa (str (apply str (replicate (- k) \0))
+			     mantissa
+			     (if d 
+			       (apply str 
+				      (replicate 
+				       (- d (dec base-mantissa-width)
+					  (if (neg? k) (- k) 0)) \0))))
 	add-sign (or (:at params) (neg? arg))
 	prepend-zero (<= k 0)
 	w-mantissa (if w (- w exp-width))
 	;; TODO: account for round-off forcing an incremented exponent
 	[rounded-mantissa incr-exp] (round-str 
 				       scaled-mantissa 0
-				       (if d (+ d k -1))
+				       d
 				       (if w-mantissa (- w-mantissa (if add-sign 1 0))))
-	]
-    (prerr rounded-mantissa scaled-exp-str)
+	full-mantissa (insert-scaled-decimal rounded-mantissa k)]
     (if w
-      (let [len (+ (count rounded-mantissa) exp-width)
+      (let [len (+ (count full-mantissa) exp-width)
 	    signed-len (if add-sign (inc len) len)
 	    prepend-zero (and prepend-zero (not (= signed-len w)))
 	    full-len (if prepend-zero (inc signed-len) signed-len)]
-	(if (and (> full-len w) (:overflowchar params))
+	(if (and (or (> full-len w) (and e (> (- exp-width 2) e)))
+		 (:overflowchar params))
 	  (print (apply str (replicate w (:overflowchar params))))
 	  (print (str
 		  (apply str (replicate (- w full-len) (:padchar params)))
 		  (if add-sign (if (neg? arg) \- \+)) 
 		  (if prepend-zero "0")
-		  rounded-mantissa
+		  full-mantissa
 		  scaled-exp-str))))
       (print (str
 	      (if add-sign (if (neg? arg) \- \+)) 
 	      (if prepend-zero "0")
-	      rounded-mantissa
+	      full-mantissa
 	      scaled-exp-str)))
     navigator))
 
