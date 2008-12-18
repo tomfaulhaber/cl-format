@@ -382,25 +382,32 @@
 				       scaled-mantissa 0
 				       d
 				       (if w-mantissa (- w-mantissa (if add-sign 1 0))))
-	full-mantissa (insert-scaled-decimal rounded-mantissa k)]
+	full-mantissa (insert-scaled-decimal rounded-mantissa k)
+	append-zero (and (= k (count rounded-mantissa)) (nil? d))]
     (if w
       (let [len (+ (count full-mantissa) exp-width)
 	    signed-len (if add-sign (inc len) len)
 	    prepend-zero (and prepend-zero (not (= signed-len w)))
-	    full-len (if prepend-zero (inc signed-len) signed-len)]
+	    full-len (if prepend-zero (inc signed-len) signed-len)
+	    append-zero (and append-zero (< full-len w))]
 	(if (and (or (> full-len w) (and e (> (- exp-width 2) e)))
 		 (:overflowchar params))
 	  (print (apply str (replicate w (:overflowchar params))))
 	  (print (str
-		  (apply str (replicate (- w full-len) (:padchar params)))
+		  (apply str 
+			 (replicate 
+			  (- w full-len (if append-zero 1 0) )
+			  (:padchar params)))
 		  (if add-sign (if (neg? arg) \- \+)) 
 		  (if prepend-zero "0")
 		  full-mantissa
+		  (if append-zero "0")
 		  scaled-exp-str))))
       (print (str
 	      (if add-sign (if (neg? arg) \- \+)) 
 	      (if prepend-zero "0")
 	      full-mantissa
+	      (if append-zero "0")
 	      scaled-exp-str)))
     navigator))
 
