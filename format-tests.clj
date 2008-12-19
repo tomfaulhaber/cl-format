@@ -251,7 +251,7 @@
 (defn foo-g [x] 
   (format nil 
           "~9,2,1,,'*G|~9,3,2,3,'?,,'$G|~9,3,2,0,'%G|~9,2G" 
-          x x x)) 
+          x x x x)) 
 
 ;; Clojure doesn't support float/double differences in representation
 (simple-tests cltl-G-tests
