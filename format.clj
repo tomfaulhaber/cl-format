@@ -84,6 +84,10 @@
   (binding [*out* *err*]
     (apply println args)))
        
+(defmacro prlabel [prefix & args]
+  "Print args to *err* in name = value format"
+  (cons 'prerr (cons prefix (mapcat #(list (list 'quote %) "=" %) args))))
+
 (defmacro aif
   [test then-form else-form]
   `(let [~'it ~test]
