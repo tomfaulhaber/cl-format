@@ -33,7 +33,7 @@ cl-format is under active development. The following list shows what directives 
     ~C: *Not yet*
     ~F: All
     ~E: All
-    ~G: *Not yet*
+    ~G: All
     ~$: *Not yet*
     ~%: All
     ~&: *Not yet*
