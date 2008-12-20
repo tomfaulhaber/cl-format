@@ -80,6 +80,13 @@
 	  (recur (inc n))))
       s)))
 
+(defn prefix-count [aseq val]
+  "Return the number of times that val occurs at the start of sequence aseq"
+  (loop [pos 0]
+    (if (not (= (nth aseq pos) val))
+      pos
+      (recur (inc pos)))))
+
 (defn prerr [& args]
   (binding [*out* *err*]
     (apply println args)))
@@ -284,7 +291,10 @@
 		result (subs m1 0 round-pos)]
 	    (if (>= (int round-char) (int \5))
 	      (let [result-val (Integer/valueOf result)
-		    round-up-result (String/valueOf (+ result-val (if (neg? result-val) -1 1)))
+		    leading-zeros (subs result 0 (prefix-count result \0))
+		    round-up-result (str leading-zeros
+					 (String/valueOf (+ result-val 
+							    (if (neg? result-val) -1 1))))
 		    expanded (> (count round-up-result) (count result))]
 		[round-up-result e1 expanded])
 	      [result e1 false]))
