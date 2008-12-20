@@ -422,6 +422,32 @@
 	  (recur [rounded-mantissa (inc exp)]))))
     navigator))
 
+;; the function to render ~G directives
+;; This just figures out whether to pass the request off to ~F or ~E based 
+;; on the algorithm in CLtL.
+;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
+;; TODO: refactor so that float-parts isn't called twice
+(defn general-float [params navigator offsets]
+  (let [[arg _] (next-arg navigator)
+	[mantissa exp] (float-parts (Math/abs arg))
+	w (:w params)
+	d (:d params)
+	e (:e params)
+	n (if (= arg 0.0) 0 (inc exp))
+	ee (if e (+ e 2) 4)
+	ww (if w (- w ee))
+	d (if d d (max (count mantissa) (min n 7)))
+	dd (- d n)]
+    (prlabel general n ee ww d dd)
+    (if (<= 0 dd d)
+      (let [navigator (fixed-float {:w ww, :d dd, :k 0, 
+				    :overflowchar (:overflowchar params),
+				    :padchar (:padchar params), :at (:at params)} 
+				   navigator offsets)]
+	(print (apply str (replicate ee \space)))
+	navigator)
+      (exponential-float params navigator offsets))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for the '~[...~]' conditional construct in its
 ;;; different flavors
@@ -618,6 +644,13 @@
     :exponentchar [nil Character] ]
    #{ :at } {}
    exponential-float)
+
+  (\G
+   [ :w [nil Integer] :d [nil Integer] :e [nil Integer] :k [1 Integer] 
+    :overflowchar [nil Character] :padchar [\space Character] 
+    :exponentchar [nil Character] ]
+   #{ :at } {}
+   general-float)
 
   (\% 
    [ :count [1 Integer] ] 
