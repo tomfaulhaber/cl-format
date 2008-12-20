@@ -237,8 +237,9 @@
 
 ;; Clojure doesn't support float/double differences in representation
 (simple-tests cltl-E-tests
+  (foo-e 0.0314159) "  3.14E-2|314.2$-04|0.314E-01|  3.14E-2"  ; Added this one 
   (foo-e 3.14159)  "  3.14E+0| 31.42$-01|+.003E+03|  3.14E+0" 
-  (foo-e -3.14159) " -3.14E+0|-31.42$-01|-.003E+03| -3.14E+0" 
+  (foo-e -3.14159) " -3.14E+0|-31.42$-01|-.003E+03| -3.14E+0"
   (foo-e 1100.0)   "  1.10E+3| 11.00$+02|+.001E+06|  1.10E+3" 
 ; In Clojure, this is identical to the above
 ;  (foo-e 1100.0L0) "  1.10L+3| 11.00$+02|+.001L+06|  1.10L+3" 
