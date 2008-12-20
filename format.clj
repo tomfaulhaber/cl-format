@@ -387,10 +387,13 @@
 					      (if (neg? k) (- k) 0)) \0))))
 	    w-mantissa (if w (- w exp-width))
 	    [rounded-mantissa _ incr-exp] (round-str 
-					 scaled-mantissa 0
-					 d
-					 (if w-mantissa 
-					   (- w-mantissa (if add-sign 1 0))))
+					   scaled-mantissa 0
+					   (cond
+					    (= k 0) (dec d)
+					    (pos? k) d
+					    (neg? k) (dec d))
+					   (if w-mantissa 
+					     (- w-mantissa (if add-sign 1 0))))
 	    full-mantissa (insert-scaled-decimal rounded-mantissa k)
 	    append-zero (and (= k (count rounded-mantissa)) (nil? d))]
 	(if (not incr-exp)
@@ -438,7 +441,6 @@
 	ww (if w (- w ee))
 	d (if d d (max (count mantissa) (min n 7)))
 	dd (- d n)]
-    (prlabel general n ee ww d dd)
     (if (<= 0 dd d)
       (let [navigator (fixed-float {:w ww, :d dd, :k 0, 
 				    :overflowchar (:overflowchar params),
