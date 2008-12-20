@@ -249,6 +249,25 @@
 ;  (foo-e 1.1L1200) "*********|??????????|%%%%%%%%%|1.10L+1200"
 )
 
+(simple-tests cltl-E-scale-tests
+  (map
+    (fn [k] (format nil "Scale factor ~2D~:*: |~13,6,2,VE|" 
+		    (- k 5) 3.14159))              ;Prints 13 lines 
+    (take 13 (integers 0)))
+  '("Scale factor -5: | 0.000003E+06|"
+    "Scale factor -4: | 0.000031E+05|"
+    "Scale factor -3: | 0.000314E+04|"
+    "Scale factor -2: | 0.003142E+03|"
+    "Scale factor -1: | 0.031416E+02|"
+    "Scale factor  0: | 0.314159E+01|"
+    "Scale factor  1: | 3.141590E+00|"
+    "Scale factor  2: | 31.41590E-01|"
+    "Scale factor  3: | 314.1590E-02|"
+    "Scale factor  4: | 3141.590E-03|"
+    "Scale factor  5: | 31415.90E-04|"
+    "Scale factor  6: | 314159.0E-05|"
+    "Scale factor  7: | 3141590.E-06|"))
+
 (defn foo-g [x] 
   (format nil 
           "~9,2,1,,'*G|~9,3,2,3,'?,,'$G|~9,3,2,0,'%G|~9,2G" 
