@@ -1,0 +1,24 @@
+<project name="format" default="jar">
+
+  <description>
+    Pack all unit-test sources into a JAR.
+  </description>
+
+  <!-- The JAR file to create. -->
+  <property name="jarfile" location="cl-format.jar"/>
+
+  <target name="clean"
+          description="Remove generated files and directories.">
+    <delete file="${jarfile}"/>
+  </target>
+
+  <target name="jar"
+          description="Create jar file.">
+    <jar jarfile="${jarfile}">
+      <fileset dir="." includes="EPL.TXT"/>
+      <fileset dir="." includes="com/infolace/format.clj"/>
+      <fileset dir="classes" includes="**/*.class"/>
+    </jar>
+  </target>
+
+</project>
