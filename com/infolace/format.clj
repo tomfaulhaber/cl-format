@@ -1,5 +1,5 @@
 (ns com.infolace.format
-  (:import [format FormatException InternalFormatException]))
+  (:import [com.infolace.format FormatException InternalFormatException]))
 
 ;;; Forward references
 (declare compile-format)
