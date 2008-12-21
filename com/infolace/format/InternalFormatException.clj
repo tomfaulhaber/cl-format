@@ -1,4 +1,4 @@
-(ns format.InternalFormatException
+(ns com.infolace.format.InternalFormatException
   (:gen-class
    :extends Exception
    :init init

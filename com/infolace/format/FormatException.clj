@@ -1,4 +1,4 @@
-(ns format.FormatException
+(ns com.infolace.format.FormatException
   (:gen-class
    :extends Exception))
 

@@ -1,6 +1,6 @@
-(ns format-tests
+(ns com.infolace.format.test.base
   (:refer-clojure :exclude [format])
-  (:use unit-test format))
+  (:use unit-test com.infolace.format))
 
 (def format cl-format)
 

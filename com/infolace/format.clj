@@ -1,4 +1,4 @@
-(ns format
+(ns com.infolace.format
   (:import [format FormatException InternalFormatException]))
 
 ;;; Forward references
