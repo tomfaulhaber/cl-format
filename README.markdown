@@ -34,7 +34,7 @@ cl-format is under active development. The following list shows what directives 
     ~F: All
     ~E: All
     ~G: All
-    ~$: *Not yet*
+    ~$: Yes
     ~%: All
     ~&: *Not yet*
     ~|: *Not yet*
@@ -53,7 +53,7 @@ cl-format is under active development. The following list shows what directives 
     ~^: *Not yet*
     ~/: *Not yet*
 
-Next up: Support for floating point, ~R and ~^.
+Next up: Support for ~^ and ~R.
 ### How to use ###
 
 TBD

@@ -5,7 +5,7 @@
 (def format cl-format)
 
 ;; TODO tests for ~A, ~D, etc.
-;; TODO add tests for ~F, ~E, etc.: 0.0, 9.9999 with rounding, 9.9999E99 with rounding
+;; TODO add tests for ~F, etc.: 0.0, 9.9999 with rounding, 9.9999E99 with rounding
  
 (simple-tests e-tests
   (cl-format nil "*~E*" 0.0) "*0.0E+0*"
@@ -20,6 +20,17 @@
   (cl-format nil "*~10,2,2,,'?E*" 9.99999E99) "*??????????*"
   )
   
+(simple-tests $-tests
+  (cl-format nil "~$" 22.3) "22.30"
+  (cl-format nil "~$" 22.375) "22.38"
+  (cl-format nil "~3,5$" 22.375) "00022.375"
+  (cl-format nil "~3,5,8$" 22.375) "00022.375"
+  (cl-format nil "~3,5,10$" 22.375) " 00022.375"
+  (cl-format nil "~3,5,14@$" 22.375) "    +00022.375"
+  (cl-format nil "~3,5,14@$" 22.375) "    +00022.375"
+  (cl-format nil "~3,5,14@:$" 22.375) "+    00022.375"
+  (cl-format nil "~3,,14@:$" 0.375) "+        0.375")
+
 (simple-tests square-bracket-tests
   ;; Tests for format without modifiers
   (cl-format nil "I ~[don't ~]have one~%" 0) "I don't have one\n"

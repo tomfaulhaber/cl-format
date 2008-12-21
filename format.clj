@@ -470,8 +470,14 @@
 	w (:w params) ; minimum field width
 	add-sign (and (:at params) (not (neg? arg)))
 	[rounded-mantissa scaled-exp _] (round-str mantissa exp d nil)
-	]
-    
+	fixed-repr (get-fixed rounded-mantissa scaled-exp d)
+	full-repr (str (apply str (replicate (- n (.indexOf fixed-repr (int \.))) \0)) fixed-repr)
+	full-len (+ (count full-repr) (if add-sign 1 0))]
+    (print (str
+	    (if (and (:colon params) add-sign) (if (neg? arg) \- \+))
+	    (apply str (replicate (- w full-len) (:padchar params)))
+	    (if (and (not (:colon params)) add-sign) (if (neg? arg) \- \+))
+	    full-repr))
     navigator))
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -679,8 +685,8 @@
    general-float)
 
   (\$
-   [ :d [nil Integer] :n [nil Integer] :w [0 Integer] :padchar [\space Character]]
-   #{ :at :colon} {}
+   [ :d [2 Integer] :n [1 Integer] :w [0 Integer] :padchar [\space Character]]
+   #{ :at :colon :both} {}
    dollar-float)
 
   (\% 
