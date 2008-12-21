@@ -460,6 +460,20 @@
 	navigator)
       (exponential-float params navigator offsets))))
 
+;; the function to render ~$ directives
+;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
+(defn dollar-float [params navigator offsets]
+  (let [[arg navigator] (next-arg navigator)
+	[mantissa exp] (float-parts (Math/abs arg))
+	d (:d params) ; digits after the decimal
+	n (:n params) ; minimum digits before the decimal
+	w (:w params) ; minimum field width
+	add-sign (and (:at params) (not (neg? arg)))
+	[rounded-mantissa scaled-exp _] (round-str mantissa exp d nil)
+	]
+    
+    navigator))
+	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for the '~[...~]' conditional construct in its
 ;;; different flavors
@@ -663,6 +677,11 @@
     :exponentchar [nil Character] ]
    #{ :at } {}
    general-float)
+
+  (\$
+   [ :d [nil Integer] :n [nil Integer] :w [0 Integer] :padchar [\space Character]]
+   #{ :at :colon} {}
+   dollar-float)
 
   (\% 
    [ :count [1 Integer] ] 
