@@ -103,13 +103,6 @@
   "Print args to *err* in name = value format"
   (cons 'prerr (cons (list 'quote prefix) (mapcat #(list (list 'quote %) "=" %) args))))
 
-(defmacro aif
-  [test then-form else-form]
-  `(let [~'it ~test]
-     (if ~test
-       ~then-form
-       ~else-form)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
 ;;; as the format statement moves through the list
@@ -382,7 +375,7 @@
 	    d (:d params)
 	    e (:e params)
 	    k (:k params)
-	    expchar (aif (:exponentchar params) it \E)
+	    expchar (or (:exponentchar params) \E)
 	    add-sign (or (:at params) (neg? arg))
 	    prepend-zero (<= k 0)
 	    scaled-exp (- exp (dec k))
