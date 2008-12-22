@@ -1,24 +1,40 @@
 <project name="format" default="jar">
 
   <description>
-    Pack all unit-test sources into a JAR.
+    Build a jar that is the common lisp format library
   </description>
 
+  <property name="build" location="classes"/>
+	<property name="clojure-jar" location="../clojure/clojure.jar"/>
   <!-- The JAR file to create. -->
   <property name="jarfile" location="cl-format.jar"/>
+
+  <target name="init">
+    <mkdir dir="${build}"/>
+  </target>
 
   <target name="clean"
           description="Remove generated files and directories.">
     <delete file="${jarfile}"/>
+		<delete dir="${build}"/>
   </target>
 
-  <target name="jar"
+  <target name="jar" depends="compile_exceptions"
           description="Create jar file.">
     <jar jarfile="${jarfile}">
-      <fileset dir="." includes="EPL.TXT"/>
+      <fileset dir="." includes="epl-v10.html"/>
       <fileset dir="." includes="com/infolace/format.clj"/>
       <fileset dir="classes" includes="**/*.class"/>
     </jar>
   </target>
 
+	<target name="compile_exceptions" depends="init"
+					description="Compile special exception classes.">
+		<java classname="clojure.lang.Compile"
+          classpath=".:${build}:${clojure-jar}">
+      <sysproperty key="clojure.compile.path" value="${build}"/>
+      <arg value="com.infolace.format.FormatException"/>
+      <arg value="com.infolace.format.InternalFormatException"/>
+		</java>
+  </target>
 </project>
