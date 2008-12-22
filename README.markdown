@@ -1,6 +1,6 @@
 ## Common Lisp Format for Clojure ##
 
-cl-format is a implementation of the incredibly baroque Common Lisp format function as specified 
+cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
 in [*Common Lisp the Language*, 2nd edition, Chapter 22](http://www.cs.cmu.edu/afs/cs.cmu.edu/project/ai-repository/ai/html/cltl/clm/node200.html#SECTION002633000000000000000).
 
 Format gives you an easy and powerful way to format text and data for output. It supports rich 
