@@ -9,7 +9,7 @@
 (ns com.infolace.format.examples.multiply
   (:use com.infolace.format))
 
-(defn multipication-table [limit]
+(defn multiplication-table [limit]
   (let [nums (range 1 (inc limit))]
     (cl-format true "~{~{~4d~}~%~}" 
 	     (map #(map % nums) 
