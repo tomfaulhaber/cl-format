@@ -315,7 +315,7 @@
            with an argument of type ~S.~%" 
           fun (= nargs 1) argnum right-type wrong-type)) 
 
-(simple-tests cltl-B-tests
+(simple-tests cltl-Newline-tests
   (type-clash-error 'aref nil 2 'integer 'vector)
 "Function AREF requires its second argument to be of type INTEGER, 
 but it was called with an argument of type VECTOR."
