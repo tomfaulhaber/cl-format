@@ -106,7 +106,7 @@ The following list shows what directives it supports
     ~[*str0*~;*str1*~;*...*~;*strn*~]: All
     ~{*str*~}: All
     ~<*str*~>: *Not yet*
-    ~^: *Not yet*
+    ~^: Works only outside brackets
     ~/: *Not yet*
 
 Next up: Support for ~^ and ~R.

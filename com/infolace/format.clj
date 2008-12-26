@@ -766,6 +766,28 @@
 
    
    (\} [] #{:colon} {} nil) 
+
+   ;; TODO: detect errors in cases where colon not allowed
+   (\^ [:arg1 [nil Integer] :arg2 [nil Integer] :arg3 [nil Integer]] 
+    #{:colon} {} 
+    (fn [params navigator offsets]
+     (let [arg1 (:arg1 params)
+	   arg2 (:arg2 params)
+	   arg3 (:arg3 params)
+	   exit (if (:colon params) :colon-up-arrow :up-arrow)]
+       
+       (cond
+	(and arg1 arg2 arg3)
+	(if (<= arg1 arg2 arg3) [exit navigator] navigator)
+
+	(and arg1 arg2)
+	(if (= arg1 arg2) [exit navigator] navigator)
+
+	arg1
+	(if (= arg1 0) [exit navigator] navigator)
+
+	true  ; TODO: handle looking up the arglist stack for info
+	(if (nil? (:rest navigator)) [exit navigator] navigator))))) 
 )
 
 (defn my-status [] 
@@ -1034,10 +1056,13 @@
 		     true stream)]
 	(binding [*out* real-stream]
 	  (map-passing-context 
-	   (fn [element context] 
-	     (let [[params args] (realize-parameter-list (:params element) context)
-		   [params offsets] (unzip-map params)]
-	       [nil (apply (:func element) [params args offsets])] ))
+	   (fn [element context]
+	     (if (= :up-arrow (first context))
+	       [nil context]
+	       (let [[params args] (realize-parameter-list 
+				    (:params element) context)
+		     [params offsets] (unzip-map params)]
+		 [nil (apply (:func element) [params args offsets])])))
 	   args
 	   format)
 	  (if (not stream) (.toString real-stream)))))
