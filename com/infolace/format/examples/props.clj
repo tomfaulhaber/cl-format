@@ -6,11 +6,12 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns com.infolace.format.examples.multiply
+(ns com.infolace.format.examples.props
   (:use com.infolace.format))
 
-(defn multiplication-table [limit]
-  (let [nums (range 1 (inc limit))]
-    (cl-format true "~{~{~4d~}~%~}" 
-	     (map #(map % nums) 
-		  (map #(partial * %) nums)))))
+(defn show-props [stream]
+  (let [p (mapcat 
+	   #(vector (key %) (val %)) 
+	   (sort-by key (System/getProperties)))]
+    (cl-format true "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
+	       "Property" "Value" ["" "" "" ""] p)))
