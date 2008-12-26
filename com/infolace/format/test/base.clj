@@ -391,24 +391,24 @@ but it was called with an argument of type SHORT-FLOAT."
     (format nil tellstr nil "losers") "Losers." 
     (format nil tellstr 23 "losers") "Twenty-three losers."
     (format nil "~15<~S~;~^~S~;~^~S~>" 'foo) 
-    "            FOO" 
+    "            foo" 
     (format nil "~15<~S~;~^~S~;~^~S~>" 'foo 'bar) 
-    "FOO         BAR" 
+    "foo         bar" 
     (format nil "~15<~S~;~^~S~;~^~S~>" 'foo 'bar 'baz) 
-    "FOO   BAR   BAZ"))
+    "foo   bar   baz"))
 
 (simple-tests cltl-up-x3j13-tests
   (format nil 
 	  "~:{/~S~^ ...~}" 
 	  '((hot dog) (hamburger) (ice cream) (french fries))) 
-  "/HOT .../HAMBURGER/ICE .../FRENCH ..."
+  "/hot .../hamburger/ice .../french ..."
   (format nil 
 	  "~:{/~S~:^ ...~}" 
 	  '((hot dog) (hamburger) (ice cream) (french fries))) 
-  "/HOT .../HAMBURGER .../ICE .../FRENCH"
+  "/hot .../hamburger .../ice .../french"
 
   (format nil 
 	  "~:{/~S~$:^ ...~}"  ;; This is wrong in CLtL
 	  '((hot dog) (hamburger) (ice cream) (french fries))) 
-  "/HOT .../HAMBURGER")
+  "/hot .../hamburger")
 
