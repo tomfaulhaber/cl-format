@@ -14,6 +14,29 @@
 
 ;; TODO tests for ~A, ~D, etc.
 ;; TODO add tests for ~F, etc.: 0.0, 9.9999 with rounding, 9.9999E99 with rounding
+
+(simple-tests cardinal-tests
+  (cl-format nil "~R" 4) "four"
+  (cl-format nil "~R" 15) "fifteen"
+  (cl-format nil "~R" -15) "minus fifteen"
+  (cl-format nil "~R" 25) "twenty-five"
+  (cl-format nil "~R" 20) "twenty"
+  (cl-format nil "~R" 200) "two hundred"
+  (cl-format nil "~R" 203) "two hundred three"
+
+  (cl-format nil "~R" 44879032)
+  "forty-four million, eight hundred seventy-nine thousand, thirty-two"
+
+  (cl-format nil "~R" -44879032)
+  "minus forty-four million, eight hundred seventy-nine thousand, thirty-two"
+  
+  (cl-format nil "~R = ~:*~:D" 44000032)
+  "forty-four million, thirty-two = 44,000,032"
+
+  (cl-format nil "~R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094)
+  "four hundred forty-eight septendecillion, seven hundred ninety sexdecillion, three hundred twenty-nine quindecillion, four hundred eighty quattuordecillion, nine hundred forty-eight tredecillion, two hundred nine duodecillion, three hundred eighty-four undecillion, three hundred eighty-nine decillion, four hundred twenty-nine nonillion, three hundred eighty-four octillion, twenty-nine septillion, three hundred eighty-four sextillion, twenty-nine quintillion, eight hundred forty-two quadrillion, ninety-eight trillion, four hundred twenty billion, nine hundred eighty-nine million, eight hundred forty-two thousand, ninety-four = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094"
+  (cl-format nil "~R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094490320942058747587584758375847593475)
+"448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475 = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475")
  
 (simple-tests e-tests
   (cl-format nil "*~E*" 0.0) "*0.0E+0*"

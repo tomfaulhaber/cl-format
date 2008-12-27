@@ -279,10 +279,13 @@ for improved performance"
 
 ;; We use "short scale" for our units (see http://en.wikipedia.org/wiki/Long_and_short_scales)
 ;; Number names from http://www.jimloy.com/math/billion.htm
+;; We follow the rules for writing numbers from the Blue Book
+;; (http://www.grammarbook.com/numbers/numbers.asp)
 (def english-scale-numbers 
-     ["thousand" "million" "billion" "trillion" "quadrillion" "sextillion" "septillion"
-      "octillion" "nonillion" "decillion" "undecillion" "duodecillion" 
-      "tredecillion" "quattuordecillion" "quindecillion" "sexdecillion" "septendecillion" 
+     ["" "thousand" "million" "billion" "trillion" "quadrillion" "quintillion" 
+      "sextillion" "septillion" "octillion" "nonillion" "decillion" 
+      "undecillion" "duodecillion" "tredecillion" "quattuordecillion" 
+      "quindecillion" "sexdecillion" "septendecillion" 
       "octodecillion" "novemdecillion" "vigintillion"])
 
 (defn format-simple-cardinal [num]
@@ -290,8 +293,8 @@ for improved performance"
   (let [hundreds (quot num 100)
 	tens (rem num 100)]
     (str
-     (if (pos? hundreds) (str (nth english-cardinal-units hundreds) "-hundred"))
-     (if (and (pos? hundreds) (pos? tens)) "-")
+     (if (pos? hundreds) (str (nth english-cardinal-units hundreds) " hundred"))
+     (if (and (pos? hundreds) (pos? tens)) " ")
      (if (pos? tens) 
        (if (< tens 20) 
 	 (nth english-cardinal-units tens)
@@ -303,8 +306,7 @@ for improved performance"
 	    (if (pos? unit-digit) (nth english-cardinal-units unit-digit)))))))))
 
 (defn add-english-scales [parts]
-  (let [cnt (count parts)
-	]
+  (let [cnt (count parts)]
     (loop [acc []
 	   pos (dec cnt)
 	   this (first parts)
@@ -314,18 +316,27 @@ for improved performance"
 	     (if (not (empty? acc)) ", ")
 	     this)
 	(recur 
-	 (conj acc (str this "-" (nth english-scale-numbers (dec pos))))
+	 (if (empty? this)
+	   acc
+	   (conj acc (str this " " (nth english-scale-numbers pos))))
 	 (dec pos)
 	 (first remainder)
 	 (rest remainder))))))
 
 (defn format-cardinal-english [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)
-	parts (remainders 1000 arg)
-	parts-strs (map format-simple-cardinal parts)
-	full-str (add-english-scales parts-strs)]
-    (print full-str)
-    navigator))
+	abs-arg (if (neg? arg) (- arg) arg) ; some numbers are too big for Math/abs
+	parts (remainders 1000 abs-arg)]
+    (if (<= (count parts) (count english-scale-numbers))
+      (let [parts-strs (map format-simple-cardinal parts)
+	    full-str (add-english-scales parts-strs)]
+	(print (str (if (neg? arg) "minus ") full-str))
+	navigator)
+      (format-integer ;; for numbers > 10^63, we fall back on ~D
+       10
+       { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
+       (init-navigator [arg])
+       { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
 
 (defn format-ordinal-english [params navigator offsets]
   (throw (FormatException. "Ordinal english numbers with ~:R not implemented yet")))
