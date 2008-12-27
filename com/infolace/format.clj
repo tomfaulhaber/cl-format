@@ -99,9 +99,10 @@
   (binding [*out* *err*]
     (apply println args)))
        
-(defmacro prlabel [prefix & args]
+(defmacro prlabel [prefix arg & more-args]
   "Print args to *err* in name = value format"
-  (cons 'prerr (cons (list 'quote prefix) (mapcat #(list (list 'quote %) "=" %) args))))
+  (cons 'prerr (cons (list 'quote prefix) (mapcat #(list (list 'quote %) "=" %) 
+						  (cons arg more-args)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
@@ -237,14 +238,23 @@
     (print padded-str)
     arg-navigator))
 
+;; Check to see if a result is an abort (~^) construct
+;; TODO: move these funcs somewhere more appropriate
+(defn abort-p [context]
+  (let [token (first context)]
+    (or (= :up-arrow token) (= :colon-up-arrow token))))
+
 ;; Handle the execution of "sub-clauses" in bracket constructions
-(defn execute-sub-format [format args]
+(defn execute-sub-format [format args base-args]
   (frest
    (map-passing-context 
     (fn [element context]
-      (let [[params args] (realize-parameter-list (:params element) context)
-	    [params offsets] (unzip-map params)]
-	[nil (apply (:func element) [params args offsets])] ))
+      (if (abort-p context)
+	[nil context] ; just keep passing it along
+	(let [[params args] (realize-parameter-list (:params element) context)
+	      [params offsets] (unzip-map params)
+	      params (assoc params :base-args base-args)]
+	  [nil (apply (:func element) [params args offsets])])))
     args
     format)))
 
@@ -497,7 +507,7 @@
 		 (first (:else params))
 		 (nth clauses arg))]
     (if clause
-      (execute-sub-format clause navigator)
+      (execute-sub-format clause navigator (:base-args params))
       navigator)))
 
 ;; ~:[...~] with the colon reads the next argument treating it as a truth value
@@ -508,7 +518,7 @@
 		 (frest clauses)
 		 (first clauses))]
     (if clause
-      (execute-sub-format clause navigator)
+      (execute-sub-format clause navigator (:base-args params))
       navigator)))
 
 ;; ~@[...~] with the at sign executes the conditional if the next arg is not
@@ -519,7 +529,7 @@
 	clause (if arg (first clauses))]
     (if arg
       (if clause
-	(execute-sub-format clause arg-navigator)
+	(execute-sub-format clause arg-navigator (:base-args params))
 	arg-navigator)
       navigator)))
 
@@ -549,7 +559,9 @@
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(recur (inc count) (execute-sub-format clause args) (:pos args))))))
+	(recur (inc count) 
+	       (execute-sub-format clause args (:base-args params))
+	       (:pos args))))))
 
 ;; ~:{...~} with the colon treats the next argument as a list of sublists. Each of the
 ;; sublists is used as the arglist for a single iteration.
@@ -566,9 +578,13 @@
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(do 
-	  (execute-sub-format clause (init-navigator (first arg-list)))
-	  (recur (inc count) (rest arg-list)))))))
+	(let [iter-result (execute-sub-format 
+			   clause 
+			   (init-navigator (first arg-list))
+			   (init-navigator (rest arg-list)))]
+	  (if (= :colon-up-arrow (first iter-result))
+	    navigator
+	    (recur (inc count) (rest arg-list))))))))
 
 ;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
 ;; is consumed by all the iterations
@@ -587,7 +603,10 @@
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(recur (inc count) (execute-sub-format clause navigator) (:pos navigator))))))
+	(recur 
+	 (inc count) 
+	 (execute-sub-format clause navigator (:base-args params)) 
+	 (:pos navigator))))))
 
 ;; ~@:{...~} with both colon and at sign uses the main argument list as a set of sublists, one
 ;; of which is consumed with each iteration
@@ -605,7 +624,7 @@
 	      (and max-count (>= count max-count)))
 	navigator
 	(let [[sublist navigator] (next-arg-or-nil navigator)]
-	  (execute-sub-format clause (init-navigator sublist))
+	  (execute-sub-format clause (init-navigator sublist) navigator)
 	  (recur (inc count) navigator))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -722,12 +741,12 @@
    (if (:at params)
      (fn [params navigator offsets] ; args from main arg list
        (let [[subformat navigator] (get-format-arg navigator)]
-	 (execute-sub-format subformat navigator)))
+	 (execute-sub-format subformat navigator  (:base-args params))))
      (fn [params navigator offsets] ; args from sub-list
        (let [[subformat navigator] (get-format-arg navigator)
 	     [subargs navigator] (next-arg navigator)
 	     sub-navigator (init-navigator subargs)]
-	 (execute-sub-format subformat sub-navigator)
+	 (execute-sub-format subformat sub-navigator (:base-args params))
 	 navigator))))
        
 
@@ -775,7 +794,6 @@
 	   arg2 (:arg2 params)
 	   arg3 (:arg3 params)
 	   exit (if (:colon params) :colon-up-arrow :up-arrow)]
-       
        (cond
 	(and arg1 arg2 arg3)
 	(if (<= arg1 arg2 arg3) [exit navigator] navigator)
@@ -787,7 +805,10 @@
 	(if (= arg1 0) [exit navigator] navigator)
 
 	true  ; TODO: handle looking up the arglist stack for info
-	(if (nil? (:rest navigator)) [exit navigator] navigator))))) 
+	(if (if (:colon params) 
+	      (nil? (:rest (:base-args params)))
+	      (nil? (:rest navigator)))
+	  [exit navigator] navigator))))) 
 )
 
 (defn my-status [] 
@@ -1057,11 +1078,12 @@
 	(binding [*out* real-stream]
 	  (map-passing-context 
 	   (fn [element context]
-	     (if (= :up-arrow (first context))
+	     (if (abort-p context)
 	       [nil context]
 	       (let [[params args] (realize-parameter-list 
 				    (:params element) context)
-		     [params offsets] (unzip-map params)]
+		     [params offsets] (unzip-map params)
+		     params (assoc params :base-args args)]
 		 [nil (apply (:func element) [params args offsets])])))
 	   args
 	   format)
