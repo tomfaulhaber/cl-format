@@ -358,7 +358,7 @@ but it was called with an argument of type SHORT-FLOAT."
             *print-level* *print-length*) 
     " print length = 5"))
 
-(let [foo "Items:~#[ none~; ~S~; ~S and ~S~ 
+(let [foo "Items:~#[ none~; ~S~; ~S and ~S~
            ~:;~@{~#[~; and~]
 ~S~^,~}~]."]
   (simple-tests cltl-bracket1-tests
