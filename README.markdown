@@ -84,7 +84,7 @@ The following list shows what directives it supports
     ~B: All
     ~O: All
     ~X: All
-    ~R: *Not yet*
+    ~R: ~radixR only, no English or Roman numerals yet.
     ~P: All
     ~C: *Not yet*
     ~F: All

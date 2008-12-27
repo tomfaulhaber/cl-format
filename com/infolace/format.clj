@@ -265,6 +265,26 @@ for improved performance"
     (print padded-str)
     arg-navigator))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for english formats (~R and ~:R)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn format-cardinal-english [params arg-navigator offsets]
+  (throw (FormatException. "Cardinal english numbers with ~R not implemented yet")))
+
+(defn format-ordinal-english [params arg-navigator offsets]
+  (throw (FormatException. "Ordinal english numbers with ~:R not implemented yet")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for roman numeral formats (~@R and ~@:R)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn format-old-roman [params arg-navigator offsets]
+  (throw (FormatException. "Old Roman numerals with ~@:R not implemented yet")))
+
+(defn format-new-roman [params arg-navigator offsets]
+  (throw (FormatException. "New Roman numerals with ~@R not implemented yet")))
+
 ;; Check to see if a result is an abort (~^) construct
 ;; TODO: move these funcs somewhere more appropriate
 (defn abort-p [context]
@@ -666,7 +686,7 @@ for improved performance"
     :params `(array-map ~@params),
     :flags flags,
     :bracket-info bracket-info,
-    :generator-fn (concat '(fn [ params ]) generator-fn) }])
+    :generator-fn (concat '(fn [ params offset]) generator-fn) }])
 
 (defmacro defdirectives 
   [ & directives ]
@@ -706,6 +726,18 @@ for improved performance"
     :commainterval [ 3 Integer]]
    #{ :at :colon :both } {}
    #(format-integer 16 %1 %2 %3))
+
+  (\R
+   [:base [nil Integer] :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
+    :commainterval [ 3 Integer]]
+   #{ :at :colon :both } {}
+   (do
+     (cond				; ~R is overloaded with bizareness
+      (first (:base params))     #(format-integer (:base %1) %1 %2 %3)
+      (and (:at params) (:colon params))   #(format-old-roman %1 %2 %3)
+      (:at params)               #(format-new-roman %1 %2 %3)
+      (:colon params)            #(format-ordinal-english %1 %2 %3)
+      true                       #(format-cardinal-english %1 %2 %3))))
 
   (\P
    [ ]
@@ -959,7 +991,7 @@ for improved performance"
       (throw (InternalFormatException. "Format string ended in the middle of a directive" offset)))
     (if (not def)
       (throw (InternalFormatException. (str "Directive \"" directive "\" is undefined") offset)))
-    [(struct compiled-directive ((:generator-fn def) params) def params offset)
+    [(struct compiled-directive ((:generator-fn def) params offset) def params offset)
      [ (subs rest 1) (inc offset)]]))
     
 (defn compile-raw-string [s offset]
