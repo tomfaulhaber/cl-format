@@ -78,8 +78,8 @@ but I haven't built that yet.
 
 The following list shows what directives it supports
 
-    ~A: All except "~:A" which doesn't make sense in clojure
-    ~S: All except "~:S" which doesn't make sense in clojure
+    ~A: All
+    ~S: All
     ~D: All
     ~B: *Not yet*
     ~O: All
@@ -106,7 +106,7 @@ The following list shows what directives it supports
     ~[*str0*~;*str1*~;*...*~;*strn*~]: All
     ~{*str*~}: All
     ~<*str*~>: *Not yet*
-    ~^: Works only outside brackets
+    ~^: All
     ~/: *Not yet*
 
 Next up: Support for ~^ and ~R.
@@ -119,7 +119,7 @@ library. There is currently no binary repository.
 
 Building and installing the library is pretty easy. There are a few
 requirements, which you have probably already met if you're running
-clojure:
+Clojure:
 
 * The Java SDK, version 1.5 or later.
 * The Ant build tool
@@ -234,3 +234,6 @@ The floating point directives that show exponents (~E, ~G) show E for
 the exponent character in all cases (unless overridden with an
 *exponentchar*).  Clojure does not distinguish between floats and
 doubles in its printed representation and neither does cl-format.
+
+The ~A and ~S directives accept the colon prefix, but ignore it since
+() and nil are not equivalent in Clojure.
