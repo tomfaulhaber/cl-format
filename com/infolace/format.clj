@@ -648,12 +648,12 @@
 (defdirectives 
   (\A 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
-   #{ :at } {}
+   #{ :at :colon :both} {}
    #(format-ascii print-str %1 %2 %3))
 
   (\S 
    [ :mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character] ] 
-   #{ :at } {}
+   #{ :at :colon :both} {}
    #(format-ascii pr-str %1 %2 %3))
 
   (\D
