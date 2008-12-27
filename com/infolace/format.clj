@@ -269,20 +269,75 @@ for improved performance"
 ;;; Support for english formats (~R and ~:R)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn format-cardinal-english [params arg-navigator offsets]
-  (throw (FormatException. "Cardinal english numbers with ~R not implemented yet")))
+(def english-cardinal-units 
+     ["zero" "one" "two" "three" "four" "five" "six" "seven" "eight" "nine"
+      "ten" "eleven" "twelve" "thirteen" "fourteen"
+      "fifteen" "sixteen" "seventeen" "eighteen" "nineteen"])
 
-(defn format-ordinal-english [params arg-navigator offsets]
+(def english-cardinal-tens
+     ["" "" "twenty" "thirty" "forty" "fifty" "sixty" "seventy" "eighty" "ninety"])
+
+;; We use "short scale" for our units (see http://en.wikipedia.org/wiki/Long_and_short_scales)
+;; Number names from http://www.jimloy.com/math/billion.htm
+(def english-scale-numbers 
+     ["thousand" "million" "billion" "trillion" "quadrillion" "sextillion" "septillion"
+      "octillion" "nonillion" "decillion" "undecillion" "duodecillion" 
+      "tredecillion" "quattuordecillion" "quindecillion" "sexdecillion" "septendecillion" 
+      "octodecillion" "novemdecillion" "vigintillion"])
+
+(defn format-simple-cardinal [num]
+  "Convert a number less than 1000 to a cardinal english string"
+  (let [hundreds (quot num 100)
+	tens (rem num 100)]
+    (str
+     (if (pos? hundreds) (str (nth english-cardinal-units hundreds) "-hundred"))
+     (if (and (pos? hundreds) (pos? tens)) "-")
+     (if (pos? tens) 
+       (if (< tens 20) 
+	 (nth english-cardinal-units tens)
+	 (let [ten-digit (quot tens 10)
+	       unit-digit (rem tens 10)]
+	   (str
+	    (if (pos? ten-digit) (nth english-cardinal-tens ten-digit))
+	    (if (and (pos? ten-digit) (pos? unit-digit)) "-")
+	    (if (pos? unit-digit) (nth english-cardinal-units unit-digit)))))))))
+
+(defn add-english-scales [parts]
+  (let [cnt (count parts)
+	]
+    (loop [acc []
+	   pos (dec cnt)
+	   this (first parts)
+	   remainder (rest parts)]
+      (if (nil? remainder)
+	(str (apply str (interpose ", " acc))
+	     (if (not (empty? acc)) ", ")
+	     this)
+	(recur 
+	 (conj acc (str this "-" (nth english-scale-numbers (dec pos))))
+	 (dec pos)
+	 (first remainder)
+	 (rest remainder))))))
+
+(defn format-cardinal-english [params navigator offsets]
+  (let [[arg navigator] (next-arg navigator)
+	parts (remainders 1000 arg)
+	parts-strs (map format-simple-cardinal parts)
+	full-str (add-english-scales parts-strs)]
+    (print full-str)
+    navigator))
+
+(defn format-ordinal-english [params navigator offsets]
   (throw (FormatException. "Ordinal english numbers with ~:R not implemented yet")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for roman numeral formats (~@R and ~@:R)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn format-old-roman [params arg-navigator offsets]
+(defn format-old-roman [params navigator offsets]
   (throw (FormatException. "Old Roman numerals with ~@:R not implemented yet")))
 
-(defn format-new-roman [params arg-navigator offsets]
+(defn format-new-roman [params navigator offsets]
   (throw (FormatException. "New Roman numerals with ~@R not implemented yet")))
 
 ;; Check to see if a result is an abort (~^) construct
