@@ -349,10 +349,10 @@ but it was called with an argument of type SHORT-FLOAT."
 ~S~^,~}~]."]
   (simple-tests cltl-bracket1-tests
     (format nil foo) "Items: none." 
-    (format nil foo 'foo) "Items: FOO." 
-    (format nil foo 'foo 'bar) "Items: FOO and BAR." 
-    (format nil foo 'foo 'bar 'baz) "Items: FOO, BAR, and BAZ." 
-    (format nil foo 'foo 'bar 'baz 'quux) "Items: FOO, BAR, BAZ, and QUUX."))
+    (format nil foo 'foo) "Items: foo." 
+    (format nil foo 'foo 'bar) "Items: foo and bar." 
+    (format nil foo 'foo 'bar 'baz) "Items: foo, bar, and baz." 
+    (format nil foo 'foo 'bar 'baz 'quux) "Items: foo, bar, baz, and quux."))
 
 (simple-tests cltl-curly-bracket-tests
   (format nil 
@@ -408,7 +408,7 @@ but it was called with an argument of type SHORT-FLOAT."
   "/hot .../hamburger .../ice .../french"
 
   (format nil 
-	  "~:{/~S~$:^ ...~}"  ;; This is wrong in CLtL
+	  "~:{/~S~#:^ ...~}"  ;; This is wrong in CLtL
 	  '((hot dog) (hamburger) (ice cream) (french fries))) 
   "/hot .../hamburger")
 
