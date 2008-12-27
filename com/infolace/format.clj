@@ -208,19 +208,46 @@
     arg-navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Support for the integer directives ~D, ~X, ~O, ~B and some of ~R
+;;; Support for the integer directives ~D, ~X, ~O, ~B and some
+;;; of ~R
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn remainders [base val]
+  "Return the list of remainders (essentially the 'digits') of val in the given base"
+  (reverse 
+   (first 
+    (consume #(if (pos? %) 
+		[(rem % base) (quot % base)] 
+		[nil nil]) 
+	     val))))
+
+(defn base-str [base val]
+  "Return val as a string in the given base"
+  (apply str 
+	 (map 
+	  #(if (< % 10) (char (+ (int \0) %)) (char (+ (int \a) (- % 10)))) 
+	  (remainders base val))))
+
+(def java-base-formats {8 "%o", 10 "%d", 16 "%x"})
+
+(defn opt-base-str [base val]
+  "Return val as a string in the given base, using clojure.core/format if supported
+for improved performance"
+  (let [format-str (get java-base-formats base)]
+    (if format-str
+      (clojure.core/format format-str val)
+      (base-str base val))))
 
 (defn group-by [unit lis]
   (reverse
    (first
     (consume (fn [x] [(reverse (take unit x)) (drop unit x)]) (reverse lis)))))
 
-(defn format-integer [ format-type params arg-navigator offsets]
+(defn format-integer [base params arg-navigator offsets]
   (let [[arg arg-navigator] (next-arg arg-navigator) 
 	neg (neg? arg)
 	pos-arg (if neg (- arg) arg)
-	raw-str (clojure.core/format format-type pos-arg)
+	raw-str (opt-base-str base pos-arg)
 	group-str (if (:colon params)
 		    (let [groups (map #(apply str %) (group-by (:commainterval params) raw-str))
 			  commas (replicate (count groups) (:commachar params))]
@@ -660,19 +687,25 @@
    [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
     :commainterval [ 3 Integer]]
    #{ :at :colon :both } {}
-   #(format-integer "%d" %1 %2 %3))
+   #(format-integer 10 %1 %2 %3))
+
+  (\B
+   [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
+    :commainterval [ 3 Integer]]
+   #{ :at :colon :both } {}
+   #(format-integer 2 %1 %2 %3))
 
   (\O
    [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
     :commainterval [ 3 Integer]]
    #{ :at :colon :both } {}
-   #(format-integer "%o" %1 %2 %3))
+   #(format-integer 8 %1 %2 %3))
 
   (\X
    [ :mincol [0 Integer] :padchar [\space Character] :commachar [\, Character] 
     :commainterval [ 3 Integer]]
    #{ :at :colon :both } {}
-   #(format-integer "%x" %1 %2 %3))
+   #(format-integer 16 %1 %2 %3))
 
   (\P
    [ ]

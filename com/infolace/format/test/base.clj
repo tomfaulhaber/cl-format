@@ -242,10 +242,14 @@
    (format nil "Here ~[are~;is~:;are~] ~:*~R pupp~:@P." n) "Here are three puppies."))
  
 (simple-tests cltl-B-tests
-  (format nil "~,,' ,4B" 0xFACE) "1111 1010 1100 1110" 
-  (format nil "~,,' ,4B" 0x1CE) "1 1100 1110" 
-  (format nil "~19,,' ,4B" 0xFACE) "1111 1010 1100 1110" 
-  (format nil "~19,,' ,4B" 0x1CE) "0000 0001 1100 1110")
+  ;; CLtL didn't have the colons here, but the spec requires them
+  (format nil "~,,' ,4:B" 0xFACE) "1111 1010 1100 1110" 
+  (format nil "~,,' ,4:B" 0x1CE) "1 1100 1110" 
+  (format nil "~19,,' ,4:B" 0xFACE) "1111 1010 1100 1110" 
+  ;; This one was a nice idea, but nothing in the spec supports it working this way
+  ;; (and SBCL doesn't work this way either)
+  ;(format nil "~19,,' ,4:B" 0x1CE) "0000 0001 1100 1110")
+  )
 
 (simple-tests cltl-P-tests
   (format nil "~D tr~:@P/~D win~:P" 7 1) "7 tries/1 win" 

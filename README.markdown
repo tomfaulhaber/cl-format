@@ -81,7 +81,7 @@ The following list shows what directives it supports
     ~A: All
     ~S: All
     ~D: All
-    ~B: *Not yet*
+    ~B: All
     ~O: All
     ~X: All
     ~R: *Not yet*
@@ -109,7 +109,7 @@ The following list shows what directives it supports
     ~^: All
     ~/: *Not yet*
 
-Next up: Support for ~^ and ~R.
+Next up: Support for ~R.
 ### How to use cl-format ###
 
 #### Installation ####
