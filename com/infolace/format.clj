@@ -274,8 +274,17 @@ for improved performance"
       "ten" "eleven" "twelve" "thirteen" "fourteen"
       "fifteen" "sixteen" "seventeen" "eighteen" "nineteen"])
 
+(def english-ordinal-units 
+     ["zeroth" "first" "second" "third" "fourth" "fifth" "sixth" "seventh" "eighth" "ninth"
+      "tenth" "eleventh" "twelfth" "thirteenth" "fourteenth"
+      "fifteenth" "sixteenth" "seventeenth" "eighteenth" "nineteenth"])
+
 (def english-cardinal-tens
      ["" "" "twenty" "thirty" "forty" "fifty" "sixty" "seventy" "eighty" "ninety"])
+
+(def english-ordinal-tens
+     ["" "" "twentieth" "thirtieth" "fortieth" "fiftieth"
+      "sixtieth" "seventieth" "eightieth" "ninetieth"])
 
 ;; We use "short scale" for our units (see http://en.wikipedia.org/wiki/Long_and_short_scales)
 ;; Number names from http://www.jimloy.com/math/billion.htm
@@ -339,6 +348,27 @@ for improved performance"
 	   (init-navigator [arg])
 	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
     navigator))
+
+(defn format-simple-ordinal [num]
+  "Convert a number less than 1000 to a ordinal english string
+Note this should only be used for the last one in the sequence"
+  (let [hundreds (quot num 100)
+	tens (rem num 100)]
+    (str
+     (if (pos? hundreds) (str (nth english-cardinal-units hundreds) " hundred"))
+     (if (and (pos? hundreds) (pos? tens)) " ")
+     (if (pos? tens) 
+       (if (< tens 20) 
+	 (nth english-ordinal-units tens)
+	 (let [ten-digit (quot tens 10)
+	       unit-digit (rem tens 10)]
+	   (if (and (pos? ten-digit) (not (pos? unit-digit)))
+	     (nth english-ordinal-tens ten-digit)
+	     (str
+	      (if (pos? ten-digit) (nth english-cardinal-tens ten-digit))
+	      (if (and (pos? ten-digit) (pos? unit-digit)) "-")
+	      (if (pos? unit-digit) (nth english-ordinal-units unit-digit))))))
+       (if (pos? hundreds) "th")))))
 
 (defn format-ordinal-english [params navigator offsets]
   (throw (FormatException. "Ordinal english numbers with ~:R not implemented yet")))
