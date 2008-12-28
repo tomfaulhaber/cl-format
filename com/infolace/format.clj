@@ -324,19 +324,21 @@ for improved performance"
 	 (rest remainder))))))
 
 (defn format-cardinal-english [params navigator offsets]
-  (let [[arg navigator] (next-arg navigator)
-	abs-arg (if (neg? arg) (- arg) arg) ; some numbers are too big for Math/abs
-	parts (remainders 1000 abs-arg)]
-    (if (<= (count parts) (count english-scale-numbers))
-      (let [parts-strs (map format-simple-cardinal parts)
-	    full-str (add-english-scales parts-strs)]
-	(print (str (if (neg? arg) "minus ") full-str))
-	navigator)
-      (format-integer ;; for numbers > 10^63, we fall back on ~D
-       10
-       { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
-       (init-navigator [arg])
-       { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
+  (let [[arg navigator] (next-arg navigator)]
+    (if (= 0 arg)
+      (print "zero")
+      (let [abs-arg (if (neg? arg) (- arg) arg) ; some numbers are too big for Math/abs
+	    parts (remainders 1000 abs-arg)]
+	(if (<= (count parts) (count english-scale-numbers))
+	  (let [parts-strs (map format-simple-cardinal parts)
+		full-str (add-english-scales parts-strs)]
+	    (print (str (if (neg? arg) "minus ") full-str)))
+	  (format-integer ;; for numbers > 10^63, we fall back on ~D
+	   10
+	   { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
+	   (init-navigator [arg])
+	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
+    navigator))
 
 (defn format-ordinal-english [params navigator offsets]
   (throw (FormatException. "Ordinal english numbers with ~:R not implemented yet")))

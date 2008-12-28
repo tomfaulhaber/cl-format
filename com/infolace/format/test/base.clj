@@ -16,6 +16,7 @@
 ;; TODO add tests for ~F, etc.: 0.0, 9.9999 with rounding, 9.9999E99 with rounding
 
 (simple-tests cardinal-tests
+  (cl-format nil "~R" 0) "zero"
   (cl-format nil "~R" 4) "four"
   (cl-format nil "~R" 15) "fifteen"
   (cl-format nil "~R" -15) "minus fifteen"
