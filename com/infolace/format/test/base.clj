@@ -15,6 +15,15 @@
 ;; TODO tests for ~A, ~D, etc.
 ;; TODO add tests for ~F, etc.: 0.0, 9.9999 with rounding, 9.9999E99 with rounding
 
+(simple-tests d-tests
+  (cl-format nil "~D" 0) "0"
+  (cl-format nil "~D" 2e6) "2000000"
+  (cl-format nil "~D" 2000000) "2000000"
+  (cl-format nil "~:D" 2000000) "2,000,000"
+  (cl-format nil "~D" 1/2) "0.5"
+  (cl-format nil "~D" 'fred) "fred"
+)
+
 (simple-tests cardinal-tests
   (cl-format nil "~R" 0) "zero"
   (cl-format nil "~R" 4) "four"
@@ -37,7 +46,37 @@
   (cl-format nil "~R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094)
   "four hundred forty-eight septendecillion, seven hundred ninety sexdecillion, three hundred twenty-nine quindecillion, four hundred eighty quattuordecillion, nine hundred forty-eight tredecillion, two hundred nine duodecillion, three hundred eighty-four undecillion, three hundred eighty-nine decillion, four hundred twenty-nine nonillion, three hundred eighty-four octillion, twenty-nine septillion, three hundred eighty-four sextillion, twenty-nine quintillion, eight hundred forty-two quadrillion, ninety-eight trillion, four hundred twenty billion, nine hundred eighty-nine million, eight hundred forty-two thousand, ninety-four = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094"
   (cl-format nil "~R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094490320942058747587584758375847593475)
-"448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475 = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475")
+  "448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475 = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475"
+  (cl-format nil "~R = ~:*~:D" 2e6)
+  "two million = 2,000,000")
+
+(simple-tests ordinal-tests
+  (cl-format nil "~:R" 0) "zeroth"
+  (cl-format nil "~:R" 4) "fourth"
+  (cl-format nil "~:R" 15) "fifteenth"
+  (cl-format nil "~:R" -15) "minus fifteenth"
+  (cl-format nil "~:R" 25) "twenty-fifth"
+  (cl-format nil "~:R" 20) "twentieth"
+  (cl-format nil "~:R" 200) "two hundredth"
+  (cl-format nil "~:R" 203) "two hundred third"
+
+  (cl-format nil "~:R" 44879032)
+  "forty-four million, eight hundred seventy-nine thousand, thirty-second"
+
+  (cl-format nil "~:R" -44879032)
+  "minus forty-four million, eight hundred seventy-nine thousand, thirty-second"
+  
+  (cl-format nil "~:R = ~:*~:D" 44000032)
+  "forty-four million, thirty-second = 44,000,032"
+
+  (cl-format nil "~:R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094)
+  "four hundred forty-eight septendecillion, seven hundred ninety sexdecillion, three hundred twenty-nine quindecillion, four hundred eighty quattuordecillion, nine hundred forty-eight tredecillion, two hundred nine duodecillion, three hundred eighty-four undecillion, three hundred eighty-nine decillion, four hundred twenty-nine nonillion, three hundred eighty-four octillion, twenty-nine septillion, three hundred eighty-four sextillion, twenty-nine quintillion, eight hundred forty-two quadrillion, ninety-eight trillion, four hundred twenty billion, nine hundred eighty-nine million, eight hundred forty-two thousand, ninety-fourth = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094"
+  (cl-format nil "~:R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094490320942058747587584758375847593475)
+  "448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475th = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,475"
+  (cl-format nil "~:R = ~:*~:D" 448790329480948209384389429384029384029842098420989842094490320942058747587584758375847593471)
+  "448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,471st = 448,790,329,480,948,209,384,389,429,384,029,384,029,842,098,420,989,842,094,490,320,942,058,747,587,584,758,375,847,593,471"
+  (cl-format nil "~:R = ~:*~:D" 2e6)
+  "two millionth = 2,000,000")
 
 (simple-tests ordinal-tests
   (cl-format nil "~:R" 1) "first"
