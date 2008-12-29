@@ -385,7 +385,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; Check to see if a result is an abort (~^) construct
 ;; TODO: move these funcs somewhere more appropriate
-(defn abort-p [context]
+(defn abort? [context]
   (let [token (first context)]
     (or (= :up-arrow token) (= :colon-up-arrow token))))
 
@@ -394,7 +394,7 @@ Note this should only be used for the last one in the sequence"
   (frest
    (map-passing-context 
     (fn [element context]
-      (if (abort-p context)
+      (if (abort? context)
 	[nil context] ; just keep passing it along
 	(let [[params args] (realize-parameter-list (:params element) context)
 	      [params offsets] (unzip-map params)
@@ -1241,7 +1241,7 @@ Note this should only be used for the last one in the sequence"
 	(binding [*out* real-stream]
 	  (map-passing-context 
 	   (fn [element context]
-	     (if (abort-p context)
+	     (if (abort? context)
 	       [nil context]
 	       (let [[params args] (realize-parameter-list 
 				    (:params element) context)
