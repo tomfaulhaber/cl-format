@@ -212,6 +212,15 @@
 ;;; of ~R
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn integral? [x]
+  "returns true if a number is actually an integer (that is, has no fractional part)"
+  (cond
+   (integer? x) true
+   (decimal? x) (>= (.ulp (.stripTrailingZeros (bigdec 0))) 1) ; true iff no fractional part
+   (float? x)   (= x (Math/floor x))
+   (ratio? x)   (= 0 (rem (.numerator x) (.denominator x)))
+   :else        false))
+
 (defn remainders [base val]
   "Return the list of remainders (essentially the 'digits') of val in the given base"
   (reverse 
@@ -425,7 +434,8 @@ Note this should only be used for the last one in the sequence"
   (let [[m e] (float-parts-base f)
 	m1 (rtrim m \0)
 	m2 (ltrim m1 \0)
-	delta (- (count m1) (count m2))]
+	delta (- (count m1) (count m2))
+	e (if (and (pos? (count e)) (= (nth e 0) \+)) (subs e 1) e)]
     (if (empty? m2)
       ["0" 0]
       [m2 (- (Integer/valueOf e) delta)])))
@@ -491,7 +501,7 @@ Note this should only be used for the last one in the sequence"
 	[mantissa exp] (float-parts arg)
 	scaled-exp (+ exp (:k params))
 	add-sign (and (:at params) (not (neg? arg)))
-	prepend-zero (< (Math/abs arg) 1.0)
+	prepend-zero (< -1.0 arg 1.0)
 	append-zero (and (not d) (<= (dec (count mantissa)) scaled-exp))
 	[rounded-mantissa scaled-exp] (round-str mantissa scaled-exp 
 						 d (if w (- w (if add-sign 1 0))))
@@ -525,7 +535,7 @@ Note this should only be used for the last one in the sequence"
 ;; TODO: define ~E representation for Infinity
 (defn exponential-float [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)]
-    (loop [[mantissa exp] (float-parts (Math/abs arg))]
+    (loop [[mantissa exp] (float-parts (if (neg? arg) (- arg) arg))]
       (let [w (:w params)
 	    d (:d params)
 	    e (:e params)
@@ -598,7 +608,7 @@ Note this should only be used for the last one in the sequence"
 ;; TODO: refactor so that float-parts isn't called twice
 (defn general-float [params navigator offsets]
   (let [[arg _] (next-arg navigator)
-	[mantissa exp] (float-parts (Math/abs arg))
+	[mantissa exp] (float-parts (if (neg? arg) (- arg) arg))
 	w (:w params)
 	d (:d params)
 	e (:e params)
