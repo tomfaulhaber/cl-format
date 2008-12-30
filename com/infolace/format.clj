@@ -332,7 +332,9 @@ for improved performance"
 	    (if (and (pos? ten-digit) (pos? unit-digit)) "-")
 	    (if (pos? unit-digit) (nth english-cardinal-units unit-digit)))))))))
 
-(defn add-english-scales [parts]
+(defn add-english-scales [parts offset]
+  "Take a sequence of parts, add scale numbers (e.g., million) and combine into a string
+offset is a factor of 10^3 to multiply by"
   (let [cnt (count parts)]
     (loop [acc []
 	   pos (dec cnt)
@@ -341,11 +343,13 @@ for improved performance"
       (if (nil? remainder)
 	(str (apply str (interpose ", " acc))
 	     (if (and (not (empty? this)) (not (empty? acc))) ", ")
-	     this)
+	     this
+	     (if (and (not (empty? this)) (pos? (+ pos offset)))
+	       (str " " (nth english-scale-numbers (+ pos offset)))))
 	(recur 
 	 (if (empty? this)
 	   acc
-	   (conj acc (str this " " (nth english-scale-numbers pos))))
+	   (conj acc (str this " " (nth english-scale-numbers (+ pos offset)))))
 	 (dec pos)
 	 (first remainder)
 	 (rest remainder))))))
@@ -358,7 +362,7 @@ for improved performance"
 	    parts (remainders 1000 abs-arg)]
 	(if (<= (count parts) (count english-scale-numbers))
 	  (let [parts-strs (map format-simple-cardinal parts)
-		full-str (add-english-scales parts-strs)]
+		full-str (add-english-scales parts-strs 0)]
 	    (print (str (if (neg? arg) "minus ") full-str)))
 	  (format-integer ;; for numbers > 10^63, we fall back on ~D
 	   10
@@ -389,7 +393,37 @@ Note this should only be used for the last one in the sequence"
        (if (pos? hundreds) "th")))))
 
 (defn format-ordinal-english [params navigator offsets]
-  (throw (FormatException. "Ordinal english numbers with ~:R not implemented yet")))
+  (let [[arg navigator] (next-arg navigator)]
+    (if (= 0 arg)
+      (print "zeroth")
+      (let [abs-arg (if (neg? arg) (- arg) arg) ; some numbers are too big for Math/abs
+	    parts (remainders 1000 abs-arg)]
+	(if (<= (count parts) (count english-scale-numbers))
+	  (let [parts-strs (map format-simple-cardinal (drop-last parts))
+		head-str (add-english-scales parts-strs 1)
+		tail-str (format-simple-ordinal (last parts))]
+	    (print (str (if (neg? arg) "minus ") 
+			(cond 
+			 (and (not (empty? head-str)) (not (empty? tail-str))) 
+			 (str head-str ", " tail-str)
+			 
+			 (not (empty? head-str)) (str head-str "th")
+			 :else tail-str))))
+	  (do (format-integer ;; for numbers > 10^63, we fall back on ~D
+	       10
+	       { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
+	       (init-navigator [arg])
+	       { :mincol 0, :padchar 0, :commachar 0 :commainterval 0})
+	      (let [low-two-digits (rem arg 100)
+		    not-teens (or (< 11 low-two-digits) (> 19 low-two-digits))
+		    low-digit (rem low-two-digits 10)]
+		(print (cond 
+			(and (= low-digit 1) not-teens) "st"
+			(and (= low-digit 2) not-teens) "nd"
+			(and (= low-digit 3) not-teens) "rd"
+			:else "th")))))))
+    navigator))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for roman numeral formats (~@R and ~@:R)
