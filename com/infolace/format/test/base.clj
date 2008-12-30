@@ -20,7 +20,7 @@
   (cl-format nil "~D" 2e6) "2000000"
   (cl-format nil "~D" 2000000) "2000000"
   (cl-format nil "~:D" 2000000) "2,000,000"
-  (cl-format nil "~D" 1/2) "0.5"
+  (cl-format nil "~D" 1/2) "1/2"
   (cl-format nil "~D" 'fred) "fred"
 )
 

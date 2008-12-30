@@ -232,10 +232,14 @@
 
 (defn base-str [base val]
   "Return val as a string in the given base"
-  (apply str 
-	 (map 
-	  #(if (< % 10) (char (+ (int \0) %)) (char (+ (int \a) (- % 10)))) 
-	  (remainders base val))))
+  (let [xlated-val (cond
+		    (float? val) (bigdec val)
+		    (ratio? val) (/ (.numerator val) (.denominator val))
+		    :else val)] 
+    (apply str 
+	  (map 
+	   #(if (< % 10) (char (+ (int \0) %)) (char (+ (int \a) (- % 10)))) 
+	   (remainders base val)))))
 
 (def java-base-formats {8 "%o", 10 "%d", 16 "%x"})
 
@@ -243,7 +247,7 @@
   "Return val as a string in the given base, using clojure.core/format if supported
 for improved performance"
   (let [format-str (get java-base-formats base)]
-    (if format-str
+    (if (and format-str (integer? val))
       (clojure.core/format format-str val)
       (base-str base val))))
 
@@ -253,25 +257,29 @@ for improved performance"
     (consume (fn [x] [(reverse (take unit x)) (drop unit x)]) (reverse lis)))))
 
 (defn format-integer [base params arg-navigator offsets]
-  (let [[arg arg-navigator] (next-arg arg-navigator) 
-	neg (neg? arg)
-	pos-arg (if neg (- arg) arg)
-	raw-str (opt-base-str base pos-arg)
-	group-str (if (:colon params)
-		    (let [groups (map #(apply str %) (group-by (:commainterval params) raw-str))
-			  commas (replicate (count groups) (:commachar params))]
-		      (apply str (rest (interleave commas groups))))
-		    raw-str)
-	signed-str (cond
-		    neg (str "-" group-str)
-		    (:at params) (str "+" group-str)
-		    true group-str)
-	padded-str (if (< (.length signed-str) (:mincol params))
-		     (str (apply str (replicate (- (:mincol params) (.length signed-str)) 
-						(:padchar params)))
-			  signed-str)
-		     signed-str)]
-    (print padded-str)
+  (let [[arg arg-navigator] (next-arg arg-navigator)]
+    (if (integral? arg)
+      (let [neg (neg? arg)
+	    pos-arg (if neg (- arg) arg)
+	    raw-str (opt-base-str base pos-arg)
+	    group-str (if (:colon params)
+			(let [groups (map #(apply str %) (group-by (:commainterval params) raw-str))
+			      commas (replicate (count groups) (:commachar params))]
+			  (apply str (rest (interleave commas groups))))
+			raw-str)
+	    signed-str (cond
+			neg (str "-" group-str)
+			(:at params) (str "+" group-str)
+			true group-str)
+	    padded-str (if (< (.length signed-str) (:mincol params))
+			 (str (apply str (replicate (- (:mincol params) (.length signed-str)) 
+						    (:padchar params)))
+			      signed-str)
+			 signed-str)]
+	(print padded-str))
+      (format-ascii print-str {:mincol (:mincol params) :colinc 1 :minpad 0 
+			       :padchar (:padchar params) :at true} 
+		    (init-navigator [arg]) nil))
     arg-navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -416,6 +424,7 @@ Note this should only be used for the last one in the sequence"
 ;;; Support for real number formats
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; TODO - return exponent as int to eliminate double conversion
 (defn float-parts-base
   "Produce string parts for the mantissa (normalized 1-9) and exponent"
   [f]
@@ -424,8 +433,8 @@ Note this should only be used for the last one in the sequence"
     (if (neg? exploc)
       (let [dotloc (.indexOf s (int \.))]
 	(if (neg? dotloc)
-	  [s (.toString (dec (count s)))]
-	  [(str (subs s 0 dotloc) (subs s (inc dotloc))) (dec dotloc)]))
+	  [s (str (dec (count s)))]
+	  [(str (subs s 0 dotloc) (subs s (inc dotloc))) (str (dec dotloc))]))
       [(str (subs s 0 1) (subs s 2 exploc)) (subs s (inc exploc))])))
 
 
