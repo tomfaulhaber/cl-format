@@ -83,7 +83,7 @@
   (cl-format nil "~:R = ~:*~:D" 2e6)
   "two millionth = 2,000,000")
 
-(simple-tests ordinal-tests
+(simple-tests ordinal1-tests
   (cl-format nil "~:R" 1) "first"
   (cl-format nil "~:R" 11) "eleventh"
   (cl-format nil "~:R" 21) "twenty-first"
@@ -91,7 +91,22 @@
   (cl-format nil "~:R" 220) "two hundred twentieth"
   (cl-format nil "~:R" 200) "two hundredth"
   (cl-format nil "~:R" 999) "nine hundred ninety-ninth"
-)
+  )
+
+(simple-tests roman-tests
+  (cl-format nil "~@R" 3) "iii"
+  (cl-format nil "~@R" 4) "iv"
+  (cl-format nil "~@R" 9) "ix"
+  (cl-format nil "~@R" 29) "xxix"
+  (cl-format nil "~@R" 429) "cdxxix"
+  (cl-format nil "~@:R" 429) "ccccxxviiii"
+  (cl-format nil "~@:R" 3429) "mmmccccxxviiii"
+  (cl-format nil "~@R" 3429) "mmmcdxxix"
+  (cl-format nil "~@R" 3479) "mmmcdlxxix"
+  (cl-format nil "~@R" 3409) "mmmcdix"
+  (cl-format nil "~@R" 300) "ccc"
+  (cl-format nil "~@R" 5000) "5,000"
+  (cl-format nil "~@R" "the quick") "the quick")
 
 (simple-tests e-tests
   (cl-format nil "*~E*" 0.0) "*0.0E+0*"

@@ -84,7 +84,7 @@ The following list shows what directives it supports
     ~B: All
     ~O: All
     ~X: All
-    ~R: Everything but Roman numerals.
+    ~R: All
     ~P: All
     ~C: *Not yet*
     ~F: All
@@ -109,7 +109,7 @@ The following list shows what directives it supports
     ~^: All
     ~/: *Not yet*
 
-Next up: Support for roamn numerals ~R, ~\newline, the various column-aware directives.
+Next up: Support for ~\newline, the various column-aware directives.
 ### How to use cl-format ###
 
 #### Installation ####

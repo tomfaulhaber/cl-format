@@ -429,11 +429,45 @@ Note this should only be used for the last one in the sequence"
 ;;; Support for roman numeral formats (~@R and ~@:R)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def old-roman-table
+     [[ "i" "ii" "iii" "iiii" "v" "vi" "vii" "viii" "viiii"]
+      [ "x" "xx" "xxx" "xxxx" "l" "lx" "lxx" "lxxx" "lxxxx"]
+      [ "c" "cc" "ccc" "cccc" "d" "dc" "dcc" "dccc" "dcccc"]
+      [ "m" "mm" "mmm"]])
+
+(def new-roman-table
+     [[ "i" "ii" "iii" "iv" "v" "vi" "vii" "viii" "ix"]
+      [ "x" "xx" "xxx" "xl" "l" "lx" "lxx" "lxxx" "xc"]
+      [ "c" "cc" "ccc" "cd" "d" "dc" "dcc" "dccc" "cm"]
+      [ "m" "mm" "mmm"]])
+
+(defn format-roman [table params navigator offsets]
+  "Format a roman numeral using the specified look-up table"
+  (let [[arg new-navigator] (next-arg navigator)]
+    (if (and (number? arg) (> arg 0) (< arg 4000))
+      (let [digits (remainders 10 arg)]
+	(loop [acc []
+	       pos (dec (count digits))
+	       digits digits]
+	  (if (nil? digits)
+	    (print (apply str acc))
+	    (let [digit (first digits)]
+	      (recur (if (= 0 digit) 
+		       acc 
+		       (conj acc (nth (nth table pos) (dec digit))))
+		     (dec pos)
+		     (rest digits))))))
+      (format-integer ;; for anything <= 0 or > 3999, we fall back on ~D
+	   10
+	   { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
+	   (init-navigator [arg])
+	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
+
 (defn format-old-roman [params navigator offsets]
-  (throw (FormatException. "Old Roman numerals with ~@:R not implemented yet")))
+  (format-roman old-roman-table params navigator offsets))
 
 (defn format-new-roman [params navigator offsets]
-  (throw (FormatException. "New Roman numerals with ~@R not implemented yet")))
+  (format-roman new-roman-table params navigator offsets))
 
 ;; Check to see if a result is an abort (~^) construct
 ;; TODO: move these funcs somewhere more appropriate
