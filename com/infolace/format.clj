@@ -96,6 +96,7 @@
       (recur (inc pos)))))
 
 (defn prerr [& args]
+  "Println to *err*"
   (binding [*out* *err*]
     (apply println args)))
        
@@ -339,7 +340,7 @@ for improved performance"
 	   remainder (rest parts)]
       (if (nil? remainder)
 	(str (apply str (interpose ", " acc))
-	     (if (not (empty? acc)) ", ")
+	     (if (and (not (empty? this)) (not (empty? acc))) ", ")
 	     this)
 	(recur 
 	 (if (empty? this)
