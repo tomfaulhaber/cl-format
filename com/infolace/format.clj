@@ -183,6 +183,39 @@
     [(into {} pairs) new-navigator]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; A ColumnWriter proxy wraps the writer and keeps track of
+;;; current column. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn column-writer [writer]
+  (let [current-column (ref 0)
+	wrapper (proxy [java.io.Writer] []
+		  (close [] (.close writer))
+		  (flush [] (.flush writer))
+		  (write ([cbuf off len] 
+			    (.write writer cbuf off len))
+			 ([x]
+			    (condp 
+			     = ;TODO put these back up when the parser understands condp 
+			     (class x)
+
+			     String 
+			     (let [s #^String x 
+				   nl (.lastIndexOf x (int \newline))]
+			       (dosync (if (neg? nl)
+					 (alter current-column + (count s))
+					 (ref-set current-column (- (count s) nl 1))))
+			       (.write writer s))
+
+			     Integer
+			     (let [c #^Character x]
+			       (dosync (if (= c (int \newline))
+					 (ref-set current-column 0)
+					 (commute current-column inc)))
+			       (.write writer c))))))]
+    [wrapper current-column]))
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions that support individual directives
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
