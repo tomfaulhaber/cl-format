@@ -93,7 +93,7 @@ The following list shows what directives it supports
     ~$: All
     ~%: All
     ~&: *Not yet*
-    ~|: *Not yet*
+    ~|: All
     ~~: All
     ~<newline>: *Not yet*
     ~T: *Not yet*

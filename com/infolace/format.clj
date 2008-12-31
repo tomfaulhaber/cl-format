@@ -968,6 +968,14 @@ Note this should only be used for the last one in the sequence"
        (prn))
      arg-navigator))
 
+  (\| 
+   [ :count [1 Integer] ] 
+   #{ } {}
+   (fn [params arg-navigator offsets]
+     (dotimes [i (:count params)]
+       (print \formfeed))
+     arg-navigator))
+
   (\~ 
    [ :n [1 Integer] ] 
    #{ } {}
