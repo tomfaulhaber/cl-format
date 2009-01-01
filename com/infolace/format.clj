@@ -915,6 +915,12 @@ Note this should only be used for the last one in the sequence"
   navigator)
 
 (defn relative-tabulation [params navigator offsets]
+  (let [colrel (:colnum params) 
+	colinc (:colinc params)
+	start-col (+ colrel @*current-column*)
+	offset (if (pos? colinc) (rem start-col colinc) 0)
+	space-count (+ colrel (if (= 0 offset) 0 (- colinc offset)))]
+    (print (apply str (replicate space-count \space))))
   navigator)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
