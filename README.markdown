@@ -96,7 +96,7 @@ The following list shows what directives it supports
     ~|: All
     ~~: All
     ~<newline>: *Not yet*
-    ~T: *Not yet*
+    ~T: All, except pretty printer versions (~:T, ~:@T)
     ~*: All
     ~?: All
     ~_: *Not yet*

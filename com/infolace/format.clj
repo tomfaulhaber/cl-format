@@ -903,6 +903,20 @@ Note this should only be used for the last one in the sequence"
   (if (not (= 0 @*current-column*))
     (prn)))
 
+(defn absolute-tabulation [params navigator offsets]
+  (let [colnum (:colnum params) 
+	colinc (:colinc params)
+	current @*current-column*
+	space-count (cond
+		     (< current colnum) (- colnum current)
+		     (= colinc 0) 0
+		     :else (- colinc (rem (- current colnum) colinc)))]
+    (print (apply str (replicate space-count \space))))
+  navigator)
+
+(defn relative-tabulation [params navigator offsets]
+  navigator)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
@@ -1036,6 +1050,13 @@ Note this should only be used for the last one in the sequence"
      (let [n (:n params)]
        (print (apply str (replicate n \~)))
        arg-navigator)))
+
+  (\T
+   [ :colnum [1 Integer] :colinc [1 Integer] ] 
+   #{ :at :column } {}
+   (if (:at params)
+     #(relative-tabulation %1 %2 %3)
+     #(absolute-tabulation %1 %2 %3)))
 
   (\* 
    [ :n [1 Integer] ] 
@@ -1381,7 +1402,6 @@ Note this should only be used for the last one in the sequence"
 	 (translate-internal-exception format-str cause)
 	 (throw (RuntimeException. (.getMessage e) e)))))))
 
-;; TODO: traverse sub-formats inside iterations, etc.
 (defn needs-columns [format]
   (loop [format format]
     (if (nil? format)
