@@ -1386,7 +1386,8 @@ Note this should only be used for the last one in the sequence"
   (loop [format format]
     (if (nil? format)
       false
-      (if (:column (:flags (:def (first format))))
+      (if (or (:column (:flags (:def (first format))))
+	      (some needs-columns (first (:clauses (:params (first format))))))
 	true
 	(recur (rest format))))))
 
