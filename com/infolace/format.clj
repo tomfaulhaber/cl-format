@@ -183,39 +183,6 @@
     [(into {} pairs) new-navigator]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; A ColumnWriter proxy wraps the writer and keeps track of
-;;; current column. 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn column-writer [writer]
-  (let [current-column (ref 0)
-	wrapper (proxy [java.io.Writer] []
-		  (close [] (.close writer))
-		  (flush [] (.flush writer))
-		  (write ([cbuf off len] 
-			    (.write writer cbuf off len))
-			 ([x]
-			    (condp 
-			     = ;TODO put these back up when the parser understands condp 
-			     (class x)
-
-			     String 
-			     (let [s #^String x 
-				   nl (.lastIndexOf x (int \newline))]
-			       (dosync (if (neg? nl)
-					 (alter current-column + (count s))
-					 (ref-set current-column (- (count s) nl 1))))
-			       (.write writer s))
-
-			     Integer
-			     (let [c #^Character x]
-			       (dosync (if (= c (int \newline))
-					 (ref-set current-column 0)
-					 (commute current-column inc)))
-			       (.write writer c))))))]
-    [wrapper current-column]))
- 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions that support individual directives
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -894,6 +861,49 @@ Note this should only be used for the last one in the sequence"
 	  (recur (inc count) navigator))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; A ColumnWriter proxy wraps the writer and keeps track of
+;;; current column. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def *current-column* (ref -1))
+
+(defn column-writer [writer]
+  (let [current-column (ref 0)
+	wrapper (proxy [java.io.Writer] []
+		  (close [] (.close writer))
+		  (flush [] (.flush writer))
+		  (write ([cbuf off len] 
+			    (.write writer cbuf off len))
+			 ([x]
+			    (condp 
+			     = ;TODO put these back up when the parser understands condp 
+			     (class x)
+
+			     String 
+			     (let [s #^String x 
+				   nl (.lastIndexOf x (int \newline))]
+			       (dosync (if (neg? nl)
+					 (alter current-column + (count s))
+					 (ref-set current-column (- (count s) nl 1))))
+			       (.write writer s))
+
+			     Integer
+			     (let [c #^Character x]
+			       (dosync (if (= c (int \newline))
+					 (ref-set current-column 0)
+					 (commute current-column inc)))
+			       (.write writer c))))))]
+    [wrapper current-column]))
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for column-aware operations ~&, ~T
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn fresh-line []
+  (if (not (= 0 @*current-column*))
+    (prn)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
 ;;; properties, and the compilation function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -999,6 +1009,16 @@ Note this should only be used for the last one in the sequence"
    (fn [params arg-navigator offsets]
      (dotimes [i (:count params)]
        (prn))
+     arg-navigator))
+
+  (\&
+   [ :count [1 Integer] ] 
+   #{ :column } {}
+   (fn [params arg-navigator offsets]
+     (let [cnt (:count params)]
+       (if (pos? cnt) (fresh-line))
+       (dotimes [i (dec cnt)]
+	(prn)))
      arg-navigator))
 
   (\| 
@@ -1361,13 +1381,25 @@ Note this should only be used for the last one in the sequence"
 	 (translate-internal-exception format-str cause)
 	 (throw (RuntimeException. (.getMessage e) e)))))))
 
+;; TODO: traverse sub-formats inside iterations, etc.
+(defn needs-columns [format]
+  (loop [format format]
+    (if (nil? format)
+      false
+      (if (:column (:flags (:def (first format))))
+	true
+	(recur (rest format))))))
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
 		     (not stream) (new java.io.StringWriter)
 		     (= stream true) *out*
-		     true stream)]
-	(binding [*out* real-stream]
+		     true stream)
+	[wrapped-stream column] (if (needs-columns format)
+				  (column-writer real-stream)
+				  [real-stream *current-column*])]
+	(binding [*out* wrapped-stream
+		  *current-column* column]
 	  (map-passing-context 
 	   (fn [element context]
 	     (if (abort? context)
