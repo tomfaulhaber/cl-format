@@ -447,20 +447,19 @@
 )
 
 (defn type-clash-error [fun nargs argnum right-type wrong-type]
-  (format nil
-          "~&Function ~S requires its ~:[~:R~;~*~] ~ 
-           argument to be of type ~S,~%but it was called ~ 
+  (format nil ;; CLtL has this format string slightly wrong
+          "~&Function ~S requires its ~:[~:R ~;~*~]~
+           argument to be of type ~S,~%but it was called ~
            with an argument of type ~S.~%" 
           fun (= nargs 1) argnum right-type wrong-type)) 
 
 (simple-tests cltl-Newline-tests
   (type-clash-error 'aref nil 2 'integer 'vector)
-"Function AREF requires its second argument to be of type INTEGER, 
-but it was called with an argument of type VECTOR."
+"Function aref requires its second argument to be of type integer,
+but it was called with an argument of type vector.\n"
   (type-clash-error 'car 1 1 'list 'short-float)
-"Function CAR requires its argument to be of type LIST, 
-but it was called with an argument of type SHORT-FLOAT."
-)
+"Function car requires its argument to be of type list,
+but it was called with an argument of type short-float.\n")
 
 (simple-tests cltl-?-tests
   (format nil "~? ~D" "<~A ~D>" '("Foo" 5) 7) "<Foo 5> 7" 
@@ -483,8 +482,8 @@ but it was called with an argument of type SHORT-FLOAT."
     " print length = 5"))
 
 (let [foo "Items:~#[ none~; ~S~; ~S and ~S~
-           ~:;~@{~#[~; and~]
-~S~^,~}~]."]
+           ~:;~@{~#[~; and~] ~
+           ~S~^,~}~]."]
   (simple-tests cltl-bracket1-tests
     (format nil foo) "Items: none." 
     (format nil foo 'foo) "Items: foo." 

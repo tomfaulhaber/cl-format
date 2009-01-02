@@ -89,11 +89,14 @@
       s)))
 
 (defn prefix-count [aseq val]
-  "Return the number of times that val occurs at the start of sequence aseq"
-  (loop [pos 0]
-    (if (or (= pos (count aseq)) (not (= (nth aseq pos) val)))
-      pos
-      (recur (inc pos)))))
+  "Return the number of times that val occurs at the start of sequence aseq, 
+if val is a seq itself, count the number of times any element of val occurs at the
+beginning of aseq"
+  (let [test (if (coll? val) (set val) #{val})]
+    (loop [pos 0]
+     (if (or (= pos (count aseq)) (not (test (nth aseq pos))))
+       pos
+       (recur (inc pos))))))
 
 (defn prerr [& args]
   "Println to *err*"
@@ -1057,6 +1060,14 @@ Note this should only be used for the last one in the sequence"
        (print (apply str (replicate n \~)))
        arg-navigator)))
 
+  (\newline ;; Whitespace supression is handled in the compilation loop
+   [ ] 
+   #{:colon :at} {}
+   (fn [params arg-navigator offsets]
+     (if (:at params)
+       (prn))
+     arg-navigator))
+
   (\T
    [ :colnum [1 Integer] :colinc [1 Integer] ] 
    #{ :at :column } {}
@@ -1266,7 +1277,14 @@ Note this should only be used for the last one in the sequence"
     (if (not def)
       (throw (InternalFormatException. (str "Directive \"" directive "\" is undefined") offset)))
     [(struct compiled-directive ((:generator-fn def) params offset) def params offset)
-     [ (subs rest 1) (inc offset)]]))
+     (let [remainder (subs rest 1) 
+	   offset (inc offset)
+	   trim? (and (= \newline (:directive def))
+		      (not (:colon params)))
+	   trim-count (if trim? (prefix-count remainder [\space \tab]) 0)
+	   remainder (subs remainder trim-count)
+	   offset (+ offset trim-count)]
+       [remainder offset])]))
     
 (defn compile-raw-string [s offset]
   (struct compiled-directive (fn [_ a _] (print s) a) nil nil offset))
@@ -1385,6 +1403,9 @@ Note this should only be used for the last one in the sequence"
     (throw (FormatException. message))))
 
 (defn compile-format [ format-str ]
+"Compiles format-str into a compiled format which can be used as an argument
+to cl-format just like a plain format string. Use this function for improved 
+performance when you're using the same format string repeatedly"
   (try
    (process-nesting
     (first 
@@ -1409,6 +1430,8 @@ Note this should only be used for the last one in the sequence"
 	 (throw (RuntimeException. (.getMessage e) e)))))))
 
 (defn needs-columns [format]
+  "determine whether a given format string has any directives that depend on the
+column number"
   (loop [format format]
     (if (nil? format)
       false

@@ -95,7 +95,7 @@ The following list shows what directives it supports
     ~&: All
     ~|: All
     ~~: All
-    ~<newline>: *Not yet*
+    ~<newline>: All
     ~T: All, except pretty printer versions (~:T, ~:@T)
     ~*: All
     ~?: All
@@ -109,7 +109,9 @@ The following list shows what directives it supports
     ~^: All
     ~/: *Not yet*
 
-Next up: Support for ~\newline, the various column-aware directives.
+Next up: Support for "persistent" column-aware streams, case
+modification ~(...~), remove custom exception types.
+ 
 ### How to use cl-format ###
 
 #### Installation ####
