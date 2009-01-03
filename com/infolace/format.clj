@@ -20,8 +20,7 @@
   [stream format-in & args]
   (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
 	navigator (init-navigator args) ]
-    (execute-format stream compiled-format navigator))
-)
+    (execute-format stream compiled-format navigator)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helper functions for digesting formats in the various
@@ -446,7 +445,7 @@ Note this should only be used for the last one in the sequence"
 
 (defn format-roman [table params navigator offsets]
   "Format a roman numeral using the specified look-up table"
-  (let [[arg new-navigator] (next-arg navigator)]
+  (let [[arg navigator] (next-arg navigator)]
     (if (and (number? arg) (> arg 0) (< arg 4000))
       (let [digits (remainders 10 arg)]
 	(loop [acc []
@@ -464,7 +463,8 @@ Note this should only be used for the last one in the sequence"
 	   10
 	   { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
 	   (init-navigator [arg])
-	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
+	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))
+    navigator))
 
 (defn format-old-roman [params navigator offsets]
   (format-roman old-roman-table params navigator offsets))
@@ -863,6 +863,115 @@ Note this should only be used for the last one in the sequence"
 	  (execute-sub-format clause (init-navigator sublist) navigator)
 	  (recur (inc count) navigator))))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for case modification with ~(...~).
+;;; We do this by wrapping the underlying writer with
+;;; a special writer to do the appropriate modification. This
+;;; allows us to support arbitrary-sized output and sources
+;;; that may block.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn downcase-writer 
+    "Returns a proxy that wraps writer, converting all characters to lower case"
+    [writer]
+  (proxy [java.io.Writer] []
+    (close [] (.close writer))
+    (flush [] (.flush writer))
+    (write ([cbuf off len] 
+	      (.write writer cbuf off len))
+	   ([x]
+	      (condp 
+	       = ;TODO put these back up when the parser understands condp 
+	       (class x)
+
+	       String 
+	       (let [s #^String x]
+		 (.write writer (.toLowerCase s)))
+
+	       Integer
+	       (let [c #^Character x]
+		 (.write writer (int (Character/toLowerCase (char c))))))))))
+
+(defn upcase-writer 
+  "Returns a proxy that wraps writer, converting all characters to upper case"
+  [writer]
+  (proxy [java.io.Writer] []
+    (close [] (.close writer))
+    (flush [] (.flush writer))
+    (write ([cbuf off len] 
+	      (.write writer cbuf off len))
+	   ([x]
+	      (condp 
+	       = ;TODO put these back up when the parser understands condp 
+	       (class x)
+
+	       String 
+	       (let [s #^String x]
+		 (.write writer (.toUpperCase s)))
+
+	       Integer
+	       (let [c #^Character x]
+		 (.write writer (int (Character/toUpperCase (char c))))))))))
+
+(defn capitalize-word-writer ;; TODO implement
+  "Returns a proxy that wraps writer, captializing all words"
+  [writer]
+  (proxy [java.io.Writer] []
+    (close [] (.close writer))
+    (flush [] (.flush writer))
+    (write ([cbuf off len] 
+	      (.write writer cbuf off len))
+	   ([x]
+	      (condp 
+	       = ;TODO put these back up when the parser understands condp 
+	       (class x)
+
+	       String 
+	       (let [s #^String x]
+		 (.write writer (.toUpperCase s)))
+
+	       Integer
+	       (let [c #^Character x]
+		 (.write writer (int (Character/toUpperCase (char c))))))))))
+
+(defn init-cap-writer
+  "Returns a proxy that wraps writer, capitalizing the first word"
+  [writer]
+  (let [capped (ref false)] 
+    (proxy [java.io.Writer] []
+      (close [] (.close writer))
+      (flush [] (.flush writer))
+      (write ([cbuf off len] 
+		(.write writer cbuf off len))
+	     ([x]
+		(condp = (class x)
+		 String 
+		 (let [s #^String (.toLowerCase x)]
+		   (if (not @capped) 
+		     (let [m (re-matcher #"\S" s)
+			   _ (re-find m)
+			   offset (.start m)]
+		       (.write writer 
+			       (str (subs s 0 offset) 
+				    (Character/toUpperCase (nth s offset))
+				    (.toLowerCase (subs s (inc offset)))))
+		       (dosync (ref-set capped true))) 
+		     (.write writer (.toLowerCase s))))
+
+		 Integer
+		 (let [c #^Character (char x)]
+		   (if (and (not @capped) (Character/isLetter c))
+		     (do
+		       (dosync (ref-set capped true))
+		       (.write writer (int (Character/toUpperCase c))))
+		     (.write writer (int (Character/toLowerCase c)))))))))))
+
+(defn modify-case [make-writer params navigator offsets]
+  (let [clause (first (:clauses params))]
+    (binding [*out* (make-writer *out*)] 
+      (execute-sub-format clause navigator (:base-args params)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; A ColumnWriter proxy wraps the writer and keeps track of
 ;;; current column. 
@@ -984,7 +1093,7 @@ Note this should only be used for the last one in the sequence"
     :commainterval [ 3 Integer]]
    #{ :at :colon :both } {}
    (do
-     (cond				; ~R is overloaded with bizareness
+     (cond			    ; ~R is overloaded with bizareness
       (first (:base params))     #(format-integer (:base %1) %1 %2 %3)
       (and (:at params) (:colon params))   #(format-old-roman %1 %2 %3)
       (:at params)               #(format-new-roman %1 %2 %3)
@@ -1041,7 +1150,7 @@ Note this should only be used for the last one in the sequence"
      (let [cnt (:count params)]
        (if (pos? cnt) (fresh-line))
        (dotimes [i (dec cnt)]
-	(prn)))
+	 (prn)))
      arg-navigator))
 
   (\| 
@@ -1089,16 +1198,35 @@ Note this should only be used for the last one in the sequence"
    [ ] 
    #{ :at } {}
    (if (:at params)
-     (fn [params navigator offsets] ; args from main arg list
+     (fn [params navigator offsets]	; args from main arg list
        (let [[subformat navigator] (get-format-arg navigator)]
 	 (execute-sub-format subformat navigator  (:base-args params))))
-     (fn [params navigator offsets] ; args from sub-list
+     (fn [params navigator offsets]	; args from sub-list
        (let [[subformat navigator] (get-format-arg navigator)
 	     [subargs navigator] (next-arg navigator)
 	     sub-navigator (init-navigator subargs)]
 	 (execute-sub-format subformat sub-navigator (:base-args params))
 	 navigator))))
        
+
+  (\(
+   [ ]
+   #{ :colon :at :both} { :right \), :allows-separator nil, :else nil }
+   (let [mod-case-writer (cond
+			  (and (:at params) (:colon params))
+			  upcase-writer
+
+			  (:colon params)
+			  capitalize-word-writer
+
+			  (:at params)
+			  init-cap-writer
+
+			  :else
+			  downcase-writer)]
+     #(modify-case mod-case-writer %1 %2 %3)))
+
+  (\) [] #{} {} nil) 
 
   (\[
    [ :selector [nil Integer] ]
@@ -1113,9 +1241,9 @@ Note this should only be used for the last one in the sequence"
     true
     choice-conditional))
 
-   (\; [] #{ :colon } { :separator true } nil) 
+  (\; [] #{ :colon } { :separator true } nil) 
    
-   (\] [] #{} {} nil) 
+  (\] [] #{} {} nil) 
 
   (\{
    [ :max-iterations [nil Integer] ]
@@ -1134,12 +1262,12 @@ Note this should only be used for the last one in the sequence"
     iterate-sublist))
 
    
-   (\} [] #{:colon} {} nil) 
+  (\} [] #{:colon} {} nil) 
 
-   ;; TODO: detect errors in cases where colon not allowed
-   (\^ [:arg1 [nil Integer] :arg2 [nil Integer] :arg3 [nil Integer]] 
-    #{:colon} {} 
-    (fn [params navigator offsets]
+  ;; TODO: detect errors in cases where colon not allowed
+  (\^ [:arg1 [nil Integer] :arg2 [nil Integer] :arg3 [nil Integer]] 
+   #{:colon} {} 
+   (fn [params navigator offsets]
      (let [arg1 (:arg1 params)
 	   arg2 (:arg2 params)
 	   arg3 (:arg3 params)
@@ -1154,12 +1282,12 @@ Note this should only be used for the last one in the sequence"
 	arg1
 	(if (= arg1 0) [exit navigator] navigator)
 
-	true  ; TODO: handle looking up the arglist stack for info
+	true	  ; TODO: handle looking up the arglist stack for info
 	(if (if (:colon params) 
 	      (nil? (:rest (:base-args params)))
 	      (nil? (:rest navigator)))
 	  [exit navigator] navigator))))) 
-)
+  )
 
 (defn my-status [] 
   (println "There are" (count directive-table) "out of 33 directives implemented"))
@@ -1381,9 +1509,10 @@ Note this should only be used for the last one in the sequence"
 		false remainder]]))))
     [{ :clauses [] } false remainder])))
 
-(defn process-nesting [format]
+(defn process-nesting
   "Take a linearly compiled format and process the bracket directives to give it 
    the appropriate tree structure"
+  [format]
   (first
    (consume 
     (fn [remainder]
@@ -1402,10 +1531,11 @@ Note this should only be used for the last one in the sequence"
 		     (apply str (replicate (.pos e) \space)) "^" \newline)]
     (throw (FormatException. message))))
 
-(defn compile-format [ format-str ]
-"Compiles format-str into a compiled format which can be used as an argument
+(defn compile-format 
+  "Compiles format-str into a compiled format which can be used as an argument
 to cl-format just like a plain format string. Use this function for improved 
 performance when you're using the same format string repeatedly"
+  [ format-str ]
   (try
    (process-nesting
     (first 
@@ -1429,9 +1559,10 @@ performance when you're using the same format string repeatedly"
 	 (translate-internal-exception format-str cause)
 	 (throw (RuntimeException. (.getMessage e) e)))))))
 
-(defn needs-columns [format]
-  "determine whether a given format string has any directives that depend on the
+(defn needs-columns 
+  "determine whether a given compiled format has any directives that depend on the
 column number"
+  [format]
   (loop [format format]
     (if (nil? format)
       false

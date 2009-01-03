@@ -102,15 +102,15 @@ The following list shows what directives it supports
     ~_: *Not yet*
     ~W: *Not yet*
     ~I: *Not yet*
-    ~(*str*~): *Not yet*
+    ~(*str*~): All
     ~[*str0*~;*str1*~;*...*~;*strn*~]: All
     ~{*str*~}: All
     ~<*str*~>: *Not yet*
     ~^: All
     ~/: *Not yet*
 
-Next up: Support for "persistent" column-aware streams, case
-modification ~(...~), remove custom exception types.
+Next up: Support for "persistent" column-aware streams, justification
+~<...~>, remove custom exception types.
  
 ### How to use cl-format ###
 

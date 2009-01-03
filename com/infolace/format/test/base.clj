@@ -105,7 +105,9 @@
   (cl-format nil "~@R" 3479) "mmmcdlxxix"
   (cl-format nil "~@R" 3409) "mmmcdix"
   (cl-format nil "~@R" 300) "ccc"
+  (cl-format nil "~@R ~D" 300 20) "ccc 20"
   (cl-format nil "~@R" 5000) "5,000"
+  (cl-format nil "~@R ~D" 5000 20) "5,000 20"
   (cl-format nil "~@R" "the quick") "the quick")
 
 (simple-tests e-tests
