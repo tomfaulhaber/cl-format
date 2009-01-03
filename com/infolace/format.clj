@@ -950,13 +950,15 @@ Note this should only be used for the last one in the sequence"
 		 (let [s #^String (.toLowerCase x)]
 		   (if (not @capped) 
 		     (let [m (re-matcher #"\S" s)
-			   _ (re-find m)
-			   offset (.start m)]
-		       (.write writer 
-			       (str (subs s 0 offset) 
-				    (Character/toUpperCase (nth s offset))
-				    (.toLowerCase (subs s (inc offset)))))
-		       (dosync (ref-set capped true))) 
+			   match (re-find m)
+			   offset (and match (.start m))]
+		       (if offset
+			 (do (.write writer 
+				   (str (subs s 0 offset) 
+					(Character/toUpperCase (nth s offset))
+					(.toLowerCase (subs s (inc offset)))))
+			   (dosync (ref-set capped true)))
+			 (.write writer s))) 
 		     (.write writer (.toLowerCase s))))
 
 		 Integer

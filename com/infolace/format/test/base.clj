@@ -521,7 +521,8 @@ but it was called with an argument of type short-float.\n")
   (format nil "~10:@<foobar~>")           "  foobar  ")
 
 (let [donestr "Done.~^  ~D warning~:P.~^  ~D error~:P."
-      tellstr "~@(~@[~R~]~^ ~A.~)"]
+      tellstr "~@(~@[~R~^ ~]~A.~)"] ;; The CLtL example is a little wrong here
+
   (simple-tests cltl-up-tests
     (format nil donestr) "Done." 
     (format nil donestr 3) "Done.  3 warnings." 
