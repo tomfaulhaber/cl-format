@@ -432,16 +432,16 @@ Note this should only be used for the last one in the sequence"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def old-roman-table
-     [[ "i" "ii" "iii" "iiii" "v" "vi" "vii" "viii" "viiii"]
-      [ "x" "xx" "xxx" "xxxx" "l" "lx" "lxx" "lxxx" "lxxxx"]
-      [ "c" "cc" "ccc" "cccc" "d" "dc" "dcc" "dccc" "dcccc"]
-      [ "m" "mm" "mmm"]])
+     [[ "I" "II" "III" "IIII" "V" "VI" "VII" "VIII" "VIIII"]
+      [ "X" "XX" "XXX" "XXXX" "L" "LX" "LXX" "LXXX" "LXXXX"]
+      [ "C" "CC" "CCC" "CCCC" "D" "DC" "DCC" "DCCC" "DCCCC"]
+      [ "M" "MM" "MMM"]])
 
 (def new-roman-table
-     [[ "i" "ii" "iii" "iv" "v" "vi" "vii" "viii" "ix"]
-      [ "x" "xx" "xxx" "xl" "l" "lx" "lxx" "lxxx" "xc"]
-      [ "c" "cc" "ccc" "cd" "d" "dc" "dcc" "dccc" "cm"]
-      [ "m" "mm" "mmm"]])
+     [[ "I" "II" "III" "IV" "V" "VI" "VII" "VIII" "IX"]
+      [ "X" "XX" "XXX" "XL" "L" "LX" "LXX" "LXXX" "XC"]
+      [ "C" "CC" "CCC" "CD" "D" "DC" "DCC" "DCCC" "CM"]
+      [ "M" "MM" "MMM"]])
 
 (defn format-roman [table params navigator offsets]
   "Format a roman numeral using the specified look-up table"
