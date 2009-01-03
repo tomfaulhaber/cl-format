@@ -914,26 +914,56 @@ Note this should only be used for the last one in the sequence"
 	       (let [c #^Character x]
 		 (.write writer (int (Character/toUpperCase (char c))))))))))
 
+(defn capitalize-string
+  "Capitalizes the words in a string. If first? is false, don't capitalize the 
+first character of the string even if it's a letter."
+  [s first?]
+  (let [f (first s) 
+	s (if (and first? f (Character/isLetter f))
+	    (str (Character/toUpperCase f) (subs s 1))
+	    s)]
+    (apply str 
+	   (first
+	    (consume
+	     (fn [s]
+	       (if (nil? s)
+		 [nil nil]
+		 (let [m (re-matcher #"\W\w" s)
+		       match (re-find m)
+		       offset (and match (inc (.start m)))]
+		   (if offset
+		     [(str (subs s 0 offset) 
+			   (Character/toUpperCase (nth s offset)))
+		      (subs s (inc offset))]
+		     [s nil]))))
+	     s)))))
+
 (defn capitalize-word-writer ;; TODO implement
   "Returns a proxy that wraps writer, captializing all words"
   [writer]
-  (proxy [java.io.Writer] []
-    (close [] (.close writer))
-    (flush [] (.flush writer))
-    (write ([cbuf off len] 
-	      (.write writer cbuf off len))
-	   ([x]
-	      (condp 
-	       = ;TODO put these back up when the parser understands condp 
-	       (class x)
+  (let [last-was-whitespace? (ref true)] 
+    (proxy [java.io.Writer] []
+     (close [] (.close writer))
+     (flush [] (.flush writer))
+     (write ([cbuf off len] 
+	       (.write writer cbuf off len))
+	    ([x]
+	       (condp 
+		= ;TODO put these back up when the parser understands condp 
+		(class x)
 
-	       String 
-	       (let [s #^String x]
-		 (.write writer (.toUpperCase s)))
+		String 
+		(let [s #^String x]
+		  (.write writer (capitalize-string (.toLowerCase s) @last-was-whitespace?))
+		  (dosync 
+		   (ref-set last-was-whitespace? 
+			    (Character/isWhitespace (nth s (dec (count s)))))))
 
-	       Integer
-	       (let [c #^Character x]
-		 (.write writer (int (Character/toUpperCase (char c))))))))))
+		Integer
+		(let [c #^Character (char x)]
+		  (let [mod-c (if @last-was-whitespace? (Character/toUpperCase c) c)] 
+		   (.write writer (int mod-c))
+		   (dosync (ref-set last-was-whitespace? (Character/isWhitespace c)))))))))))
 
 (defn init-cap-writer
   "Returns a proxy that wraps writer, capitalizing the first word"
