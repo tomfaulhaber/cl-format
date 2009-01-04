@@ -795,9 +795,10 @@ Note this should only be used for the last one in the sequence"
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(recur (inc count) 
-	       (execute-sub-format clause args (:base-args params))
-	       (:pos args))))))
+	(let [iter-result (execute-sub-format clause args (:base-args params))] 
+	  (if (= :up-arrow (first iter-result))
+	    navigator
+	    (recur (inc count) iter-result (:pos args))))))))
 
 ;; ~:{...~} with the colon treats the next argument as a list of sublists. Each of the
 ;; sublists is used as the arglist for a single iteration.
@@ -839,10 +840,11 @@ Note this should only be used for the last one in the sequence"
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(recur 
-	 (inc count) 
-	 (execute-sub-format clause navigator (:base-args params)) 
-	 (:pos navigator))))))
+	(let [iter-result (execute-sub-format clause navigator (:base-args params))] 
+	  (if (= :up-arrow (first iter-result))
+	    (frest iter-result)
+	    (recur 
+	     (inc count) iter-result (:pos navigator))))))))
 
 ;; ~@:{...~} with both colon and at sign uses the main argument list as a set of sublists, one
 ;; of which is consumed with each iteration
@@ -859,10 +861,11 @@ Note this should only be used for the last one in the sequence"
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
-	(let [[sublist navigator] (next-arg-or-nil navigator)]
-	  (execute-sub-format clause (init-navigator sublist) navigator)
-	  (recur (inc count) navigator))))))
-
+	(let [[sublist navigator] (next-arg-or-nil navigator)
+	      iter-result (execute-sub-format clause (init-navigator sublist) navigator)]
+	  (if (= :colon-up-arrow (first iter-result))
+	    navigator
+	    (recur (inc count) navigator)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for case modification with ~(...~).
@@ -873,8 +876,8 @@ Note this should only be used for the last one in the sequence"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn downcase-writer 
-    "Returns a proxy that wraps writer, converting all characters to lower case"
-    [writer]
+  "Returns a proxy that wraps writer, converting all characters to lower case"
+  [writer]
   (proxy [java.io.Writer] []
     (close [] (.close writer))
     (flush [] (.flush writer))
