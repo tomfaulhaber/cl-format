@@ -878,17 +878,42 @@ Note this should only be used for the last one in the sequence"
     (if (nil? clauses)
       [acc navigator]
       (let [clause (first clauses)
-	    sw (java.io.StringWriter.)]
-	(binding [*out* sw]
-	  (let [iter-result (execute-sub-format clause navigator base-navigator)]
-	    (if (= :up-arrow (first iter-result))
-	      [acc (second iter-result)]
-	      (recur (rest clauses) (conj acc (.toString sw)) iter-result))))))))
+	    [iter-result result-str] (binding [*out* (java.io.StringWriter.)]
+				       [(execute-sub-format clause navigator base-navigator) 
+					(.toString *out*)])]
+	(if (= :up-arrow (first iter-result))
+	  [acc (second iter-result)]
+	  (recur (rest clauses) (conj acc result-str) iter-result))))))
 
+;; TODO support for ~:; constructions
 (defn justify-clauses [params navigator offsets]
   (let [clauses (:clauses params)
-	[strs navigator] (render-clauses clauses navigator (:base-args params))] 
-    (prlabel jc strs)
+	[strs navigator] (render-clauses clauses navigator (:base-args params))
+	slots (max 1
+		   (+ (dec (count strs)) (if (:colon params) 1 0) (if (:at params) 1 0)))
+	chars (reduce + (map count strs))
+	mincol (:mincol params)
+	result-columns mincol ; TODO: correct this if chars > mincol + (slots * minpad)
+	minpad (:minpad params)
+	total-pad (- result-columns chars)
+	pad (max minpad (quot total-pad slots))
+	extra-pad (- total-pad (* pad slots))
+	pad-str (apply str (replicate pad (:padchar params)))]
+    (loop [slots slots
+	   extra-pad extra-pad
+	   strs strs
+	   pad-only (or (:colon params)
+			(and (= (count strs) 1) (not (:at params))))]
+      (if strs
+	(do
+	  (print (str (if (not pad-only) (first strs))
+		      (if (or pad-only (rest strs) (:at params)) pad-str)
+		      (if (pos? extra-pad) (:padchar params))))
+	  (recur 
+	   (dec slots)
+	   (dec extra-pad)
+	   (if pad-only strs (rest strs))
+	   false))))
     navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
