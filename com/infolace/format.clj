@@ -868,6 +868,30 @@ Note this should only be used for the last one in the sequence"
 	    (recur (inc count) navigator)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for the '~<...~>' justification directive
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn render-clauses [clauses navigator base-navigator]
+  (loop [clauses clauses
+	 acc []
+	 navigator navigator]
+    (if (nil? clauses)
+      [acc navigator]
+      (let [clause (first clauses)
+	    sw (java.io.StringWriter.)]
+	(binding [*out* sw]
+	  (let [iter-result (execute-sub-format clause navigator base-navigator)]
+	    (if (= :up-arrow (first iter-result))
+	      [acc (second iter-result)]
+	      (recur (rest clauses) (conj acc (.toString sw)) iter-result))))))))
+
+(defn justify-clauses [params navigator offsets]
+  (let [clauses (:clauses params)
+	[strs navigator] (render-clauses clauses navigator (:base-args params))] 
+    (prlabel jc strs)
+    navigator))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for case modification with ~(...~).
 ;;; We do this by wrapping the underlying writer with
 ;;; a special writer to do the appropriate modification. This
@@ -1282,7 +1306,7 @@ first character of the string even if it's a letter."
 
   (\{
    [ :max-iterations [nil Integer] ]
-   #{ :colon :at :both} { :right \}, :allows-separator true, :else :last }
+   #{ :colon :at :both} { :right \}, :allows-separator false }
    (cond
     (and (:at params) (:colon params))
     iterate-main-sublists
@@ -1298,6 +1322,13 @@ first character of the string even if it's a letter."
 
    
   (\} [] #{:colon} {} nil) 
+
+  (\<
+   [:mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character]]
+   #{:colon :at :both} { :right \>, :allows-separator true, :else :first }
+   justify-clauses)
+
+  (\> [] #{:colon} {} nil) 
 
   ;; TODO: detect errors in cases where colon not allowed
   (\^ [:arg1 [nil Integer] :arg2 [nil Integer] :arg3 [nil Integer]] 
@@ -1608,7 +1639,7 @@ column number"
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
-		     (not stream) (new java.io.StringWriter)
+		     (not stream) (java.io.StringWriter.)
 		     (= stream true) *out*
 		     true stream)
 	[wrapped-stream column] (if (needs-columns format)
