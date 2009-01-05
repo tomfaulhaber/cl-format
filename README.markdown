@@ -60,14 +60,9 @@ the commas. Yuck!
 
 ### Current Status ###
 
-cl-format currently supports most of the functionality of Common
+cl-format currently supports almost all of the functionality of Common
 Lisp's format function including iteration, conditionals, and rich
-options for displaying real and integer values. What isn't done yet
-is under active development and will be done soon (yes, even Roman
-numerals).
-
-If you have specific features you're anxious to use, contact me and
-I'll give them priority.
+options for displaying real and integer values. 
 
 If you find a bug in a directive that I say is supported, drop me a line
 with a chunk of code that exhibits the bug and the version of
@@ -76,41 +71,22 @@ cl-format you found it in and I'll try to get it fixed.
 I also intend to have good built-in documentation for the directives,
 but I haven't built that yet.
 
-The following list shows what directives it supports
+This implementation now supports all of the directives described in
+CLtLv2, except ~C and the ~:; separator in ~<...~> justification
+brackets.
 
-    ~A: All
-    ~S: All
-    ~D: All
-    ~B: All
-    ~O: All
-    ~X: All
-    ~R: All
-    ~P: All
-    ~C: *Not yet*
-    ~F: All
-    ~E: All
-    ~G: All
-    ~$: All
-    ~%: All
-    ~&: All
-    ~|: All
-    ~~: All
-    ~<newline>: All
-    ~T: All, except pretty printer versions (~:T, ~:@T)
-    ~*: All
-    ~?: All
-    ~_: *Not yet*
-    ~W: *Not yet*
-    ~I: *Not yet*
-    ~(*str*~): All
-    ~[*str0*~;*str1*~;*...*~;*strn*~]: All
-    ~{*str*~}: All
-    ~<*str*~>: *Not yet*
-    ~^: All
-    ~/: *Not yet*
+Pretty printing isn't supported (at least at the moment) and with it,
+the following directives specified as part of the X3J13 updates are
+not supported: ~:T and ~@:T (but all other forms of ~T work), ~_, ~W,
+~I, and extensions with ~/.
 
-Next up: Support for "persistent" column-aware streams, justification
-~<...~>, remove custom exception types.
+Next up: 
+* Support for ~<...~:;....~> EOL detection
+* The ~C directive
+* Support for "persistent" column-aware streams, 
+* custom exception types, 
+* import tests from CLISP and SBCL.
+* Think about pretty printing
  
 ### How to use cl-format ###
 

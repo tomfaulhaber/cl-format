@@ -357,6 +357,23 @@
     (cl-format nil "~{~a~3,v,4^, ~}" lseq) "a, quick, brown, fox"
 ))
 
+(simple-tests angle-bracket-tests
+  (cl-format nil "~<foo~;bar~;baz~>") "foobarbaz"
+  (cl-format nil "~20<foo~;bar~;baz~>") "foo      bar     baz"
+  (cl-format nil "~,,2<foo~;bar~;baz~>") "foo  bar  baz"
+  (cl-format nil "~20<~A~;~A~;~A~>" "foo" "bar" "baz") "foo      bar     baz"
+  (cl-format nil "~20:<~A~;~A~;~A~>" "foo" "bar" "baz") "    foo    bar   baz"
+  (cl-format nil "~20@<~A~;~A~;~A~>" "foo" "bar" "baz") "foo    bar    baz   "
+  (cl-format nil "~20@:<~A~;~A~;~A~>" "foo" "bar" "baz") "   foo   bar   baz  "
+  (cl-format nil "~10,,2<~A~;~A~;~A~>" "foo" "bar" "baz") "foo  bar  baz"
+  (cl-format nil "~10,10,2<~A~;~A~;~A~>" "foo" "bar" "baz") "foo      bar     baz"
+  (cl-format nil "~10,10<~A~;~A~;~A~>" "foo" "bar" "baz") "foo barbaz"
+  (cl-format nil "~20<~A~;~^~A~;~^~A~>" "foo" "bar" "baz") "foo      bar     baz"
+  (cl-format nil "~20<~A~;~^~A~;~^~A~>" "foo" "bar") "foo              bar"
+  (cl-format nil "~20@<~A~;~^~A~;~^~A~>" "foo") "foo                 "
+  (cl-format nil "~20:<~A~;~^~A~;~^~A~>" "foo") "                 foo"
+)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following tests are the various examples from the format
 ;; documentation in Common Lisp, the Language, 2nd edition, Chapter 22.3

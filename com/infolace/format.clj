@@ -893,8 +893,13 @@ Note this should only be used for the last one in the sequence"
 		   (+ (dec (count strs)) (if (:colon params) 1 0) (if (:at params) 1 0)))
 	chars (reduce + (map count strs))
 	mincol (:mincol params)
-	result-columns mincol ; TODO: correct this if chars > mincol + (slots * minpad)
 	minpad (:minpad params)
+	colinc (:colinc params)
+	minout (+ chars (* slots minpad))
+	result-columns (if (<= minout mincol) 
+			 mincol
+			 (+ mincol (* colinc
+				      (+ 1 (quot (- minout mincol 1) colinc)))))
 	total-pad (- result-columns chars)
 	pad (max minpad (quot total-pad slots))
 	extra-pad (- total-pad (* pad slots))
