@@ -35,6 +35,7 @@
       <sysproperty key="clojure.compile.path" value="${build}"/>
       <arg value="com.infolace.format.FormatException"/>
       <arg value="com.infolace.format.InternalFormatException"/>
+      <arg value="com.infolace.format.ColumnWriter"/>
 		</java>
   </target>
 </project>
