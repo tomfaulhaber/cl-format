@@ -1570,7 +1570,7 @@ first character of the string even if it's a letter."
 
 	 (= type :else)
 	 (cond
-	  saw-else
+	  (:else clause-map)
 	  (throw (InternalFormatException.
 		  "Two else clauses (\"~:;\") inside bracket construction." offset))
 	 
@@ -1584,10 +1584,13 @@ first character of the string even if it's a letter."
 		  "The else clause (\"~:;\") is only allowed in the first position for this directive." 
 		  offset))
 	 
-	  true	  ; the else clause is next, this was a regular clause
-	  ; TODO support ~:; first for justification
-	  [true [(merge-with concat clause-map { :clauses [clause] })
-		true remainder]])
+	  true	  ; if the ~:; is in the last position, the else clause
+		  ; is next, this was a regular clause
+	  (if (= :first (:else bracket-info))
+	    [true [(merge-with concat clause-map { :else [clause] })
+		  false remainder]]
+	    [true [(merge-with concat clause-map { :clauses [clause] })
+		  true remainder]]))
 
 	 (= type :separator)
 	 (cond
