@@ -7,7 +7,8 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns com.infolace.format
-  (:import [com.infolace.format FormatException InternalFormatException]))
+  (:import [com.infolace.format FormatException InternalFormatException
+	    ColumnWriter]))
 
 ;;; Forward references
 (declare compile-format)
@@ -1062,52 +1063,26 @@ first character of the string even if it's a letter."
       (execute-sub-format clause navigator (:base-args params)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; A ColumnWriter proxy wraps the writer and keeps track of
-;;; current column. 
+;;; If necessary, wrap the writer in a ColumnWriter object
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def *current-column* (ref -1))
-
 (defn column-writer [writer]
-  (let [current-column (ref 0)
-	wrapper (proxy [java.io.Writer] []
-		  (close [] (.close writer))
-		  (flush [] (.flush writer))
-		  (write ([cbuf off len] 
-			    (.write writer cbuf off len))
-			 ([x]
-			    (condp 
-			     = ;TODO put these back up when the parser understands condp 
-			     (class x)
-
-			     String 
-			     (let [s #^String x 
-				   nl (.lastIndexOf x (int \newline))]
-			       (dosync (if (neg? nl)
-					 (alter current-column + (count s))
-					 (ref-set current-column (- (count s) nl 1))))
-			       (.write writer s))
-
-			     Integer
-			     (let [c #^Character x]
-			       (dosync (if (= c (int \newline))
-					 (ref-set current-column 0)
-					 (commute current-column inc)))
-			       (.write writer c))))))]
-    [wrapper current-column]))
+  (if (instance? ColumnWriter writer) 
+    writer
+    (ColumnWriter. writer)))
  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for column-aware operations ~&, ~T
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn fresh-line []
-  (if (not (= 0 @*current-column*))
+  (if (not (= 0 (.getColumn *out*)))
     (prn)))
 
 (defn absolute-tabulation [params navigator offsets]
   (let [colnum (:colnum params) 
 	colinc (:colinc params)
-	current @*current-column*
+	current (.getColumn *out*)
 	space-count (cond
 		     (< current colnum) (- colnum current)
 		     (= colinc 0) 0
@@ -1118,7 +1093,7 @@ first character of the string even if it's a letter."
 (defn relative-tabulation [params navigator offsets]
   (let [colrel (:colnum params) 
 	colinc (:colinc params)
-	start-col (+ colrel @*current-column*)
+	start-col (+ colrel (.getColumn *out*))
 	offset (if (pos? colinc) (rem start-col colinc) 0)
 	space-count (+ colrel (if (= 0 offset) 0 (- colinc offset)))]
     (print (apply str (replicate space-count \space))))
@@ -1666,31 +1641,32 @@ column number"
     (if (nil? format)
       false
       (if (or (:column (:flags (:def (first format))))
-	      (some needs-columns (first (:clauses (:params (first format))))))
+	      (some needs-columns (first (:clauses (:params (first format)))))
+	      (some needs-columns (first (:else (:params (first format))))))
 	true
 	(recur (rest format))))))
 
 (defn execute-format [stream format args]
   (let [real-stream (cond 
 		     (not stream) (java.io.StringWriter.)
-		     (= stream true) *out*
-		     true stream)
-	[wrapped-stream column] (if (needs-columns format)
-				  (column-writer real-stream)
-				  [real-stream *current-column*])]
-	(binding [*out* wrapped-stream
-		  *current-column* column]
-	  (map-passing-context 
-	   (fn [element context]
-	     (if (abort? context)
-	       [nil context]
-	       (let [[params args] (realize-parameter-list 
-				    (:params element) context)
-		     [params offsets] (unzip-map params)
-		     params (assoc params :base-args args)]
-		 [nil (apply (:func element) [params args offsets])])))
-	   args
-	   format)
-	  (if (not stream) (.toString real-stream)))))
+		     (true? stream) *out*
+		     :else stream)
+	wrapped-stream (if (and (needs-columns format) 
+				(not (instance? ColumnWriter real-stream)))
+			 (column-writer real-stream)
+			 real-stream)]
+    (binding [*out* wrapped-stream]
+      (map-passing-context 
+       (fn [element context]
+	 (if (abort? context)
+	   [nil context]
+	   (let [[params args] (realize-parameter-list 
+				(:params element) context)
+		 [params offsets] (unzip-map params)
+		 params (assoc params :base-args args)]
+	     [nil (apply (:func element) [params args offsets])])))
+       args
+       format)
+      (if (not stream) (.toString real-stream)))))
 
 

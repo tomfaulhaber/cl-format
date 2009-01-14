@@ -60,3 +60,7 @@
 		  (set-field this :cur 0)
 		  (set-field this :cur (inc (get-field this :cur)))))
 	(.write (get-field this :base) c)))))
+
+(defn- -flush [this]) ;; Currently a no-op
+
+(defn- -close [this]) ;; Currently a no-op
