@@ -888,7 +888,15 @@ Note this should only be used for the last one in the sequence"
 
 ;; TODO support for ~:; constructions
 (defn justify-clauses [params navigator offsets]
-  (let [clauses (:clauses params)
+  (let [[[eol-str] new-navigator] (when-let [else (:else params)]
+				    (render-clauses else navigator (:base-args params)))
+	navigator (or new-navigator navigator)
+	[else-params new-navigator] (when-let [p (:else-params params)]
+				      (realize-parameter-list p navigator))
+	navigator (or new-navigator navigator)
+	min-remaining (or (first (:min-remaining else-params)) 0)
+	max-columns (or (first (:max-columns else-params)) (.getMaxColumn *out*))
+	clauses (:clauses params)
 	[strs navigator] (render-clauses clauses navigator (:base-args params))
 	slots (max 1
 		   (+ (dec (count strs)) (if (:colon params) 1 0) (if (:at params) 1 0)))
@@ -905,6 +913,8 @@ Note this should only be used for the last one in the sequence"
 	pad (max minpad (quot total-pad slots))
 	extra-pad (- total-pad (* pad slots))
 	pad-str (apply str (replicate pad (:padchar params)))]
+    (if (and eol-str (> (+ (.getColumn *out*) min-remaining result-columns) max-columns))
+      (print eol-str))
     (loop [slots slots
 	   extra-pad extra-pad
 	   strs strs
@@ -1305,7 +1315,8 @@ first character of the string even if it's a letter."
     true
     choice-conditional))
 
-  (\; [] #{ :colon } { :separator true } nil) 
+  (\; [:min-remaining [nil Integer] :max-columns [nil Integer]] 
+   #{ :colon } { :separator true } nil) 
    
   (\] [] #{} {} nil) 
 
@@ -1330,7 +1341,7 @@ first character of the string even if it's a letter."
 
   (\<
    [:mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character]]
-   #{:colon :at :both} { :right \>, :allows-separator true, :else :first }
+   #{:colon :at :both :column} { :right \>, :allows-separator true, :else :first }
    justify-clauses)
 
   (\> [] #{:colon} {} nil) 
@@ -1518,23 +1529,23 @@ first character of the string even if it's a letter."
 	  (process-bracket this remainder)
 
 	  (= (:right bracket-info) (:directive (:def this)))
-	  [ nil [:right-bracket (:colon (:params this)) remainder]]
+	  [ nil [:right-bracket (:colon (:params this)) nil remainder]]
 
 	  (else-separator? this)
-	  [nil [:else nil remainder]]
+	  [nil [:else nil (:params this) remainder]]
 
 	  (separator? this)
-	  [nil [:separator nil remainder]]
+	  [nil [:separator nil nil remainder]] ;; TODO: check to make sure that there are no params on ~;
 
 	  true
-	  [ this remainder]))))
+	  [this remainder]))))
    remainder))
 
 (defn collect-clauses [bracket-info offset remainder]
   (frest
    (consume
     (fn [[clause-map saw-else remainder]]
-      (let [[clause [type colon-right remainder]] 
+      (let [[clause [type colon-right else-params remainder]] 
 	    (process-clause bracket-info offset remainder)]
 	(cond
 	 (= type :right-bracket)
@@ -1554,18 +1565,18 @@ first character of the string even if it's a letter."
 		  "An else clause (\"~:;\") is in a bracket type that doesn't support it." 
 		  offset))
 
-	  (and (= :first (:else bracket-info)) (:clauses clause-map))
+	  (and (= :first (:else bracket-info)) (seq (:clauses clause-map)))
 	  (throw (InternalFormatException.
 		  "The else clause (\"~:;\") is only allowed in the first position for this directive." 
 		  offset))
 	 
-	  true	  ; if the ~:; is in the last position, the else clause
-		  ; is next, this was a regular clause
+	  true	 ; if the ~:; is in the last position, the else clause
+					; is next, this was a regular clause
 	  (if (= :first (:else bracket-info))
-	    [true [(merge-with concat clause-map { :else [clause] })
-		  false remainder]]
+	    [true [(merge-with concat clause-map { :else [clause] :else-params else-params})
+		   false remainder]]
 	    [true [(merge-with concat clause-map { :clauses [clause] })
-		  true remainder]]))
+		   true remainder]]))
 
 	 (= type :separator)
 	 (cond
@@ -1580,7 +1591,7 @@ first character of the string even if it's a letter."
 	 
 	  true
 	  [true [(merge-with concat clause-map { :clauses [clause] })
-		false remainder]]))))
+		 false remainder]]))))
     [{ :clauses [] } false remainder])))
 
 (defn process-nesting

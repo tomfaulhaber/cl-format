@@ -8,7 +8,8 @@
 
 (ns com.infolace.format.test.base
   (:refer-clojure :exclude [format])
-  (:use unit-test com.infolace.format))
+  (:use unit-test com.infolace.format)
+  (:import [com.infolace.format ColumnWriter]))
 
 (def format cl-format)
 
@@ -374,6 +375,23 @@
   (cl-format nil "~20:<~A~;~^~A~;~^~A~>" "foo") "                 foo"
 )
 
+(simple-tests angle-bracket-max-column-tests
+  (cl-format nil "~%;; ~{~<~%;; ~1,50:; ~A~>~}.~%" (into [] (.split "This function computes the circular thermodynamic coefficient of the thrombulator angle for use in determining the reaction distance" "\\s")))
+  "\n;;  This function computes the circular\n;;  thermodynamic coefficient of the thrombulator\n;;  angle for use in determining the reaction\n;;  distance.\n"
+(cl-format true "~%;; ~{~<~%;; ~:; ~A~>~}.~%" (into [] (.split "This function computes the circular thermodynamic coefficient of the thrombulator angle for use in determining the reaction distance." "\\s"))))
+
+(defn list-to-table [aseq column-width]
+  (let [stream (ColumnWriter. (java.io.StringWriter.))]
+    (binding [*out* stream]
+     (doseq [row aseq]
+       (doseq [col row]
+	 (cl-format true "~4D~7,vT" col column-width))
+       (prn)))
+    (.toString (.getWriter stream))))
+
+(simple-tests column-writer-test
+  (list-to-table (map #(vector % (* % %) (* % % %)) (take 20 (integers))) 8)
+  "   1      1       1    \n   2      4       8    \n   3      9      27    \n   4     16      64    \n   5     25     125    \n   6     36     216    \n   7     49     343    \n   8     64     512    \n   9     81     729    \n  10    100    1000    \n  11    121    1331    \n  12    144    1728    \n  13    169    2197    \n  14    196    2744    \n  15    225    3375    \n  16    256    4096    \n  17    289    4913    \n  18    324    5832    \n  19    361    6859    \n  20    400    8000    \n")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The following tests are the various examples from the format
 ;; documentation in Common Lisp, the Language, 2nd edition, Chapter 22.3

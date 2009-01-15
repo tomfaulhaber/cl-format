@@ -14,7 +14,8 @@
 		  [java.io.Writer] []}
    :methods [[getColumn [] Integer]
 	     [getMaxColumn [] Integer]
-	     [setMaxColumn [Integer] Void]]
+	     [setMaxColumn [Integer] Void]
+	     [getWriter [] java.io.Writer]]
    :state state))
 
 (def *default-page-width* 72)
@@ -37,6 +38,9 @@
 
 (defn- -setMaxColumn [this new-max]
   (dosync (set-field this :max new-max)))
+
+(defn- -getWriter [this]
+  (get-field this :base))
 
 (defn -write 
   ([this cbuf off len] 

@@ -72,8 +72,7 @@ I also intend to have good built-in documentation for the directives,
 but I haven't built that yet.
 
 This implementation now supports all of the directives described in
-CLtLv2, except ~C and the ~:; separator in ~<...~> justification
-brackets.
+CLtLv2, except ~C.
 
 Pretty printing isn't supported (at least at the moment) and with it,
 the following directives specified as part of the X3J13 updates are
@@ -81,9 +80,7 @@ not supported: ~:T and ~@:T (but all other forms of ~T work), ~_, ~W,
 ~I, and extensions with ~/.
 
 Next up: 
-* Support for ~<...~:;....~> EOL detection
 * The ~C directive
-* Support for "persistent" column-aware streams, 
 * custom exception types, 
 * import tests from CLISP and SBCL.
 * Think about pretty printing
@@ -163,7 +160,7 @@ of arguments. You call it like this:
 *stream* can be any Java Writer (that is java.io.Writer) or the values
 *true*, *false*, or *nil*. The argument *true* is identical to using
 *out* while *false* or *nil* indicate that cl-format should return
-it's result as a string rather than writing it to a stream.
+its result as a string rather than writing it to a stream.
 
 *format* is either a format string or a compiled format (see
  below). The format string controls the output that's written in a way
@@ -194,6 +191,44 @@ For example:
       (let [[m d y h min am?] (some-date-decomposition-fn)]
         (cl-format log-format m d y h min am? msg)))
  
+### Using column aware streams across format invocations ### 
+
+Writers in Java have no real idea of current column or device page width, so the format
+directives that want to work relative to the current position on the
+page have nothing to work with. To deal with this, cl-format contains
+an extension to writer called ColumnWriter. ColumnWriter watches the
+output and keeps track of what column the current output is going to.
+
+When you call format and your format includes a directive that cares
+about what column it's in (~T, ~&, ~<...~>), cl-format will
+automatically wrap the Writer you passed in with a ColumnWriter. This
+means that by default all cl-format statements act like they begin on
+a fresh line and have a page width of 72.
+
+For many applications, these assumptions are fine and you need to do
+nothing more. But sometimes you want to use multiple cl-format calls
+that output partial lines. You may also want to mix cl-format calls
+with the native clojure calls like print. If you want stay
+column-aware while doingg this you need to create a ColumnWriter of
+your own (and possibly bind it to *out*).
+
+As an example of this, this function takes a nested list and prints it
+as a table (returning the result as a string):
+
+    (defn list-to-table [aseq column-width]
+      (let [stream (ColumnWriter. (java.io.StringWriter.))]
+        (binding [*out* stream]
+         (doseq [row aseq]
+           (doseq [col row]
+             (cl-format true "~4D~7,vT" col column-width))
+           (prn)))
+        (.toString (.getWriter stream))))
+
+(In reality, you'd probably do this as a single call to cl-format.)
+
+The constructor to ColumnWriter takes the Writer it's wrapping and
+(optionally) the page width (in columns) for use with ~<...~>. 
+
 ### Examples ###
 
 The following function uses cl-format to dump a columnized table of the Java system properties:
