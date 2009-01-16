@@ -111,6 +111,10 @@
   (cl-format nil "~@R ~D" 5000 20) "5,000 20"
   (cl-format nil "~@R" "the quick") "the quick")
 
+(simple-tests c-tests
+  (cl-format nil "~{~c~^, ~}~%" "hello") "h, e, l, l, o\n"
+  (cl-format nil "~{~:c~^, ~}~%" "hello") "h, e, l, l, o\n")
+
 (simple-tests e-tests
   (cl-format nil "*~E*" 0.0) "*0.0E+0*"
   (cl-format nil "*~6E*" 0.0) "*0.0E+0*"

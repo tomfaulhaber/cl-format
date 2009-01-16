@@ -60,29 +60,36 @@ the commas. Yuck!
 
 ### Current Status ###
 
-cl-format currently supports almost all of the functionality of Common
-Lisp's format function including iteration, conditionals, and rich
+cl-format is 100% compatible with the Common Lisp standard as
+specified in CLtLv2 with the exception of the support directives 
+for the pretty printer.
+This includes all of the functionality of Common
+Lisp's format function including iteration, conditionals, 
+text justification and rich
 options for displaying real and integer values. 
 
-If you find a bug in a directive that I say is supported, drop me a line
+If you find a bug in a directive, drop me a line
 with a chunk of code that exhibits the bug and the version of
 cl-format you found it in and I'll try to get it fixed.
 
 I also intend to have good built-in documentation for the directives,
 but I haven't built that yet.
 
-This implementation now supports all of the directives described in
-CLtLv2, except ~C.
-
 Pretty printing isn't supported (at least at the moment) and with it,
 the following directives specified as part of the X3J13 updates are
 not supported: ~:T and ~@:T (but all other forms of ~T work), ~_, ~W,
 ~I, and extensions with ~/.
 
+I'm still considering what to do about the pretty printer. CL defines
+a super-powerful pretty printer based on the format function. But it's 
+because it has more functions and variables, it interacts with the
+rest of the system more and will, therefore, be harder to implement
+with 100% compatibility.
+
 Next up: 
-* The ~C directive
-* custom exception types, 
-* import tests from CLISP and SBCL.
+* Custom exception types, 
+* Import tests from CLISP and SBCL.
+* Interactive documentation
 * Think about pretty printing
  
 ### How to use cl-format ###

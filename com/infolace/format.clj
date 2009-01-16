@@ -473,6 +473,34 @@ Note this should only be used for the last one in the sequence"
 (defn format-new-roman [params navigator offsets]
   (format-roman new-roman-table params navigator offsets))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for character formats (~C)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def special-chars { 8 "Backspace", 10 "Newline", 13 "Return", 32 "Space"})
+
+(defn pretty-character [params navigator offsets]
+  (let [[c navigator] (next-arg navigator)
+	as-int (int c)
+	base-char (bit-and as-int 127)
+	meta (bit-and as-int 128)
+	special (get special-chars base-char)]
+    (if (> meta 0) (print "Meta-"))
+    (print (cond
+	    special special
+	    (< base-char 32) (str "Control-" (char (+ base-char 64)))
+	    (= base-char 127) "Control-?"
+	    :else (char base-char)))
+    navigator))
+
+(defn readable-character [params navigator offsets]
+  navigator)
+
+(defn plain-character [params navigator offsets]
+  (let [[char navigator] (next-arg navigator)]
+    (print char)
+    navigator))
+
 ;; Check to see if a result is an abort (~^) construct
 ;; TODO: move these funcs somewhere more appropriate
 (defn abort? [context]
@@ -1183,6 +1211,14 @@ first character of the string even if it's a letter."
 	   [arg navigator] (next-arg navigator)]
        (print (if (= arg 1) (first strs) (frest strs)))
        navigator)))
+
+  (\C
+   [ ]
+   #{ :at :colon :both } {}
+   (cond
+    (:colon params) pretty-character
+    (:at params) readable-character
+    :else plain-character))
 
   (\F
    [ :w [nil Integer] :d [nil Integer] :k [0 Integer] :overflowchar [nil Character] 
