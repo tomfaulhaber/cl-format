@@ -477,7 +477,7 @@ Note this should only be used for the last one in the sequence"
 ;;; Support for character formats (~C)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def special-chars { 8 "Backspace", 10 "Newline", 13 "Return", 32 "Space"})
+(def special-chars { 8 "Backspace", 9 "Tab",  10 "Newline", 13 "Return", 32 "Space"})
 
 (defn pretty-character [params navigator offsets]
   (let [[c navigator] (next-arg navigator)
@@ -494,7 +494,18 @@ Note this should only be used for the last one in the sequence"
     navigator))
 
 (defn readable-character [params navigator offsets]
-  navigator)
+  (let [[c navigator] (next-arg navigator)
+	as-int (int c)
+	special (get special-chars as-int)]
+    (print (cond
+	    special (str "\\" (.toLowerCase special))
+	    ; There's no really good way to display a readable non-printing
+	    ; character in Clojure. The reader will read the character if
+	    ; it doesn't get munged along the way, so we won't try to do
+	    ; anything better here.
+	    ; ((< as-int 32) (> as-int 126)) (str "(char " as-int ")")
+	    :else (str "\\" c)))
+    navigator))
 
 (defn plain-character [params navigator offsets]
   (let [[char navigator] (next-arg navigator)]

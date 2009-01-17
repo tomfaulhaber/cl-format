@@ -113,7 +113,11 @@
 
 (simple-tests c-tests
   (cl-format nil "~{~c~^, ~}~%" "hello") "h, e, l, l, o\n"
-  (cl-format nil "~{~:c~^, ~}~%" "hello") "h, e, l, l, o\n")
+  (cl-format nil "~{~:c~^, ~}~%" "hello") "h, e, l, l, o\n"
+  (cl-format nil "~@C~%" \m) "\\m\n"
+  (cl-format nil "~@C~%" (char 222)) "\\Þ\n"
+  (cl-format nil "~@C~%" (char 8)) "\\backspace\n"
+  (cl-format nil "~@C~%" (char 3)) "\\\n")
 
 (simple-tests e-tests
   (cl-format nil "*~E*" 0.0) "*0.0E+0*"
