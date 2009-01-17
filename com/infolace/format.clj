@@ -98,7 +98,7 @@ beginning of aseq"
        pos
        (recur (inc pos))))))
 
-(defn prerr [& args]
+(defn- prerr [& args]
   "Println to *err*"
   (binding [*out* *err*]
     (apply println args)))
@@ -114,27 +114,28 @@ beginning of aseq"
 ;;; (possibly going forwards and backwards as it does so)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct arg-navigator :seq :rest :pos )
+(defstruct #^{:private true}
+  arg-navigator :seq :rest :pos )
 
-(defn init-navigator [s]
+(defn- init-navigator [s]
   "Create a new arg-navigator from the sequence with the position set to 0"
   (struct arg-navigator s s 0))
 
 ;; TODO Include position in error w/InternalFormatException
-(defn next-arg [ navigator ]
+(defn- next-arg [ navigator ]
   (let [ rst (:rest navigator) ]
     (if rst
       [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
-(defn next-arg-or-nil [navigator]
+(defn- next-arg-or-nil [navigator]
   (let [rst (:rest navigator)]
     (if rst
       [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
       [nil navigator])))
 
 ;; Get an argument off the arg list and compile it if it's not already compiled
-(defn get-format-arg [navigator]
+(defn- get-format-arg [navigator]
   (let [[raw-format navigator] (next-arg navigator)
 	compiled-format (if (instance? String raw-format) 
 			       (compile-format raw-format)
@@ -143,18 +144,19 @@ beginning of aseq"
 
 (declare relative-reposition)
 
-(defn absolute-reposition [navigator position]
+(defn- absolute-reposition [navigator position]
   (if (>= position (:pos navigator))
     (relative-reposition navigator (- (:pos navigator) position))
     (struct arg-navigator (:seq navigator) (drop position (:seq navigator)) position)))
 
-(defn relative-reposition [navigator position]
+(defn- relative-reposition [navigator position]
   (let [newpos (+ (:pos navigator) position)]
     (if (neg? position)
       (absolute-reposition navigator newpos)
       (struct arg-navigator (:seq navigator) (drop position (:rest navigator)) newpos))))
 
-(defstruct compiled-directive :func :def :params :offset)
+(defstruct #^{:private true}
+  compiled-directive :func :def :params :offset)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; When looking at the parameter list, we may need to manipulate
@@ -164,7 +166,7 @@ beginning of aseq"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; TODO: validate parameters when they come from arg list
-(defn realize-parameter [[param [raw-val offset]] navigator]
+(defn- realize-parameter [[param [raw-val offset]] navigator]
   (let [[real-param new-navigator]
 	(cond 
 	 (contains? #{ :at :colon } param) ;pass flags through unchanged - this really isn't necessary
@@ -180,7 +182,7 @@ beginning of aseq"
 	 [raw-val navigator])]
     [[param [real-param offset]] new-navigator]))
 	 
-(defn realize-parameter-list [parameter-map navigator]
+(defn- realize-parameter-list [parameter-map navigator]
   (let [[pairs new-navigator] 
 	(map-passing-context realize-parameter navigator parameter-map)]
     [(into {} pairs) new-navigator]))
@@ -193,7 +195,7 @@ beginning of aseq"
 ;;; Common handling code for ~A and ~S
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn format-ascii [print-func params arg-navigator offsets]
+(defn- format-ascii [print-func params arg-navigator offsets]
   (let [ [arg arg-navigator] (next-arg arg-navigator) 
 	 base-output (print-func arg)
 	 base-width (.length base-output)
@@ -216,7 +218,7 @@ beginning of aseq"
 ;;; of ~R
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn integral? [x]
+(defn- integral? [x]
   "returns true if a number is actually an integer (that is, has no fractional part)"
   (cond
    (integer? x) true
@@ -225,7 +227,7 @@ beginning of aseq"
    (ratio? x)   (= 0 (rem (.numerator x) (.denominator x)))
    :else        false))
 
-(defn remainders [base val]
+(defn- remainders [base val]
   "Return the list of remainders (essentially the 'digits') of val in the given base"
   (reverse 
    (first 
@@ -234,7 +236,7 @@ beginning of aseq"
 		[nil nil]) 
 	     val))))
 
-(defn base-str [base val]
+(defn- base-str [base val]
   "Return val as a string in the given base"
   (let [xlated-val (cond
 		    (float? val) (bigdec val)
@@ -245,9 +247,10 @@ beginning of aseq"
 	   #(if (< % 10) (char (+ (int \0) %)) (char (+ (int \a) (- % 10)))) 
 	   (remainders base val)))))
 
-(def java-base-formats {8 "%o", 10 "%d", 16 "%x"})
+(def #^{:private true}
+     java-base-formats {8 "%o", 10 "%d", 16 "%x"})
 
-(defn opt-base-str [base val]
+(defn- opt-base-str [base val]
   "Return val as a string in the given base, using clojure.core/format if supported
 for improved performance"
   (let [format-str (get java-base-formats base)]
@@ -255,12 +258,12 @@ for improved performance"
       (clojure.core/format format-str val)
       (base-str base val))))
 
-(defn group-by [unit lis]
+(defn- group-by [unit lis]
   (reverse
    (first
     (consume (fn [x] [(reverse (take unit x)) (drop unit x)]) (reverse lis)))))
 
-(defn format-integer [base params arg-navigator offsets]
+(defn- format-integer [base params arg-navigator offsets]
   (let [[arg arg-navigator] (next-arg arg-navigator)]
     (if (integral? arg)
       (let [neg (neg? arg)
@@ -290,20 +293,24 @@ for improved performance"
 ;;; Support for english formats (~R and ~:R)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def english-cardinal-units 
+(def #^{:private true}
+     english-cardinal-units 
      ["zero" "one" "two" "three" "four" "five" "six" "seven" "eight" "nine"
       "ten" "eleven" "twelve" "thirteen" "fourteen"
       "fifteen" "sixteen" "seventeen" "eighteen" "nineteen"])
 
-(def english-ordinal-units 
+(def #^{:private true}
+     english-ordinal-units 
      ["zeroth" "first" "second" "third" "fourth" "fifth" "sixth" "seventh" "eighth" "ninth"
       "tenth" "eleventh" "twelfth" "thirteenth" "fourteenth"
       "fifteenth" "sixteenth" "seventeenth" "eighteenth" "nineteenth"])
 
-(def english-cardinal-tens
+(def #^{:private true}
+     english-cardinal-tens
      ["" "" "twenty" "thirty" "forty" "fifty" "sixty" "seventy" "eighty" "ninety"])
 
-(def english-ordinal-tens
+(def #^{:private true}
+     english-ordinal-tens
      ["" "" "twentieth" "thirtieth" "fortieth" "fiftieth"
       "sixtieth" "seventieth" "eightieth" "ninetieth"])
 
@@ -311,14 +318,15 @@ for improved performance"
 ;; Number names from http://www.jimloy.com/math/billion.htm
 ;; We follow the rules for writing numbers from the Blue Book
 ;; (http://www.grammarbook.com/numbers/numbers.asp)
-(def english-scale-numbers 
+(def #^{:private true}
+     english-scale-numbers 
      ["" "thousand" "million" "billion" "trillion" "quadrillion" "quintillion" 
       "sextillion" "septillion" "octillion" "nonillion" "decillion" 
       "undecillion" "duodecillion" "tredecillion" "quattuordecillion" 
       "quindecillion" "sexdecillion" "septendecillion" 
       "octodecillion" "novemdecillion" "vigintillion"])
 
-(defn format-simple-cardinal [num]
+(defn- format-simple-cardinal [num]
   "Convert a number less than 1000 to a cardinal english string"
   (let [hundreds (quot num 100)
 	tens (rem num 100)]
@@ -335,7 +343,7 @@ for improved performance"
 	    (if (and (pos? ten-digit) (pos? unit-digit)) "-")
 	    (if (pos? unit-digit) (nth english-cardinal-units unit-digit)))))))))
 
-(defn add-english-scales [parts offset]
+(defn- add-english-scales [parts offset]
   "Take a sequence of parts, add scale numbers (e.g., million) and combine into a string
 offset is a factor of 10^3 to multiply by"
   (let [cnt (count parts)]
@@ -357,7 +365,7 @@ offset is a factor of 10^3 to multiply by"
 	 (first remainder)
 	 (rest remainder))))))
 
-(defn format-cardinal-english [params navigator offsets]
+(defn- format-cardinal-english [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)]
     (if (= 0 arg)
       (print "zero")
@@ -374,7 +382,7 @@ offset is a factor of 10^3 to multiply by"
 	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))))
     navigator))
 
-(defn format-simple-ordinal [num]
+(defn- format-simple-ordinal [num]
   "Convert a number less than 1000 to a ordinal english string
 Note this should only be used for the last one in the sequence"
   (let [hundreds (quot num 100)
@@ -395,7 +403,7 @@ Note this should only be used for the last one in the sequence"
 	      (if (pos? unit-digit) (nth english-ordinal-units unit-digit))))))
        (if (pos? hundreds) "th")))))
 
-(defn format-ordinal-english [params navigator offsets]
+(defn- format-ordinal-english [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)]
     (if (= 0 arg)
       (print "zeroth")
@@ -432,19 +440,21 @@ Note this should only be used for the last one in the sequence"
 ;;; Support for roman numeral formats (~@R and ~@:R)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def old-roman-table
+(def #^{:private true}
+     old-roman-table
      [[ "I" "II" "III" "IIII" "V" "VI" "VII" "VIII" "VIIII"]
       [ "X" "XX" "XXX" "XXXX" "L" "LX" "LXX" "LXXX" "LXXXX"]
       [ "C" "CC" "CCC" "CCCC" "D" "DC" "DCC" "DCCC" "DCCCC"]
       [ "M" "MM" "MMM"]])
 
-(def new-roman-table
+(def #^{:private true}
+     new-roman-table
      [[ "I" "II" "III" "IV" "V" "VI" "VII" "VIII" "IX"]
       [ "X" "XX" "XXX" "XL" "L" "LX" "LXX" "LXXX" "XC"]
       [ "C" "CC" "CCC" "CD" "D" "DC" "DCC" "DCCC" "CM"]
       [ "M" "MM" "MMM"]])
 
-(defn format-roman [table params navigator offsets]
+(defn- format-roman [table params navigator offsets]
   "Format a roman numeral using the specified look-up table"
   (let [[arg navigator] (next-arg navigator)]
     (if (and (number? arg) (> arg 0) (< arg 4000))
@@ -467,19 +477,20 @@ Note this should only be used for the last one in the sequence"
 	   { :mincol 0, :padchar 0, :commachar 0 :commainterval 0}))
     navigator))
 
-(defn format-old-roman [params navigator offsets]
+(defn- format-old-roman [params navigator offsets]
   (format-roman old-roman-table params navigator offsets))
 
-(defn format-new-roman [params navigator offsets]
+(defn- format-new-roman [params navigator offsets]
   (format-roman new-roman-table params navigator offsets))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for character formats (~C)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def special-chars { 8 "Backspace", 9 "Tab",  10 "Newline", 13 "Return", 32 "Space"})
+(def #^{:private true} 
+     special-chars { 8 "Backspace", 9 "Tab",  10 "Newline", 13 "Return", 32 "Space"})
 
-(defn pretty-character [params navigator offsets]
+(defn- pretty-character [params navigator offsets]
   (let [[c navigator] (next-arg navigator)
 	as-int (int c)
 	base-char (bit-and as-int 127)
@@ -493,7 +504,7 @@ Note this should only be used for the last one in the sequence"
 	    :else (char base-char)))
     navigator))
 
-(defn readable-character [params navigator offsets]
+(defn- readable-character [params navigator offsets]
   (let [[c navigator] (next-arg navigator)
 	as-int (int c)
 	special (get special-chars as-int)]
@@ -507,19 +518,19 @@ Note this should only be used for the last one in the sequence"
 	    :else (str "\\" c)))
     navigator))
 
-(defn plain-character [params navigator offsets]
+(defn- plain-character [params navigator offsets]
   (let [[char navigator] (next-arg navigator)]
     (print char)
     navigator))
 
 ;; Check to see if a result is an abort (~^) construct
 ;; TODO: move these funcs somewhere more appropriate
-(defn abort? [context]
+(defn- abort? [context]
   (let [token (first context)]
     (or (= :up-arrow token) (= :colon-up-arrow token))))
 
 ;; Handle the execution of "sub-clauses" in bracket constructions
-(defn execute-sub-format [format args base-args]
+(defn- execute-sub-format [format args base-args]
   (frest
    (map-passing-context 
     (fn [element context]
@@ -537,7 +548,7 @@ Note this should only be used for the last one in the sequence"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; TODO - return exponent as int to eliminate double conversion
-(defn float-parts-base
+(defn- float-parts-base
   "Produce string parts for the mantissa (normalized 1-9) and exponent"
   [f]
   (let [s (.toLowerCase (.toString f))
@@ -550,7 +561,7 @@ Note this should only be used for the last one in the sequence"
       [(str (subs s 0 1) (subs s 2 exploc)) (subs s (inc exploc))])))
 
 
-(defn float-parts [f]
+(defn- float-parts [f]
   "Take care of leading and trailing zeros in decomposed floats"
   (let [[m e] (float-parts-base f)
 	m1 (rtrim m \0)
@@ -561,7 +572,7 @@ Note this should only be used for the last one in the sequence"
       ["0" 0]
       [m2 (- (Integer/valueOf e) delta)])))
 
-(defn round-str [m e d w]
+(defn- round-str [m e d w]
   (if (or d w)
     (let [len (count m)
 	  round-pos (if d (+ e d 1))
@@ -589,7 +600,7 @@ Note this should only be used for the last one in the sequence"
 	[m e false]))
     [m e false]))
 
-(defn expand-fixed [m e d]
+(defn- expand-fixed [m e d]
   (let [m1 (if (neg? e) (str (apply str (replicate (dec (- e)) \0)) m) m)
 	len (count m1)
 	target-len (if d (+ e d 1) (inc e))]
@@ -597,17 +608,17 @@ Note this should only be used for the last one in the sequence"
       (str m1 (apply str (replicate (- target-len len) \0))) 
       m1)))
 
-(defn insert-decimal [m e]
+(defn- insert-decimal [m e]
   "Insert the decimal point at the right spot in the number to match an exponent"
   (if (neg? e)
     (str "." m)
     (let [loc (inc e)]
       (str (subs m 0 loc) "." (subs m loc)))))
 
-(defn get-fixed [m e d]
+(defn- get-fixed [m e d]
   (insert-decimal (expand-fixed m e d) e))
 
-(defn insert-scaled-decimal [m k]
+(defn- insert-scaled-decimal [m k]
   "Insert the decimal point at the right spot in the number to match an exponent"
   (if (neg? k)
     (str "." m)
@@ -615,7 +626,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; the function to render ~F directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
-(defn fixed-float [params navigator offsets]
+(defn- fixed-float [params navigator offsets]
   (let [w (:w params)
 	d (:d params)
 	[arg navigator] (next-arg navigator)
@@ -654,7 +665,7 @@ Note this should only be used for the last one in the sequence"
 ;; the function to render ~E directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
 ;; TODO: define ~E representation for Infinity
-(defn exponential-float [params navigator offsets]
+(defn- exponential-float [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)]
     (loop [[mantissa exp] (float-parts (if (neg? arg) (- arg) arg))]
       (let [w (:w params)
@@ -727,7 +738,7 @@ Note this should only be used for the last one in the sequence"
 ;; on the algorithm in CLtL.
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
 ;; TODO: refactor so that float-parts isn't called twice
-(defn general-float [params navigator offsets]
+(defn- general-float [params navigator offsets]
   (let [[arg _] (next-arg navigator)
 	[mantissa exp] (float-parts (if (neg? arg) (- arg) arg))
 	w (:w params)
@@ -749,7 +760,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; the function to render ~$ directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
-(defn dollar-float [params navigator offsets]
+(defn- dollar-float [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)
 	[mantissa exp] (float-parts (Math/abs arg))
 	d (:d params) ; digits after the decimal
@@ -775,7 +786,7 @@ Note this should only be used for the last one in the sequence"
 ;; ~[...~] without any modifiers chooses one of the clauses based on the param or 
 ;; next argument
 ;; TODO check arg is positive int
-(defn choice-conditional [params arg-navigator offsets]
+(defn- choice-conditional [params arg-navigator offsets]
   (let [arg (:selector params)
 	[arg navigator] (if arg [arg arg-navigator] (next-arg arg-navigator))
 	clauses (:clauses params)
@@ -787,7 +798,7 @@ Note this should only be used for the last one in the sequence"
       navigator)))
 
 ;; ~:[...~] with the colon reads the next argument treating it as a truth value
-(defn boolean-conditional [params arg-navigator offsets]
+(defn- boolean-conditional [params arg-navigator offsets]
   (let [[arg navigator] (next-arg arg-navigator)
 	clauses (:clauses params)
 	clause (if arg
@@ -799,7 +810,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; ~@[...~] with the at sign executes the conditional if the next arg is not
 ;; nil/false without consuming the arg
-(defn check-arg-conditional [params arg-navigator offsets]
+(defn- check-arg-conditional [params arg-navigator offsets]
   (let [[arg navigator] (next-arg arg-navigator)
 	clauses (:clauses params)
 	clause (if arg (first clauses))]
@@ -818,7 +829,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; ~{...~} without any modifiers uses the next argument as an argument list that 
 ;; is consumed by all the iterations
-(defn iterate-sublist [params navigator offsets]
+(defn- iterate-sublist [params navigator offsets]
   (let [max-count (:max-iterations params)
 	param-clause (first (:clauses params))
 	[clause navigator] (if (empty? param-clause) 
@@ -842,7 +853,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; ~:{...~} with the colon treats the next argument as a list of sublists. Each of the
 ;; sublists is used as the arglist for a single iteration.
-(defn iterate-list-of-sublists [params navigator offsets]
+(defn- iterate-list-of-sublists [params navigator offsets]
   (let [max-count (:max-iterations params)
 	param-clause (first (:clauses params))
 	[clause navigator] (if (empty? param-clause) 
@@ -865,7 +876,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
 ;; is consumed by all the iterations
-(defn iterate-main-list [params navigator offsets]
+(defn- iterate-main-list [params navigator offsets]
   (let [max-count (:max-iterations params)
 	param-clause (first (:clauses params))
 	[clause navigator] (if (empty? param-clause) 
@@ -888,7 +899,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; ~@:{...~} with both colon and at sign uses the main argument list as a set of sublists, one
 ;; of which is consumed with each iteration
-(defn iterate-main-sublists [params navigator offsets]
+(defn- iterate-main-sublists [params navigator offsets]
   (let [max-count (:max-iterations params)
 	param-clause (first (:clauses params))
 	[clause navigator] (if (empty? param-clause) 
@@ -911,7 +922,7 @@ Note this should only be used for the last one in the sequence"
 ;;; Support for the '~<...~>' justification directive
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn render-clauses [clauses navigator base-navigator]
+(defn- render-clauses [clauses navigator base-navigator]
   (loop [clauses clauses
 	 acc []
 	 navigator navigator]
@@ -926,7 +937,7 @@ Note this should only be used for the last one in the sequence"
 	  (recur (rest clauses) (conj acc result-str) iter-result))))))
 
 ;; TODO support for ~:; constructions
-(defn justify-clauses [params navigator offsets]
+(defn- justify-clauses [params navigator offsets]
   (let [[[eol-str] new-navigator] (when-let [else (:else params)]
 				    (render-clauses else navigator (:base-args params)))
 	navigator (or new-navigator navigator)
@@ -979,7 +990,7 @@ Note this should only be used for the last one in the sequence"
 ;;; that may block.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn downcase-writer 
+(defn- downcase-writer 
   "Returns a proxy that wraps writer, converting all characters to lower case"
   [writer]
   (proxy [java.io.Writer] []
@@ -1000,7 +1011,7 @@ Note this should only be used for the last one in the sequence"
 	       (let [c #^Character x]
 		 (.write writer (int (Character/toLowerCase (char c))))))))))
 
-(defn upcase-writer 
+(defn- upcase-writer 
   "Returns a proxy that wraps writer, converting all characters to upper case"
   [writer]
   (proxy [java.io.Writer] []
@@ -1021,7 +1032,7 @@ Note this should only be used for the last one in the sequence"
 	       (let [c #^Character x]
 		 (.write writer (int (Character/toUpperCase (char c))))))))))
 
-(defn capitalize-string
+(defn- capitalize-string
   "Capitalizes the words in a string. If first? is false, don't capitalize the 
 first character of the string even if it's a letter."
   [s first?]
@@ -1045,7 +1056,7 @@ first character of the string even if it's a letter."
 		     [s nil]))))
 	     s)))))
 
-(defn capitalize-word-writer ;; TODO implement
+(defn- capitalize-word-writer
   "Returns a proxy that wraps writer, captializing all words"
   [writer]
   (let [last-was-whitespace? (ref true)] 
@@ -1072,7 +1083,7 @@ first character of the string even if it's a letter."
 		   (.write writer (int mod-c))
 		   (dosync (ref-set last-was-whitespace? (Character/isWhitespace c)))))))))))
 
-(defn init-cap-writer
+(defn- init-cap-writer
   "Returns a proxy that wraps writer, capitalizing the first word"
   [writer]
   (let [capped (ref false)] 
@@ -1106,7 +1117,7 @@ first character of the string even if it's a letter."
 		       (.write writer (int (Character/toUpperCase c))))
 		     (.write writer (int (Character/toLowerCase c)))))))))))
 
-(defn modify-case [make-writer params navigator offsets]
+(defn- modify-case [make-writer params navigator offsets]
   (let [clause (first (:clauses params))]
     (binding [*out* (make-writer *out*)] 
       (execute-sub-format clause navigator (:base-args params)))))
@@ -1124,11 +1135,12 @@ first character of the string even if it's a letter."
 ;;; Support for column-aware operations ~&, ~T
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; TODO: make an automatic newline for non-ColumnWriters
 (defn fresh-line []
   (if (not (= 0 (.getColumn *out*)))
     (prn)))
 
-(defn absolute-tabulation [params navigator offsets]
+(defn- absolute-tabulation [params navigator offsets]
   (let [colnum (:colnum params) 
 	colinc (:colinc params)
 	current (.getColumn *out*)
@@ -1139,7 +1151,7 @@ first character of the string even if it's a letter."
     (print (apply str (replicate space-count \space))))
   navigator)
 
-(defn relative-tabulation [params navigator offsets]
+(defn- relative-tabulation [params navigator offsets]
   (let [colrel (:colnum params) 
 	colinc (:colinc params)
 	start-col (+ colrel (.getColumn *out*))
@@ -1154,7 +1166,7 @@ first character of the string even if it's a letter."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; We start with a couple of helpers
-(defn process-directive-table-element [ [ char params flags bracket-info & generator-fn ] ]
+(defn- process-directive-table-element [ [ char params flags bracket-info & generator-fn ] ]
   [char, 
    {:directive char,
     :params `(array-map ~@params),
@@ -1162,9 +1174,11 @@ first character of the string even if it's a letter."
     :bracket-info bracket-info,
     :generator-fn (concat '(fn [ params offset]) generator-fn) }])
 
-(defmacro defdirectives 
+(defmacro #^{:private true}
+  defdirectives 
   [ & directives ]
-  `(def directive-table (hash-map ~@(mapcat process-directive-table-element directives))))
+  `(def #^{:private true}
+	directive-table (hash-map ~@(mapcat process-directive-table-element directives))))
 
 (defdirectives 
   (\A 
@@ -1426,10 +1440,12 @@ first character of the string even if it's a letter."
 ;;; directive in the format string.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def param-pattern #"^([vV]|#|('.)|([+-]?\d+)|(?=,))")
-(def special-params #{ :parameter-from-args :remaining-arg-count })
+(def #^{:private true}
+     param-pattern #"^([vV]|#|('.)|([+-]?\d+)|(?=,))")
+(def #^{:private true}
+     special-params #{ :parameter-from-args :remaining-arg-count })
 
-(defn extract-param [[s offset saw-comma]]
+(defn- extract-param [[s offset saw-comma]]
   (let [m (re-matcher param-pattern s)
 	param (re-find m)]
     (if param
@@ -1444,10 +1460,10 @@ first character of the string even if it's a letter."
 	[ nil [s offset]]))))
 
 
-(defn extract-params [s offset] 
+(defn- extract-params [s offset] 
   (consume extract-param [s offset false]))
 
-(defn translate-param [[p offset]]
+(defn- translate-param [[p offset]]
   "Translate the string representation of a param to the internalized
   representation"
   [(cond 
@@ -1458,9 +1474,10 @@ first character of the string even if it's a letter."
     true (new Integer p))
    offset])
  
-(def flag-defs { \: :colon, \@ :at })
+(def #^{:private true}
+     flag-defs { \: :colon, \@ :at })
 
-(defn extract-flags [s offset]
+(defn- extract-flags [s offset]
   (consume
    (fn [[s offset flags]]
     (if (empty? s)
@@ -1476,7 +1493,7 @@ first character of the string even if it's a letter."
 	  [nil [s offset flags]]))))
    [s offset {}]))
 
-(defn check-flags [def flags]
+(defn- check-flags [def flags]
   (let [allowed (:flags def)]
     (if (and (not (:at allowed)) (:at flags))
       (throw (InternalFormatException.
@@ -1492,7 +1509,7 @@ first character of the string even if it's a letter."
 		       (:directive def) "\"")
 		  (min (nth (:colon flags) 1) (nth (:at flags) 1)))))))
 
-(defn map-params [def params flags offset]
+(defn- map-params [def params flags offset]
   "Takes a directive definition and the list of actual parameters and
    a map of flags and returns a map of the parameters and flags with defaults
    filled in. We check to make sure that there are the right types and number
@@ -1522,7 +1539,7 @@ first character of the string even if it's a letter."
    (reduce #(apply assoc %1 %2) {} (filter #(first (nth % 1)) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
    flags)) ; and finally add the flags
 
-(defn compile-directive [s offset]
+(defn- compile-directive [s offset]
   (let [[raw-params [rest offset]] (extract-params s offset)
 	[_ [rest offset flags]] (extract-flags rest offset)
 	directive (first rest)
@@ -1543,19 +1560,19 @@ first character of the string even if it's a letter."
 	   offset (+ offset trim-count)]
        [remainder offset])]))
     
-(defn compile-raw-string [s offset]
+(defn- compile-raw-string [s offset]
   (struct compiled-directive (fn [_ a _] (print s) a) nil nil offset))
 
-(defn right-bracket [this] (:right (:bracket-info (:def this))))
-(defn separator? [this] (:separator (:bracket-info (:def this))))
-(defn else-separator? [this] 
+(defn- right-bracket [this] (:right (:bracket-info (:def this))))
+(defn- separator? [this] (:separator (:bracket-info (:def this))))
+(defn- else-separator? [this] 
   (and (:separator (:bracket-info (:def this)))
        (:colon (:params this))))
   
 
 (declare collect-clauses)
 
-(defn process-bracket [this remainder]
+(defn- process-bracket [this remainder]
   (let [[subex remainder] (collect-clauses (:bracket-info (:def this))
 					   (:offset this) remainder)]
     [(struct compiled-directive 
@@ -1564,7 +1581,7 @@ first character of the string even if it's a letter."
 	     (:offset this))
      remainder]))
 
-(defn process-clause [bracket-info offset remainder]
+(defn- process-clause [bracket-info offset remainder]
   (consume 
    (fn [remainder]
      (if (nil? remainder)
@@ -1588,7 +1605,7 @@ first character of the string even if it's a letter."
 	  [this remainder]))))
    remainder))
 
-(defn collect-clauses [bracket-info offset remainder]
+(defn- collect-clauses [bracket-info offset remainder]
   (frest
    (consume
     (fn [[clause-map saw-else remainder]]
@@ -1641,7 +1658,7 @@ first character of the string even if it's a letter."
 		 false remainder]]))))
     [{ :clauses [] } false remainder])))
 
-(defn process-nesting
+(defn- process-nesting
   "Take a linearly compiled format and process the bracket directives to give it 
    the appropriate tree structure"
   [format]
@@ -1658,7 +1675,7 @@ first character of the string even if it's a letter."
 
 	    
       
-(defn translate-internal-exception [format-str e]
+(defn- translate-internal-exception [format-str e]
   (let [message (str (.getMessage e) \newline format-str \newline 
 		     (apply str (replicate (.pos e) \space)) "^" \newline)]
     (throw (FormatException. message))))
@@ -1691,7 +1708,7 @@ performance when you're using the same format string repeatedly"
 	 (translate-internal-exception format-str cause)
 	 (throw (RuntimeException. (.getMessage e) e)))))))
 
-(defn needs-columns 
+(defn- needs-columns 
   "determine whether a given compiled format has any directives that depend on the
 column number"
   [format]
@@ -1704,7 +1721,7 @@ column number"
 	true
 	(recur (rest format))))))
 
-(defn execute-format [stream format args]
+(defn- execute-format [stream format args]
   (let [real-stream (cond 
 		     (not stream) (java.io.StringWriter.)
 		     (true? stream) *out*

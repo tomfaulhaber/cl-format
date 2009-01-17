@@ -42,7 +42,7 @@
 (defn- -getWriter [this]
   (get-field this :base))
 
-(defn -write 
+(defn- -write 
   ([this cbuf off len] 
      (.write (get-field this :base) cbuf off len))
   ([this x]
