@@ -257,3 +257,13 @@ doubles in its printed representation and neither does cl-format.
 
 The ~A and ~S directives accept the colon prefix, but ignore it since
 () and nil are not equivalent in Clojure.
+
+Clojure has 3 different reader syntaxes for characters. The ~@c
+directive to cl-format has an argument extension to let youu choose:
+* ~@c (with no argument) prints "\c" (backslash followed by the
+printed representation of the character or \newline, \space, \tab,
+\backspace, \return)
+* ~'o@c prints "\oDDD" where DDD are the octal digits representing the
+character. 
+* ~'u@c prints "\uXXXX" prints the hex Unicode representation of the
+character.  

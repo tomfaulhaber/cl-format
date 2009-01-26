@@ -421,17 +421,11 @@ Note this should only be used for the last one in the sequence"
     navigator))
 
 (defn- readable-character [params navigator offsets]
-  (let [[c navigator] (next-arg navigator)
-	as-int (int c)
-	special (get special-chars as-int)]
-    (print (cond
-	    special (str "\\" (.toLowerCase special))
-	    ; There's no really good way to display a readable non-printing
-	    ; character in Clojure. The reader will read the character if
-	    ; it doesn't get munged along the way, so we won't try to do
-	    ; anything better here.
-	    ; ((< as-int 32) (> as-int 126)) (str "(char " as-int ")")
-	    :else (str "\\" c)))
+  (let [[c navigator] (next-arg navigator)]
+    (condp = (:char-format params)
+	     \o (cl-format true "\\o~3,'0o" (int c))
+	     \u (cl-format true "\\u~4,'0x" (int c))
+	     nil (pr c))
     navigator))
 
 (defn- plain-character [params navigator offsets]
@@ -1154,7 +1148,7 @@ first character of the string even if it's a letter."
        navigator)))
 
   (\C
-   [ ]
+   [:char-format [nil Character]]
    #{ :at :colon :both } {}
    (cond
     (:colon params) pretty-character
