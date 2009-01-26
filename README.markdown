@@ -88,10 +88,12 @@ rest of the system more and will, therefore, be harder to implement
 with 100% compatibility.
 
 Next up: 
+
 * Replace custom exception types with an "inside-out" mechanism,
 * Known bug fixes: ~3@w doesn't throw an error correctly, format
 exceptions inside conditionals and loops don't display the error
 position correctly. 
+* Create pre-built jars for easy download.
 * Import tests from CLISP and SBCL.
 * Unit tests for exception conditions.
 * Interactive documentation
@@ -254,6 +256,7 @@ The following function uses cl-format to dump a columnized table of the Java sys
     
 There are some more examples in the com.infolace.format.examples
 package:
+
 * hexdump - a program that uses cl-format to create a standard
 formatted hexdump of the requested stream.
 * multiply - a function to show a formatted multipication table in a
@@ -273,6 +276,7 @@ The ~A and ~S directives accept the colon prefix, but ignore it since
 
 Clojure has 3 different reader syntaxes for characters. The ~@c
 directive to cl-format has an argument extension to let youu choose:
+
 * ~@c (with no argument) prints "\c" (backslash followed by the
 printed representation of the character or \newline, \space, \tab,
 \backspace, \return)
