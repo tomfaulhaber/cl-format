@@ -247,6 +247,14 @@ The following function uses cl-format to dump a columnized table of the Java sys
         (cl-format stream "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
     	           "Property" "Value" ["" "" "" ""] p)))
     
+There are some more examples in the com.infolace.format.examples
+package:
+* hexdump - a program that uses cl-format to create a standard
+formatted hexdump of the requested stream.
+* multiply - a function to show a formatted multipication table in a
+very "first-order" way.
+* props - the show-props example shown above.
+* show_doc - some utilities for showing what names are in various name spaces.
 
 ### Differences from the Common Lisp format function ###
 
