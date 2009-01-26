@@ -1340,6 +1340,17 @@ first character of the string even if it's a letter."
 	      (nil? (:rest (:base-args params)))
 	      (nil? (:rest navigator)))
 	  [exit navigator] navigator))))) 
+
+  ;; A stubbed out version of ~w so it at least prints stuff
+  (\W 
+   [] 
+   #{:at} {}
+   (let [stub-params {:mincol 0 :colinc 1 :minpad 0 :padchar \space }] 
+     (if (:at params)
+       #(binding [*print-level* nil
+		  *print-length* nil]
+	  (format-ascii print-str (merge stub-params (dissoc %1 :at)) %2 %3))
+       #(format-ascii print-str (merge stub-params %1) %2 %3))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

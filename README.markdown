@@ -77,8 +77,9 @@ but I haven't built that yet.
 
 Pretty printing isn't supported (at least at the moment) and with it,
 the following directives specified as part of the X3J13 updates are
-not supported: ~:T and ~@:T (but all other forms of ~T work), ~_, ~W,
-~I, and extensions with ~/.
+not supported: ~:T and ~@:T (but all other forms of ~T work), ~_,
+~I, and extensions with ~/. ~W is supported, but without any pretty
+printing functionality.
 
 I'm still considering what to do about the pretty printer. CL defines
 a super-powerful pretty printer based on the format function. But it's 
@@ -87,8 +88,12 @@ rest of the system more and will, therefore, be harder to implement
 with 100% compatibility.
 
 Next up: 
-* Custom exception types, 
+* Replace custom exception types with an "inside-out" mechanism,
+* Known bug fixes: ~3@w doesn't throw an error correctly, format
+exceptions inside conditionals and loops don't display the error
+position correctly. 
 * Import tests from CLISP and SBCL.
+* Unit tests for exception conditions.
 * Interactive documentation
 * Think about pretty printing
  
