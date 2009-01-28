@@ -89,7 +89,6 @@ with 100% compatibility.
 
 Next up: 
 
-* Replace custom exception types with an "inside-out" mechanism,
 * Known bug fixes: ~3@w doesn't throw an error correctly, format
 exceptions inside conditionals and loops don't display the error
 position correctly. 

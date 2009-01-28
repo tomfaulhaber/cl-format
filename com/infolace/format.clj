@@ -8,8 +8,7 @@
 
 (ns com.infolace.format
   (:use com.infolace.format.utilities)
-  (:import [com.infolace.format FormatException InternalFormatException
-	    ColumnWriter]))
+  (:import [com.infolace.format ColumnWriter]))
 
 ;;; Forward references
 (declare compile-format)
@@ -24,6 +23,13 @@
 	navigator (init-navigator args) ]
     (execute-format stream compiled-format navigator)))
 
+(def *format-str* nil)
+
+(defn- format-error [message offset] 
+  (let [full-message (str message \newline *format-str* \newline 
+			   (apply str (replicate offset \space)) "^" \newline)]
+    (throw (RuntimeException. full-message))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Argument navigators manage the argument list
 ;;; as the format statement moves through the list
@@ -37,7 +43,7 @@
   "Create a new arg-navigator from the sequence with the position set to 0"
   (struct arg-navigator s s 0))
 
-;; TODO Include position in error w/InternalFormatException
+;; TODO call format-error with offset
 (defn- next-arg [ navigator ]
   (let [ rst (:rest navigator) ]
     (if rst
@@ -751,7 +757,8 @@ Note this should only be used for the last one in the sequence"
 	   args args
 	   last-pos -1]
       (if (and (not max-count) (= (:pos args) last-pos) (> count 1))
-	(throw (FormatException. "%{ construct not consuming any arguments: Infinite loop!")))
+	;; TODO get the offset in here and call format exception
+	(throw (RuntimeException. "%{ construct not consuming any arguments: Infinite loop!")))
       (if (or (and (empty? (:rest args))
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
@@ -796,7 +803,8 @@ Note this should only be used for the last one in the sequence"
 	   navigator navigator
 	   last-pos -1]
       (if (and (not max-count) (= (:pos navigator) last-pos) (> count 1))
-	(throw (FormatException. "%@{ construct not consuming any arguments: Infinite loop!")))
+	;; TODO get the offset in here and call format exception
+	(throw (RuntimeException. "%@{ construct not consuming any arguments: Infinite loop!")))
       (if (or (and (empty? (:rest navigator))
 		   (or (not (:colon-right params)) (> count 0)))
 	      (and max-count (>= count max-count)))
@@ -1374,7 +1382,7 @@ first character of the string even if it's a letter."
 	  [ [token-str offset] [remainder new-offset false]]
 	  [ [token-str offset] [(subs remainder 1) (inc new-offset) true]]))
       (if saw-comma 
-	(throw (InternalFormatException. "Badly formed parameters in format directive" offset))
+	(format-error "Badly formed parameters in format directive" offset)
 	[ nil [s offset]]))))
 
 
@@ -1398,34 +1406,30 @@ first character of the string even if it's a letter."
 (defn- extract-flags [s offset]
   (consume
    (fn [[s offset flags]]
-    (if (empty? s)
-      [nil [s offset flags]]
-      (let [flag (get flag-defs (first s))]
-	(if flag
-	  (if (contains? flags flag)
-	    (throw 
-	     (InternalFormatException. 
+     (if (empty? s)
+       [nil [s offset flags]]
+       (let [flag (get flag-defs (first s))]
+	 (if flag
+	   (if (contains? flags flag)
+	     (format-error 
 	      (str "Flag \"" (first s) "\" appears more than once in a directive")
-	      offset))
-	    [true [(subs s 1) (inc offset) (assoc flags flag [true offset])]])
-	  [nil [s offset flags]]))))
+	      offset)
+	     [true [(subs s 1) (inc offset) (assoc flags flag [true offset])]])
+	   [nil [s offset flags]]))))
    [s offset {}]))
 
 (defn- check-flags [def flags]
   (let [allowed (:flags def)]
     (if (and (not (:at allowed)) (:at flags))
-      (throw (InternalFormatException.
-		  (str "\"@\" is an illegal flag for format directive \"" (:directive def) "\"")
-		  (nth (:at flags) 1))))
+      (format-error (str "\"@\" is an illegal flag for format directive \"" (:directive def) "\"")
+		    (nth (:at flags) 1)))
     (if (and (not (:colon allowed)) (:colon flags))
-      (throw (InternalFormatException.
-		  (str "\":\" is an illegal flag for format directive \"" (:directive def) "\"")
-		  (nth (:colon flags) 1))))
+      (format-error (str "\":\" is an illegal flag for format directive \"" (:directive def) "\"")
+		    (nth (:colon flags) 1)))
     (if (and (not (:both allowed)) (:at flags) (:colon flags))
-      (throw (InternalFormatException.
-		  (str "Cannot combine \"@\" and \":\" flags for format directive \"" 
-		       (:directive def) "\"")
-		  (min (nth (:colon flags) 1) (nth (:at flags) 1)))))))
+      (format-error (str "Cannot combine \"@\" and \":\" flags for format directive \"" 
+			 (:directive def) "\"")
+		    (min (nth (:colon flags) 1) (nth (:at flags) 1))))))
 
 (defn- map-params [def params flags offset]
   "Takes a directive definition and the list of actual parameters and
@@ -1434,40 +1438,37 @@ first character of the string even if it's a letter."
    of parameters as well."
   (check-flags def flags)
   (if (> (count params) (count (:params def)))
-    (throw (InternalFormatException.
-	    (str "Too many parameters for directive \"" (:directive def) 
-		 "\": specified " (count params) " but received " 
-		 (count (:params def)))
-	    (frest params))))
+    (format-error (str "Too many parameters for directive \"" (:directive def) 
+		       "\": specified " (count params) " but received " 
+		       (count (:params def)))
+		  (frest params)))
 
   (doall
    (map #(let [val (first %1)]
 	   (if (not (or (nil? val) (contains? special-params val) 
 			(instance? (frest (frest %2)) val)))
-	     (throw (InternalFormatException.
-		     (str "Parameter " (name (first %2))
-			  " has bad type in directive \"" (:directive def) "\": "
-			  (class val))
-		     (frest %1)))) )
+	     (format-error (str "Parameter " (name (first %2))
+				" has bad type in directive \"" (:directive def) "\": "
+				(class val))
+			   (frest %1))) )
 	params (:params def)))
      
-  (merge ; create the result map
-   (into (array-map)  ; start with the default values, make sure the order is right
+  (merge				; create the result map
+   (into (array-map) ; start with the default values, make sure the order is right
 	 (reverse (for [[name [default]] (:params def)] [name [default offset]])))
    (reduce #(apply assoc %1 %2) {} (filter #(first (nth % 1)) (zipmap (keys (:params def)) params))) ; add the specified parameters, filtering out nils
-   flags)) ; and finally add the flags
+   flags))				; and finally add the flags
 
 (defn- compile-directive [s offset]
   (let [[raw-params [rest offset]] (extract-params s offset)
 	[_ [rest offset flags]] (extract-flags rest offset)
 	directive (first rest)
 	def (get directive-table (Character/toUpperCase directive))
-	params (if def (map-params def (map translate-param raw-params) flags offset))
-	]
+	params (if def (map-params def (map translate-param raw-params) flags offset))]
     (if (not directive)
-      (throw (InternalFormatException. "Format string ended in the middle of a directive" offset)))
+      (format-error "Format string ended in the middle of a directive" offset))
     (if (not def)
-      (throw (InternalFormatException. (str "Directive \"" directive "\" is undefined") offset)))
+      (format-error (str "Directive \"" directive "\" is undefined") offset))
     [(struct compiled-directive ((:generator-fn def) params offset) def params offset)
      (let [remainder (subs rest 1) 
 	   offset (inc offset)
@@ -1503,7 +1504,7 @@ first character of the string even if it's a letter."
   (consume 
    (fn [remainder]
      (if (nil? remainder)
-       (throw (InternalFormatException. "No closing bracket found." offset))
+       (format-error "No closing bracket found." offset)
        (let [this (first remainder)
 	     remainder (rest remainder)]
 	 (cond
@@ -1539,18 +1540,16 @@ first character of the string even if it's a letter."
 	 (= type :else)
 	 (cond
 	  (:else clause-map)
-	  (throw (InternalFormatException.
-		  "Two else clauses (\"~:;\") inside bracket construction." offset))
+	  (format-error "Two else clauses (\"~:;\") inside bracket construction." offset)
 	 
 	  (not (:else bracket-info))
-	  (throw (InternalFormatException.
-		  "An else clause (\"~:;\") is in a bracket type that doesn't support it." 
-		  offset))
+	  (format-error "An else clause (\"~:;\") is in a bracket type that doesn't support it." 
+			offset)
 
 	  (and (= :first (:else bracket-info)) (seq (:clauses clause-map)))
-	  (throw (InternalFormatException.
-		  "The else clause (\"~:;\") is only allowed in the first position for this directive." 
-		  offset))
+	  (format-error
+	   "The else clause (\"~:;\") is only allowed in the first position for this directive." 
+	   offset)
 	 
 	  true	 ; if the ~:; is in the last position, the else clause
 					; is next, this was a regular clause
@@ -1563,13 +1562,11 @@ first character of the string even if it's a letter."
 	 (= type :separator)
 	 (cond
 	  saw-else
-	  (throw (InternalFormatException.
-		  "A plain clause (with \"~;\") follows an else clause (\"~:;\") inside bracket construction." offset))
+	  (format-error "A plain clause (with \"~;\") follows an else clause (\"~:;\") inside bracket construction." offset)
 	 
 	  (not (:allows-separator bracket-info))
-	  (throw (InternalFormatException.
-		  "A separator (\"~;\") is in a bracket type that doesn't support it." 
-		  offset))
+	  (format-error "A separator (\"~;\") is in a bracket type that doesn't support it." 
+			offset)
 	 
 	  true
 	  [true [(merge-with concat clause-map { :clauses [clause] })
@@ -1591,40 +1588,25 @@ first character of the string even if it's a letter."
 	  [this remainder])))
     format)))
 
-	    
-      
-(defn- translate-internal-exception [format-str e]
-  (let [message (str (.getMessage e) \newline format-str \newline 
-		     (apply str (replicate (.pos e) \space)) "^" \newline)]
-    (throw (FormatException. message))))
-
 (defn compile-format 
   "Compiles format-str into a compiled format which can be used as an argument
 to cl-format just like a plain format string. Use this function for improved 
 performance when you're using the same format string repeatedly"
   [ format-str ]
-  (try
-   (process-nesting
-    (first 
-     (consume 
-      (fn [[s offset]]
-	(if (empty? s)
-	  [nil s]
-	  (let [tilde (.indexOf s (int \~))]
-	    (cond
-	     (neg? tilde) [(compile-raw-string s offset) ["" (+ offset (.length s))]]
-	     (zero? tilde)  (compile-directive (subs s 1) (inc offset))
-	     true 
-	     [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
-      [format-str 0])))
-   (catch InternalFormatException e 
-     (translate-internal-exception format-str e))
-   (catch RuntimeException e ; Functions like map bury the thrown exception inside a
-			     ; RuntimeException, so we have to dig it out.
-     (let [cause (.getCause e)]
-       (if (instance? InternalFormatException cause)
-	 (translate-internal-exception format-str cause)
-	 (throw (RuntimeException. (.getMessage e) e)))))))
+  (binding [*format-str* format-str]
+    (process-nesting
+     (first 
+      (consume 
+       (fn [[s offset]]
+	 (if (empty? s)
+	   [nil s]
+	   (let [tilde (.indexOf s (int \~))]
+	     (cond
+	      (neg? tilde) [(compile-raw-string s offset) ["" (+ offset (.length s))]]
+	      (zero? tilde)  (compile-directive (subs s 1) (inc offset))
+	      true 
+	      [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
+       [format-str 0])))))
 
 (defn- needs-columns 
   "determine whether a given compiled format has any directives that depend on the

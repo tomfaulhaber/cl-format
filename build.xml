@@ -19,7 +19,7 @@
 		<delete dir="${build}"/>
   </target>
 
-  <target name="jar" depends="compile_exceptions"
+  <target name="jar" depends="compile_classes"
           description="Create jar file.">
     <jar jarfile="${jarfile}">
       <fileset dir="." includes="epl-v10.html"/>
@@ -28,13 +28,11 @@
     </jar>
   </target>
 
-	<target name="compile_exceptions" depends="init"
+	<target name="compile_classes" depends="init"
 					description="Compile special exception classes.">
 		<java classname="clojure.lang.Compile"
           classpath=".:${build}:${clojure-jar}">
       <sysproperty key="clojure.compile.path" value="${build}"/>
-      <arg value="com.infolace.format.FormatException"/>
-      <arg value="com.infolace.format.InternalFormatException"/>
       <arg value="com.infolace.format.ColumnWriter"/>
 		</java>
   </target>
