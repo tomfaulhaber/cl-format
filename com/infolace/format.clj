@@ -23,7 +23,7 @@
 	navigator (init-navigator args) ]
     (execute-format stream compiled-format navigator)))
 
-(def *format-str* nil)
+(def #^{:private true} *format-str* nil)
 
 (defn- format-error [message offset] 
   (let [full-message (str message \newline *format-str* \newline 
@@ -1438,10 +1438,12 @@ first character of the string even if it's a letter."
    of parameters as well."
   (check-flags def flags)
   (if (> (count params) (count (:params def)))
-    (format-error (str "Too many parameters for directive \"" (:directive def) 
-		       "\": specified " (count params) " but received " 
-		       (count (:params def)))
-		  (frest params)))
+    (format-error 
+     (cl-format 
+      nil 
+      "Too many parameters for directive \"~C\": ~D~:* ~[were~;was~:;were~] specified but only ~D~:* ~[are~;is~:;are~] allowed"
+      (:directive def) (count params) (count (:params def)))
+     (frest (first params))))
 
   (doall
    (map #(let [val (first %1)]
