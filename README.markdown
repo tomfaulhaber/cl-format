@@ -90,7 +90,6 @@ with 100% compatibility.
 Next up: 
 
 * Support for the CL formatter function
-* Create pre-built jars for easy download.
 * Import tests from CLISP and SBCL.
 * Unit tests for exception conditions.
 * Interactive documentation
@@ -98,10 +97,22 @@ Next up:
  
 ### How to use cl-format ###
 
-#### Installation ####
+#### Installing using the JAR ####
 
-To use the cl-format function, you must download and build the
-library. There is currently no binary repository.
+The easiest way to install cl-format is just to grab the the jar from
+github: 
+[http://github.com/tomfaulhaber/cl-format/raw/4e4a466fd4cdff1616d5315401e393104ecb556e/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/4e4a466fd4cdff1616d5315401e393104ecb556e/cl-format.jar). This
+is not always the exact latest, but it does get updated when there are
+significant changes. 
+
+Add the jar to your classpath and proceed to the section *Loading
+cl-format in your program* below to start using it. (I use the
+clojure-extras shell script which automatically adds the JAR files in
+my ~/.clojure directory, so I just copy cl-format.jar there.)
+
+#### Use the source, Luke ####
+
+If you'd like to start from the source, here's how.
 
 Building and installing the library is pretty easy. There are a few
 requirements, which you have probably already met if you're running
