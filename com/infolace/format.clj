@@ -1607,7 +1607,7 @@ performance when you're using the same format string repeatedly"
 	      (neg? tilde) [(compile-raw-string s offset) ["" (+ offset (.length s))]]
 	      (zero? tilde)  (compile-directive (subs s 1) (inc offset))
 	      true 
-	      [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) tilde]]))))
+	      [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) (+ tilde offset)]]))))
        [format-str 0])))))
 
 (defn- needs-columns 

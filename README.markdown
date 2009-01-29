@@ -89,9 +89,6 @@ with 100% compatibility.
 
 Next up: 
 
-* Known bug fixes: ~3@w doesn't throw an error correctly, format
-exceptions inside conditionals and loops don't display the error
-position correctly. 
 * Support for the CL formatter function
 * Create pre-built jars for easy download.
 * Import tests from CLISP and SBCL.
