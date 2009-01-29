@@ -7,7 +7,7 @@
   <property name="build" location="classes"/>
 	<property name="clojure-jar" location="../clojure/clojure.jar"/>
   <!-- The JAR file to create. -->
-  <property name="jarfile" location="cl-format.jar"/>
+  <property name="jarfile" value="cl-format.jar"/>
 
   <target name="init">
     <mkdir dir="${build}"/>
@@ -36,4 +36,27 @@
       <arg value="com.infolace.format.ColumnWriter"/>
 		</java>
   </target>
+
+	<target name="release" depends="jar" 
+					description="Checks in the current jar file and tags the resulting checkin with a version number">
+		<exec executable="git">
+			<arg value="add"/>
+			<arg value="-f"/>
+			<arg value="${jarfile}"/>
+		</exec>
+
+		<exec executable="git">
+			<arg value="commit"/>
+			<arg value="-m"/>
+			<arg value="Ready to tag ${tagname}"/>
+		</exec>
+
+		<exec executable="git">
+			<arg value="tag"/>
+			<arg value="-m"/>
+			<arg value="Tagged from ant task"/>
+			<arg value="${tagname}"/>
+		</exec>
+
+	</target>
 </project>
