@@ -101,7 +101,7 @@ Next up:
 
 The easiest way to install cl-format is just to grab the the jar from
 github: 
-[http://github.com/tomfaulhaber/cl-format/raw/4e4a466fd4cdff1616d5315401e393104ecb556e/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/4e4a466fd4cdff1616d5315401e393104ecb556e/cl-format.jar). This
+[http://github.com/tomfaulhaber/cl-format/raw/master/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/master/cl-format.jar). This
 is not always the exact latest, but it does get updated when there are
 significant changes. 
 
