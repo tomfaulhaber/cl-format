@@ -31,11 +31,12 @@
   </target>
 
 	<target name="compile_classes" depends="init"
-					description="Compile special exception classes.">
+					description="Compile clojure classes.">
 		<java classname="clojure.lang.Compile"
           classpath=".:${build}:${clojure-jar}">
       <sysproperty key="clojure.compile.path" value="${build}"/>
       <arg value="com.infolace.format.ColumnWriter"/>
+      <arg value="com.infolace.format.PrettyWriter"/>
 		</java>
   </target>
 
