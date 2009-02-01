@@ -16,17 +16,12 @@
 	     [newline [clojure.lang.Keyword] void]]
    :state state))
 
-(defstruct #^{:private true} logical-block :parent :section :indent)
-(defstruct #^{:private true} section :parent)
-(defstruct #^{:private true} buffer-blob :type :data)
-(defstruct #^{:private true} nl :type)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Macros to simplify dealing with types and classes. These are
+;;; really utilities, but I'm experimenting with them here.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- -init 
-  [writer max-columns] [[writer max-columns] 
-			(ref {:logical-blocks nil 
-			      :sections nil})])
-
-(defmacro ; #^{:private true} 
+(defmacro #^{:private true} 
   getf 
   "Get the value of the field a named by the argument (which should be a keyword)."
   [sym]
@@ -37,6 +32,64 @@
   "Set the value of the field SYM to NEW-VAL"
   `(alter (.state ~'this) assoc ~sym ~new-val))
 
+(defmacro #^{:private true} deftype [type-name & fields]
+  (let [name-str (name type-name)]
+    `(do
+       (defstruct ~type-name :type-tag ~@fields)
+       (defn- ~(symbol (str "make-" name-str)) 
+	 [& vals#] (apply struct ~type-name ~(keyword name-str) vals#))
+       (defn- ~(symbol (str name-str "?")) [x#] (= (:type-tag x#) ~(keyword name-str))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; The data structures used by PrettyWriter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defstruct #^{:private true} logical-block :parent :section :indent)
+(defstruct #^{:private true} section :parent)
+
+(deftype buffer-blob :type :data)
+(deftype nl :type :section)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Initialize the PrettyWriter instance
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- -init 
+  [writer max-columns] [[writer max-columns] 
+			(ref {:logical-blocks (struct logical-block nil nil 0) 
+			      :sections nil
+			      :mode :writing})])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Various support functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Write all the tokens that have been buffered
+(defn- write-buffered-output [this])
+
+;;; If there are newlines in the string, print the lines up until the last newline, 
+;;; making the appropriate adjustments. Return the remainder of the string
+(defn- write-initial-lines 
+  [this s] 
+  (let [lines (.split s "\n")]
+    (if (= (count lines) 1)
+      s
+      (dosync 
+       (let [base (getf :base)
+	     prefix (:prefix (first (getf :logical-blocks)))] 
+	 (if (= :buffering (getf :mode))
+	   (write-buffered-output this))
+	 (doseq [l (butlast lines)]
+	   (.write base l)
+	   (if prefix
+	     (.write base prefix)))
+	 (setf :buffering :writing)
+	 (last lines))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Writer overrides
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn- -write 
   ([this x]
      (condp 
@@ -45,7 +98,7 @@
 
       String 
       (let [s #^String x
-	    nl (.lastIndexOf x (int \newline))]
+	    nl (.indexOf x (int \newline))]
 	(dosync (if (neg? nl)
 		  (setf :cur (+ (getf :cur) (count s)))
 		  (setf :cur (- (count s) nl 1))))
@@ -58,10 +111,15 @@
 		  (setf :cur (inc (getf :cur)))))
 	(.write (getf :base) c)))))
 
-(defn- -startBlock [] )
-(defn- -endBlock [] )
-(defn- -addnewline [type])
-
 (defn- -flush [this]) ;; Currently a no-op
 
 (defn- -close [this]) ;; Currently a no-op
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Methods for PrettyWriter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- -startBlock [] )
+(defn- -endBlock [] )
+(defn- -newline [type]
+  )
