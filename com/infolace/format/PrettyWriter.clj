@@ -11,9 +11,10 @@
    :extends com.infolace.format.ColumnWriter
    :init init
    :constructors {[java.io.Writer Integer] [java.io.Writer]}
-   :methods [[startBlock [] void]
+   :methods [[startBlock [String String String] void]
 	     [endBlock [] void]
-	     [newline [clojure.lang.Keyword] void]]
+	     [newline [clojure.lang.Keyword] void]
+	     [indent [clojure.lang.Keyword Integer] void]]
    :state state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,11 +45,29 @@
 ;;; The data structures used by PrettyWriter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct #^{:private true} logical-block :parent :section :indent)
+(defstruct #^{:private true} logical-block :parent :section :start-col :indent
+	   :prefix :per-line-prefix :suffix)
 (defstruct #^{:private true} section :parent)
 
-(deftype buffer-blob :type :data)
-(deftype nl :type :section)
+(defmulti blob-length :tag)
+(defmethod blob-length :default [_] 0)
+
+(defn buffer-length [l] (reduce + (map blob-length l)))
+
+; A blob of characters (aka a string)
+(deftype buffer-blob :data)
+(defmethod blob-length :buffer-blob [b] (count (:data b)))
+
+; A newline
+(deftype nl :type :logical-block)
+
+(deftype start-block :logical-block)
+(defmethod blob-length :start-block [b] (count (:prefix (:logical-block b))))
+
+(deftype end-block :logical-block)
+(defmethod blob-length :end-block [b] (count (:suffix (:logical-block b))))
+
+(deftype indent :logical-block :relative-to :offset)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialize the PrettyWriter instance
@@ -56,13 +75,44 @@
 
 (defn- -init 
   [writer max-columns] [[writer max-columns] 
-			(ref {:logical-blocks (struct logical-block nil nil 0) 
-			      :sections nil
-			      :mode :writing})])
+			(let [lb (struct logical-block nil nil (ref 0) (ref 0))]
+			  (ref {:logical-blocks lb 
+				:sections nil
+				:mode :writing
+				:buffer []
+				:buffer-block lb
+				:buffer-level 1}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Various support functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- get-section [buffer]
+  (let [nl (first buffer) 
+	lb (:logical-block nl)
+	section (take-while #(not (and (nl? %) (ancestor? (:logical-block %) lb)))
+			    (rest buffer))]
+    [section (drop (inc (count section)) buffer)])) 
+
+(defn- write-line [this]
+  (let [buffer (getf :buffer)
+	nl (first buffer)
+	[section new-buffer] (get-section buffer)]
+    (if (<= (+ (.getColumn this) (buffer-length section))
+	    (.getMaxColumn this))
+      (write-tokens this buffer)
+      (do
+	(emit-nl this nl)
+	))))
+
+;;; Add a buffer token to the buffer and see if it's time to start
+;;; writing
+(defn- add-to-buffer [this token]
+  (dosync
+   (setf :buffer (conj (getf :buffer) token))
+   (if (> (+ (.getColumn this) (buffer-length (getf :buffer)))
+	  (.getMaxColumn this))
+     (write-line this))))
 
 ;;; Write all the tokens that have been buffered
 (defn- write-buffered-output [this])
@@ -81,10 +131,12 @@
 	   (write-buffered-output this))
 	 (doseq [l (butlast lines)]
 	   (.write base l)
+	   (.write base \newline)
 	   (if prefix
 	     (.write base prefix)))
 	 (setf :buffering :writing)
 	 (last lines))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Writer overrides
@@ -97,29 +149,59 @@
       (class x)
 
       String 
-      (let [s #^String x
-	    nl (.indexOf x (int \newline))]
-	(dosync (if (neg? nl)
-		  (setf :cur (+ (getf :cur) (count s)))
-		  (setf :cur (- (count s) nl 1))))
-	(.write (getf :base) s))
+      (let [s (write-initial-lines x)
+	    mode (getf :mode)]
+	(if (= mode :writing)
+	  (.write (getf :base) s)
+	  (add-to-buffer this (struct buffer-blob s))))
 
       Integer
       (let [c #^Character x]
-	(dosync (if (= c (int \newline))
-		  (setf :cur 0)
-		  (setf :cur (inc (getf :cur)))))
-	(.write (getf :base) c)))))
+	(if (= c (int \newline))
+	  (write-initial-lines "\n")
+	  (add-to-buffer this (make-buffer-blob (str c))))))))
 
-(defn- -flush [this]) ;; Currently a no-op
+(defn- -flush [this]) ;; TODO: write incomplete line
 
-(defn- -close [this]) ;; Currently a no-op
+(defn- -close [this]) ;; TODO: write incomplete line
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Methods for PrettyWriter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- -startBlock [] )
-(defn- -endBlock [] )
-(defn- -newline [type]
-  )
+(defn- -startBlock [this type prefix per-line-prefix suffix]
+  (dosync 
+   (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0) 
+		    prefix per-line-prefix suffix)]
+     (setf :logical-blocks lb)
+     (if (= (getf :mode) :writing)
+       (let [base (getf :base)]
+	 (if prefix 
+	   (.write base prefix))
+	 (ref-set (:start-col lb) (.getColumn base)))
+       (add-to-buffer this (make-start-block lb))))))
+
+(defn- -endBlock [this]
+  (dosync
+   (let [lb (getf :logical-blocks)]
+     (if (= (getf :mode) :writing)
+       (if-let [suffix (:suffix lb)]
+	 (.write (getf :base) suffix))
+       (add-to-buffer this (make-end-block lb)))
+     (setf :logical-blocks (:parent lb)))))
+
+(defn- -newline [this type]
+  (dosync 
+   (setf :mode :buffering)
+   (add-to-buffer (make-nl type (getf :logical-blocks)))))
+
+(defn- -indent [this relative-to offset]
+  (dosync 
+   (let [lb (getf :logical-blocks)]
+     (if (= (getf :mode) :writing)
+       (ref-set (:indent lb) 
+		(+ offset (condp 
+			   = relative-to
+			   :block @(:start-col lb)
+			   :current (.getColumn this))))
+       (add-to-buffer (make-indent lb relative-to offset))))))
