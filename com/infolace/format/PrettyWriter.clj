@@ -15,6 +15,7 @@
 	     [endBlock [] void]
 	     [newline [clojure.lang.Keyword] void]
 	     [indent [clojure.lang.Keyword Integer] void]]
+   :exposes-methods {write col-write}
    :state state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47,6 +48,12 @@
 
 (defstruct #^{:private true} logical-block :parent :section :start-col :indent
 	   :prefix :per-line-prefix :suffix)
+(defn ancestor? [parent child]
+  (cond 
+   (nil? child) false
+   (= parent child) true
+   :else (recur parent (:parent child))))
+
 (defstruct #^{:private true} section :parent)
 
 (defmulti blob-length :tag)
@@ -84,8 +91,44 @@
 				:buffer-level 1}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Functions to write tokens in the output buffer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmulti write-token #(:tag %2))
+(defmethod write-token :start-block [this token]
+  (dosync
+   (if-let [prefix (:prefix (:logical-block token))] 
+     (.col-write this prefix))
+   (ref-set (:start-col (getf :logical-blocks)) 
+	    (.getColumn this))))
+
+(defmethod write-token :end-block [this token]
+  (if-let [suffix (:suffix (:logical-block token))] 
+    (.col-write this suffix)))
+
+(defmethod write-token :indent [this token]
+  (let [lb (:logical-block token)]
+    (ref-set (:indent lb) 
+	     (condp 
+	      = (:relative-to token)
+		:block @(:start-col lb)
+		:current (.getColumn this)))))
+
+(defmethod write-token :buffer-blob [this token]
+  (.col-write this (:data token)))
+
+;; If we run over a new line while writing tokens, we've decided
+;; not to break lines here, so we just ignore it.
+(defmethod write-token :nl [this token])
+
+(defn- write-tokens [this tokens]
+  (doseq [token tokens]
+    (write-token this token)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Various support functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn- get-section [buffer]
   (let [nl (first buffer) 
@@ -94,6 +137,14 @@
 			    (rest buffer))]
     [section (drop (inc (count section)) buffer)])) 
 
+(defn emit-nl [this nl]
+  (.col-write this (int \newline))
+  (let [lb (:logical-block nl)
+	prefix (:per-line-prefix lb)] 
+    (if prefix 
+      (.col-write this prefix))
+    (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
+					   \space)))))
 (defn- write-line [this]
   (let [buffer (getf :buffer)
 	nl (first buffer)
@@ -102,7 +153,7 @@
 	    (.getMaxColumn this))
       (write-tokens this buffer)
       (do
-	(emit-nl this nl)
+	(emit-nl this nl) ;; TODO: CONTINUE IMPLEMENTATION
 	))))
 
 ;;; Add a buffer token to the buffer and see if it's time to start
@@ -125,15 +176,14 @@
     (if (= (count lines) 1)
       s
       (dosync 
-       (let [base (getf :base)
-	     prefix (:prefix (first (getf :logical-blocks)))] 
+       (let [prefix (:prefix (first (getf :logical-blocks)))] 
 	 (if (= :buffering (getf :mode))
 	   (write-buffered-output this))
 	 (doseq [l (butlast lines)]
-	   (.write base l)
-	   (.write base \newline)
+	   (.col-write this l)
+	   (.col-write this \newline)
 	   (if prefix
-	     (.write base prefix)))
+	     (.col-write this prefix)))
 	 (setf :buffering :writing)
 	 (last lines))))))
 
@@ -152,7 +202,7 @@
       (let [s (write-initial-lines x)
 	    mode (getf :mode)]
 	(if (= mode :writing)
-	  (.write (getf :base) s)
+	  (.col-write this s)
 	  (add-to-buffer this (struct buffer-blob s))))
 
       Integer
@@ -175,10 +225,10 @@
 		    prefix per-line-prefix suffix)]
      (setf :logical-blocks lb)
      (if (= (getf :mode) :writing)
-       (let [base (getf :base)]
+       (do
 	 (if prefix 
-	   (.write base prefix))
-	 (ref-set (:start-col lb) (.getColumn base)))
+	   (.col-write this prefix))
+	 (ref-set (:start-col lb) (.getColumn this)))
        (add-to-buffer this (make-start-block lb))))))
 
 (defn- -endBlock [this]
@@ -186,7 +236,7 @@
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
        (if-let [suffix (:suffix lb)]
-	 (.write (getf :base) suffix))
+	 (.col-write this suffix))
        (add-to-buffer this (make-end-block lb)))
      (setf :logical-blocks (:parent lb)))))
 
