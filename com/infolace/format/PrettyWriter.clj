@@ -88,7 +88,8 @@
 				:mode :writing
 				:buffer []
 				:buffer-block lb
-				:buffer-level 1}))])
+				:buffer-level 1
+				:max max-columns, :cur 0, :base writer}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions to write tokens in the output buffer
@@ -157,28 +158,42 @@
   (let [[a b] (split-at-newline tokens)]
     (if a (write-tokens a))
     (if b
-      (let [[section remainder] (get-section tokens)]
+      (let [[section remainder] (get-section tokens)
+	    newl (first section)
+	    section (rest section)]
 	(if (not (tokens-fit? this section))
-	  (emit-nl this (first section)))
-	;; TODO: CONTINUE IMPLEMENTATION
-))))
+	  (do 
+	    (emit-nl this newl)
+	    (if (not (tokens-fit? this section))
+	      (let [rem2 (write-token-string this section)]
+		(if (= rem2 section)
+		  (do ; If that didn't produce any output, it has no nls
+		      ; so we'll force it
+		    (write-tokens section)
+		    remainder)
+		  (into rem2 remainder))
+		))
+	    (if remainder
+	      (do 
+		(write-tokens section)
+		remainder)
+	      section)))))))
 
 (defn- write-line [this]
-  (let [buffer (getf :buffer)
-	nl (first buffer)
-	[section new-buffer] (get-section buffer)]
-    (if (tokens-fit? this section)
-      (write-tokens this section)
-      (do
-	(emit-nl this nl) ;; TODO: CONTINUE IMPLEMENTATION
-	))))
+  (dosync
+   (loop [last-buffer nil
+	  buffer (getf :buffer)]
+     (if (not (tokens-fit? this buffer))
+       (let [new-buffer (write-token-string this buffer)]
+	 (recur buffer new-buffer))
+       (setf :buffer buffer)))))
 
 ;;; Add a buffer token to the buffer and see if it's time to start
 ;;; writing
 (defn- add-to-buffer [this token]
   (dosync
    (setf :buffer (conj (getf :buffer) token))
-   (if (not (tokens-fit this (getf :buffer)))
+   (if (not (tokens-fit? this (getf :buffer)))
      (write-line this))))
 
 ;;; Write all the tokens that have been buffered
@@ -229,13 +244,17 @@
 
 (defn- -flush [this]) ;; TODO: write incomplete line
 
-(defn- -close [this]) ;; TODO: write incomplete line
+(defn- -close [this]
+  (if (= (getf :mode) :buffering)
+    (do 
+      (write-tokens (getf :buffer))
+      (setf :buffer nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Methods for PrettyWriter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- -startBlock [this type prefix per-line-prefix suffix]
+(defn- -startBlock [this prefix per-line-prefix suffix]
   (dosync 
    (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0) 
 		    prefix per-line-prefix suffix)]
