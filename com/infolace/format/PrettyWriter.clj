@@ -145,13 +145,30 @@
       (.col-write this prefix))
     (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
 					   \space)))))
+(defn- split-at-newline [tokens]
+  (let [pre (take-while #(not (nl? %)) tokens)]
+    [pre (drop (count pre) tokens)]))
+
+(defn- tokens-fit? [this tokens]
+  (<= (+ (.getColumn this) (buffer-length tokens))
+      (.getMaxColumn this)))
+
+(defn- write-token-string [this tokens]
+  (let [[a b] (split-at-newline tokens)]
+    (if a (write-tokens a))
+    (if b
+      (let [[section remainder] (get-section tokens)]
+	(if (not (tokens-fit? this section))
+	  (emit-nl this (first section)))
+	;; TODO: CONTINUE IMPLEMENTATION
+))))
+
 (defn- write-line [this]
   (let [buffer (getf :buffer)
 	nl (first buffer)
 	[section new-buffer] (get-section buffer)]
-    (if (<= (+ (.getColumn this) (buffer-length section))
-	    (.getMaxColumn this))
-      (write-tokens this buffer)
+    (if (tokens-fit? this section)
+      (write-tokens this section)
       (do
 	(emit-nl this nl) ;; TODO: CONTINUE IMPLEMENTATION
 	))))
@@ -161,8 +178,7 @@
 (defn- add-to-buffer [this token]
   (dosync
    (setf :buffer (conj (getf :buffer) token))
-   (if (> (+ (.getColumn this) (buffer-length (getf :buffer)))
-	  (.getMaxColumn this))
+   (if (not (tokens-fit this (getf :buffer)))
      (write-line this))))
 
 ;;; Write all the tokens that have been buffered
