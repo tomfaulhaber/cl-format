@@ -8,7 +8,7 @@
 
 (ns com.infolace.pprint
   (:use com.infolace.format.utilities)
-  (:import [com.infolace.format ColumnWriter]))
+  (:import [com.infolace.format PrettyWriter]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Variables that control the pretty printer
@@ -22,7 +22,7 @@
 
 (def
  #^{ :doc "Bind to true if you want write to use pretty printing"}
- *print-pretty* nil)
+ *print-pretty* true)
 
 ;;; TODO: implement true data-driven dispatch
 (def
@@ -53,6 +53,77 @@
  #^{ :doc "Mark repeated structures rather than repeat them (N.B. This is not yet used)"}
  *print-shared* nil)
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Support for the write function
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def write-option-table
+        {;:array            *print-array*
+         ;:base             *print-base*,
+         ;:case             *print-case*,
+	 :circle           'com.infolace.pprint/*print-circle*,
+         ;:escape           *print-escape*,
+         ;:gensym           *print-gensym*,
+	 :length           'clojure.core/*print-length*,
+	 :level            'clojure.core/*print-level*,
+	 :lines            'com.infolace.pprint/*print-lines*,
+	 :miser-width      'com.infolace.pprint/*print-miser-width*,
+	 :pprint-dispatch  'com.infolace.pprint/*print-pprint-dispatch*,
+	 :pretty           'com.infolace.pprint/*print-pretty*,
+         ;:radix            *print-radix*,
+	 :readably         'clojure.core/*print-readably*,
+	 :right-margin     'com.infolace.pprint/*print-right-margin*})
+
+(defn- proc-write-options [options]
+  (merge 
+   (into {} (for [[k v] write-option-table] [k (var-get (find-var v))]))
+   options))
+
+(defmacro binding-map [symbol-map options & body]
+  (let [optsym (gensym "options-")]
+    `(let [~optsym ~options]
+       (binding [~@(mapcat 
+		    (fn [[key sym]] `(~sym (if (contains? ~optsym ~key)
+					     (~key ~optsym)
+					     (var-get (find-var (quote ~sym))))))
+		    (eval symbol-map))]
+	 ~@body))))
+
+;; (defmacro binding-map [symbol-map options & body]
+;;   (let [real-map (eval symbol-map)]
+;;     `(binding [~@(mapcat 
+;; 		  (fn [[key val]] (if-let [var-name (key real-map)]
+;; 				    `(~var-name ~val)))
+;; 		  options)]
+;;        ~@body)))
+
+(defmacro with-pretty-writer [[write-sym base-writer] & body]
+  `(let [new-writer# (not (instance? PrettyWriter ~base-writer))
+	 ~write-sym (if new-writer#
+		      (PrettyWriter. ~base-writer *print-right-margin*)
+		      ~base-writer)]
+     ~@body
+     (if new-writer# (.flush ~write-sym))))
+
+(defn write [object options]
+  "Write an object subject to the current bindings of the printer control variables.
+Use the options argument to override individual variables for this call (and any 
+recursive calls)"
+  (binding-map write-option-table options 
+    (if *print-pretty*
+      (let [optval (if (contains? options :stream) 
+		     (:stream options)
+		     true) 
+	    base-writer (condp = optval
+				 nil (java.io.StringWriter.)
+				 true *out*
+				 optval)]
+	(with-pretty-writer [pretty-writer base-writer]
+	  ;; TODO: the real work!
+	  )
+	(if (nil? optval) 
+	  (.toString base-writer))))))
 
 (defmacro pprint-logical-block 
   ""
