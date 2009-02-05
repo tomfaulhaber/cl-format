@@ -103,12 +103,14 @@
 
 (defmulti write-token #(:type-tag %2))
 (defmethod write-token :start-block [this token]
-  (dosync
-;   (prlabel write-start-block (:prefix (:logical-block token)))
-   (if-let [prefix (:prefix (:logical-block token))] 
-     (.col-write this prefix))
-   (ref-set (:start-col (getf :logical-blocks)) 
-	    (.getColumn this))))
+  (let [lb (:logical-block token)]
+    (dosync
+     ;;   (prlabel write-start-block (:prefix (:logical-block token)))
+     (if-let [prefix (:prefix lb)] 
+       (.col-write this prefix))
+     (let [col (.getColumn this)]
+       (ref-set (:start-col lb) col)
+       (ref-set (:indent lb) col)))))
 
 (defmethod write-token :end-block [this token]
   (if-let [suffix (:suffix (:logical-block token))] 
@@ -117,10 +119,11 @@
 (defmethod write-token :indent [this token]
   (let [lb (:logical-block token)]
     (ref-set (:indent lb) 
-	     (condp 
-	      = (:relative-to token)
-		:block @(:start-col lb)
-		:current (.getColumn this)))))
+	     (+ (:offset token)
+		(condp 
+		 = (:relative-to token)
+		 :block @(:start-col lb)
+		 :current (.getColumn this))))))
 
 (defmethod write-token :buffer-blob [this token]
   (.col-write this (:data token)))
@@ -151,7 +154,7 @@
 	prefix (:per-line-prefix lb)] 
     (if prefix 
       (.col-write this prefix))
-    (.col-write this (apply str (replicate (- (+ @(:start-col lb) @(:indent lb)) (count prefix))
+    (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
 					   \space)))))
 (defn- split-at-newline [tokens]
   (let [pre (take-while #(not (nl? %)) tokens)]
@@ -283,7 +286,9 @@
        (do
 	 (if prefix 
 	   (.col-write this prefix))
-	 (ref-set (:start-col lb) (.getColumn this)))
+	 (let [col (.getColumn this)]
+	   (ref-set (:start-col lb) col)
+	   (ref-set (:indent lb) col)))
        (add-to-buffer this (make-start-block lb))))))
 
 (defn- -endBlock [this]

@@ -52,4 +52,5 @@
     (pp-list-internal writer lis)
     (.write writer "\n")))
 
-(defn test4 [] (pp-list '(a (b c)) 5))
+(defn test4 [x] (pp-list '(a (b c)) x))
+(defn test5 [x] (pp-list '((x y) (z (a b c) d)) x))
