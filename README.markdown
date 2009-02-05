@@ -1,5 +1,19 @@
 ## Common Lisp Format for Clojure ##
 
+### Pretty Printing ###
+
+**This is the pretty printing branch of cl-format**
+
+Pretty printing is under active development for cl-format. It doesn't do too much 
+yet, but just wait, it'll be here before you know it.
+
+There's no doc yet. The general idea and core algorithms are those of the XP pretty 
+printer included in Common Lisp, though the interface will be more Clojurey.
+
+It will be extensible and customizable in ways similar to the dispatch table
+mechanism in CL, but I haven't thought too hard about how that will work yet.
+
+### Overview ###
 cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
 in [*Common Lisp the Language*, 2nd edition, Chapter 22](http://www.cs.cmu.edu/afs/cs.cmu.edu/project/ai-repository/ai/html/cltl/clm/node200.html#SECTION002633000000000000000).
 
