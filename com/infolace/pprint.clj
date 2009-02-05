@@ -26,12 +26,12 @@
 
 ;;; TODO: implement true data-driven dispatch
 (def
- #^{ :doc "The pretty print dispatch table (N.B. This is not yet used)"}
- *print-pprint-dispatch* nil)
+ #^{ :doc "The pretty print dispatch table"}
+ *print-pprint-dispatch* (ref []))
 
 (def
  #^{ :doc "Pretty printing will try to avoid anything going beyond this column."}
- *print-right-margin* nil)
+ *print-right-margin* 72)
 
 ;;; TODO implement miser style
 (def
@@ -122,8 +122,14 @@ recursive calls)"
 			       optval)]
       (if *print-pretty*
 	(with-pretty-writer [pretty-writer base-writer]
-	  ;; TODO: the real work!
-	  )
+	  ;; TODO better/faster dispatch mechanism!
+	  (loop [dispatch @*print-pprint-dispatch*]
+	    (let [[test func] (first dispatch)]
+	      (cond
+	       (empty? dispatch) (binding [*out* pretty-writer]
+				   (print object))
+	       (test object) (func pretty-writer object nil nil)
+	       :else (recur (rest dispatch))))))
 	(binding [*out* base-writer]
 	  (print object)))
       (if (nil? optval) 
@@ -132,3 +138,60 @@ recursive calls)"
 (defmacro pprint-logical-block 
   ""
   [stream-sym arg-list options & body])
+
+;; TODO replace direct stream calls with pp macros
+(defn pprint-list [writer lis colon? at-sign?]
+  (do
+    (.startBlock writer "(" nil ")")
+    (if (seq lis) 
+      (loop [r lis]
+	;;  (prlabel ppli r)
+	(write (first r) {:stream writer})
+	(if-let [r (rest r)] 
+	  (do
+	    (.write writer " ")
+	    (.newline writer :linear)
+	    (recur r)))))
+    (.endBlock writer)))
+
+(dosync (alter *print-pprint-dispatch* conj [list? pprint-list]))
+
+(defn pprint-vector [writer avec colon? at-sign?]
+  (do
+    (.startBlock writer "[" nil "]")
+    (if (seq avec) 
+      (loop [r avec]
+	;;  (prlabel ppli r)
+	(write (first r) {:stream writer})
+	(if-let [r (rest r)] 
+	  (do
+	    (.write writer " ")
+	    (.newline writer :linear)
+	    (recur r)))))
+    (.endBlock writer)))
+
+(dosync (alter *print-pprint-dispatch* conj [vector? pprint-vector]))
+
+(defn pprint-map [writer amap colon? at-sign?]
+  (do
+    (.startBlock writer "{" nil "}")
+    (if (seq amap) 
+      (loop [r amap]
+	;;  (prlabel ppli r)
+	(.startBlock writer nil nil nil)
+	(let [[k v] (first r)] 
+	  (write k {:stream writer})
+	  (.write writer " ")
+	  (.newline writer :linear)
+	  (write v {:stream writer}))
+	(.endBlock writer)
+	(if-let [r (rest r)] 
+	  (do
+	    (.write writer ", ")
+	    (.newline writer :linear)
+	    (recur r)))))
+    (.endBlock writer)))
+
+(dosync (alter *print-pprint-dispatch* conj [map? pprint-map]))
+
+nil

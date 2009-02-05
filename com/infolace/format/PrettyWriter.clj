@@ -265,13 +265,14 @@
 	  (write-initial-lines "\n")
 	  (add-to-buffer this (make-buffer-blob (str (char c)))))))))
 
-(defn- -flush [this]) ;; TODO: write incomplete line
-
-(defn- -close [this]
+(defn- -flush [this]
   (if (= (getf :mode) :buffering)
     (dosync 
-      (write-tokens this (getf :buffer))
-      (setf :buffer []))))
+     (write-tokens this (getf :buffer))
+     (setf :buffer []))))
+
+(defn- -close [this]
+  (-flush this))			;TODO: close underlying stream?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Methods for PrettyWriter
