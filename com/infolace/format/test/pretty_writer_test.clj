@@ -7,7 +7,7 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns com.infolace.format.test.pretty-writer-test
-  (:use unit-test com.infolace.format)
+  (:use unit-test com.infolace.format com.infolace.format.utilities)
   (:import [com.infolace.format PrettyWriter]))
 
 (defn test1 [] 
@@ -19,3 +19,37 @@
     (.endBlock writer)
     (.write writer "\n")
     (.close writer)))
+
+(defn pp-list-internal [writer lis]
+  (if (list? lis)
+    (do
+      (.startBlock writer "(" nil ")")
+      (if (seq lis) 
+	(loop [r lis]
+;	  (prlabel ppli r)
+	  (pp-list-internal writer (first r))
+	  (if-let [r (rest r)] 
+	    (do
+	      (.write writer " ")
+	      (.newline writer :linear)
+	      (recur r)))))
+       (.endBlock writer))
+    (.write writer (print-str lis))))
+
+(defn test2 [] 
+  (let [writer (PrettyWriter. *out* 15)]
+    (pp-list-internal writer '((x y) (z (a b c) d)))
+    (.write writer "\n")
+    (.close writer)))
+
+(defn test3 [] 
+  (with-open [writer (PrettyWriter. *out* 30)]
+    (pp-list-internal writer '((x y) (z (a b c) d)))
+    (.write writer "\n")))
+
+(defn pp-list [lis max-col]
+  (with-open [writer (PrettyWriter. *out* max-col)]
+    (pp-list-internal writer lis)
+    (.write writer "\n")))
+
+(defn test4 [] (pp-list '(a (b c)) 5))

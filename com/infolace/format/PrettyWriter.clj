@@ -7,6 +7,7 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns com.infolace.format.PrettyWriter
+  (:use com.infolace.format.utilities)
   (:gen-class
    :extends com.infolace.format.ColumnWriter
    :init init
@@ -17,6 +18,11 @@
 	     [indent [clojure.lang.Keyword Integer] void]]
    :exposes-methods {write col-write}
    :state state))
+
+;; TODO: support all newline types
+;; TODO: carry :linear newline execution through a section
+;; TODO: Support for tab directives
+;; TODO: Trim whitespace before newlines
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Macros to simplify dealing with types and classes. These are
@@ -34,7 +40,7 @@
   "Set the value of the field SYM to NEW-VAL"
   `(alter (.state ~'this) assoc ~sym ~new-val))
 
-(defmacro #^{:private true} deftype [type-name & fields]
+(defmacro deftype [type-name & fields]
   (let [name-str (name type-name)]
     `(do
        (defstruct ~type-name :type-tag ~@fields)
@@ -56,7 +62,7 @@
 
 (defstruct #^{:private true} section :parent)
 
-(defmulti blob-length :tag)
+(defmulti blob-length :type-tag)
 (defmethod blob-length :default [_] 0)
 
 (defn buffer-length [l] (reduce + (map blob-length l)))
@@ -95,9 +101,10 @@
 ;;; Functions to write tokens in the output buffer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmulti write-token #(:tag %2))
+(defmulti write-token #(:type-tag %2))
 (defmethod write-token :start-block [this token]
   (dosync
+;   (prlabel write-start-block (:prefix (:logical-block token)))
    (if-let [prefix (:prefix (:logical-block token))] 
      (.col-write this prefix))
    (ref-set (:start-col (getf :logical-blocks)) 
@@ -144,7 +151,7 @@
 	prefix (:per-line-prefix lb)] 
     (if prefix 
       (.col-write this prefix))
-    (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
+    (.col-write this (apply str (replicate (- (+ @(:start-col lb) @(:indent lb)) (count prefix))
 					   \space)))))
 (defn- split-at-newline [tokens]
   (let [pre (take-while #(not (nl? %)) tokens)]
@@ -156,63 +163,76 @@
 
 (defn- write-token-string [this tokens]
   (let [[a b] (split-at-newline tokens)]
-    (if a (write-tokens a))
+;    (prlabel wts a b)
+    (if a (write-tokens this a))
     (if b
-      (let [[section remainder] (get-section tokens)
-	    newl (first section)
-	    section (rest section)]
-	(if (not (tokens-fit? this section))
-	  (do 
-	    (emit-nl this newl)
-	    (if (not (tokens-fit? this section))
-	      (let [rem2 (write-token-string this section)]
-		(if (= rem2 section)
-		  (do ; If that didn't produce any output, it has no nls
-		      ; so we'll force it
-		    (write-tokens section)
-		    remainder)
-		  (into rem2 remainder))
-		))
-	    (if remainder
-	      (do 
-		(write-tokens section)
-		remainder)
-	      section)))))))
+      (let [[section remainder] (get-section b)
+	    newl (first b)]
+;	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
+	(if-let [result (if (not (tokens-fit? this section))
+			  (do
+;			    (prlabel emit-nl newl)
+			    (emit-nl this newl)
+			    (if (not (tokens-fit? this section))
+			      (let [rem2 (write-token-string this section)]
+				(if (= rem2 section)
+				  (do ; If that didn't produce any output, it has no nls
+					; so we'll force it
+				    (write-tokens this section)
+				    remainder)
+				  (into rem2 remainder))))))] 
+	  result
+	  (if remainder
+	    (do 
+	      (write-tokens this section)
+	      remainder)
+	    section))))))
 
 (defn- write-line [this]
+ ; (prerr "@wl")
   (dosync
-   (loop [last-buffer nil
-	  buffer (getf :buffer)]
+   (loop [buffer (getf :buffer)]
+;     (prlabel wl1 buffer)
+     (setf :buffer (into [] buffer))
      (if (not (tokens-fit? this buffer))
        (let [new-buffer (write-token-string this buffer)]
-	 (recur buffer new-buffer))
-       (setf :buffer buffer)))))
+	 (if-not (identical? buffer new-buffer)
+		 (recur new-buffer)))))))
 
 ;;; Add a buffer token to the buffer and see if it's time to start
 ;;; writing
 (defn- add-to-buffer [this token]
+;  (prlabel a2b token)
   (dosync
    (setf :buffer (conj (getf :buffer) token))
    (if (not (tokens-fit? this (getf :buffer)))
      (write-line this))))
 
 ;;; Write all the tokens that have been buffered
-(defn- write-buffered-output [this])
+(defn- write-buffered-output [this]
+  (write-line this)
+  (if-let [buf (getf :buffer)]
+    (do
+      (write-tokens this buf)
+      (setf :buffer []))))
 
 ;;; If there are newlines in the string, print the lines up until the last newline, 
 ;;; making the appropriate adjustments. Return the remainder of the string
 (defn- write-initial-lines 
   [this s] 
-  (let [lines (.split s "\n")]
+  (let [lines (.split s "\n" -1)]
     (if (= (count lines) 1)
       s
       (dosync 
-       (let [prefix (:prefix (first (getf :logical-blocks)))] 
+       (let [prefix (:per-line-prefix (first (getf :logical-blocks)))] 
 	 (if (= :buffering (getf :mode))
-	   (write-buffered-output this))
-	 (doseq [l (butlast lines)]
+	   (do
+	     (add-to-buffer this (make-buffer-blob (first lines)))
+	     (write-buffered-output this)
+	     (.col-write this (int \newline))))
+	 (doseq [l (rest (butlast lines))]
 	   (.col-write this l)
-	   (.col-write this \newline)
+	   (.col-write this (int \newline))
 	   (if prefix
 	     (.col-write this prefix)))
 	 (setf :buffering :writing)
@@ -230,25 +250,25 @@
       (class x)
 
       String 
-      (let [s (write-initial-lines x)
+      (let [s (write-initial-lines this x)
 	    mode (getf :mode)]
 	(if (= mode :writing)
 	  (.col-write this s)
-	  (add-to-buffer this (struct buffer-blob s))))
+	  (add-to-buffer this (make-buffer-blob s))))
 
       Integer
       (let [c #^Character x]
 	(if (= c (int \newline))
 	  (write-initial-lines "\n")
-	  (add-to-buffer this (make-buffer-blob (str c))))))))
+	  (add-to-buffer this (make-buffer-blob (str (char c)))))))))
 
 (defn- -flush [this]) ;; TODO: write incomplete line
 
 (defn- -close [this]
   (if (= (getf :mode) :buffering)
-    (do 
-      (write-tokens (getf :buffer))
-      (setf :buffer nil))))
+    (dosync 
+      (write-tokens this (getf :buffer))
+      (setf :buffer []))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Methods for PrettyWriter
@@ -278,7 +298,7 @@
 (defn- -newline [this type]
   (dosync 
    (setf :mode :buffering)
-   (add-to-buffer (make-nl type (getf :logical-blocks)))))
+   (add-to-buffer this (make-nl type (getf :logical-blocks)))))
 
 (defn- -indent [this relative-to offset]
   (dosync 
@@ -289,4 +309,4 @@
 			   = relative-to
 			   :block @(:start-col lb)
 			   :current (.getColumn this))))
-       (add-to-buffer (make-indent lb relative-to offset))))))
+       (add-to-buffer this (make-indent lb relative-to offset))))))
