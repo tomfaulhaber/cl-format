@@ -80,6 +80,8 @@
    (into {} (for [[k v] write-option-table] [k (var-get (find-var v))]))
    options))
 
+;; TODO: build a macro that only rebinds changed things (base it on the
+;; implementation of "binding")
 (defmacro binding-map [symbol-map options & body]
   (let [optsym (gensym "options-")]
     `(let [~optsym ~options]
@@ -111,19 +113,21 @@
 Use the options argument to override individual variables for this call (and any 
 recursive calls)"
   (binding-map write-option-table options 
-    (if *print-pretty*
-      (let [optval (if (contains? options :stream) 
-		     (:stream options)
-		     true) 
-	    base-writer (condp = optval
-				 nil (java.io.StringWriter.)
-				 true *out*
-				 optval)]
+    (let [optval (if (contains? options :stream) 
+		   (:stream options)
+		   true) 
+	  base-writer (condp = optval
+			       nil (java.io.StringWriter.)
+			       true *out*
+			       optval)]
+      (if *print-pretty*
 	(with-pretty-writer [pretty-writer base-writer]
 	  ;; TODO: the real work!
 	  )
-	(if (nil? optval) 
-	  (.toString base-writer))))))
+	(binding [*out* base-writer]
+	  (print object)))
+      (if (nil? optval) 
+	(.toString base-writer)))))
 
 (defmacro pprint-logical-block 
   ""
