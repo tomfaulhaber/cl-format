@@ -1,5 +1,8 @@
 ## Common Lisp Format for Clojure ##
 
+**Note:** Most development is now happening on the pretty-printer in the pp branch. The 
+master branch represents the more stable universe of things that I believe work.
+ 
 cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
 in [*Common Lisp the Language*, 2nd edition, Chapter 22](http://www.cs.cmu.edu/afs/cs.cmu.edu/project/ai-repository/ai/html/cltl/clm/node200.html#SECTION002633000000000000000).
 
