@@ -58,7 +58,9 @@
 (defn test4 [x] (pp-list '(a (b c)) x))
 (defn test5 [x] (pp-list '((x y) (z (a b c) d)) x))
 
-(defn test6 [& x] (write '(a (b c)) (if x {:right-margin (first x)} {})))
-(defn test7 [& x] (write '((x y) (z (a b c) d)) (if x {:right-margin (first x)} {})))
-(defn test8 [& x] (write '((x y) [z (a b c) d]) (if x {:right-margin (first x)} {})))
-(defn test9 [& x] (write '((x y) [z {:first a :second b :third c} d]) (if x {:right-margin (first x)} {})))
+(defn write-margin [arg margin] 
+  (write arg (if margin {:right-margin (first margin)} {})))
+(defn test6 [& x] (write-margin '(a (b c)) x))
+(defn test7 [& x] (write-margin '((x y) (z (a b c) d)) x))
+(defn test8 [& x] (write-margin '((x y) [z (a b c) d]) x))
+(defn test9 [& x] (write-margin '((x y) [z {:first a :second b :third c} d]) x))

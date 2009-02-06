@@ -20,7 +20,6 @@
    :state state))
 
 ;; TODO: support all newline types
-;; TODO: carry :linear newline execution through a section
 ;; TODO: Support for tab directives
 ;; TODO: Trim whitespace before newlines
 
@@ -52,13 +51,15 @@
 ;;; The data structures used by PrettyWriter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct #^{:private true} logical-block :parent :section :start-col :indent
+(defstruct #^{:private true} logical-block :parent :section :start-col :indent :done-nl
 	   :prefix :per-line-prefix :suffix)
+
 (defn ancestor? [parent child]
-  (cond 
-   (nil? child) false
-   (= parent child) true
-   :else (recur parent (:parent child))))
+  (loop [child (:parent child)]
+    (cond 
+     (nil? child) false
+     (= parent child) true
+     :else (recur (:parent child)))))
 
 (defstruct #^{:private true} section :parent)
 
@@ -88,7 +89,7 @@
 
 (defn- -init 
   [writer max-columns] [[writer max-columns] 
-			(let [lb (struct logical-block nil nil (ref 0) (ref 0))]
+			(let [lb (struct logical-block nil nil (ref 0) (ref 0) (ref false))]
 			  (ref {:logical-blocks lb 
 				:sections nil
 				:mode :writing
@@ -128,9 +129,9 @@
 (defmethod write-token :buffer-blob [this token]
   (.col-write this (:data token)))
 
-;; If we run over a new line while writing tokens, we've decided
-;; not to break lines here, so we just ignore it.
-(defmethod write-token :nl [this token])
+(defmethod write-token :nl [this token]
+  (if @(:done-nl (:logical-block token))
+    (emit-nl this token)))
 
 (defn- write-tokens [this tokens]
   (doseq [token tokens]
@@ -155,7 +156,10 @@
     (if prefix 
       (.col-write this prefix))
     (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
-					   \space)))))
+					   \space)))
+    (dosync
+     (ref-set (:done-nl lb) true))))
+
 (defn- split-at-newline [tokens]
   (let [pre (take-while #(not (nl? %)) tokens)]
     [pre (drop (count pre) tokens)]))
@@ -172,7 +176,8 @@
       (let [[section remainder] (get-section b)
 	    newl (first b)]
 ;	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
-	(if-let [result (if (not (tokens-fit? this section))
+	(if-let [result (if (or @(:done-nl (:logical-block newl))
+				(not (tokens-fit? this section)))
 			  (do
 ;			    (prlabel emit-nl newl)
 			    (emit-nl this newl)
@@ -195,7 +200,7 @@
  ; (prerr "@wl")
   (dosync
    (loop [buffer (getf :buffer)]
-;     (prlabel wl1 buffer)
+;;;     (prlabel wl1 buffer)
      (setf :buffer (into [] buffer))
      (if (not (tokens-fit? this buffer))
        (let [new-buffer (write-token-string this buffer)]
@@ -280,7 +285,7 @@
 
 (defn- -startBlock [this prefix per-line-prefix suffix]
   (dosync 
-   (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0) 
+   (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0) (ref false) 
 		    prefix per-line-prefix suffix)]
      (setf :logical-blocks lb)
      (if (= (getf :mode) :writing)
