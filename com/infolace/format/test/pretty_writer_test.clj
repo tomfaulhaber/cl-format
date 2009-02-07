@@ -59,8 +59,21 @@
 (defn test5 [x] (pp-list '((x y) (z (a b c) d)) x))
 
 (defn write-margin [arg margin] 
-  (write arg (if margin {:right-margin (first margin)} {})))
+  (apply write arg (if margin [:right-margin (first margin)] [])))
+
 (defn test6 [& x] (write-margin '(a (b c)) x))
 (defn test7 [& x] (write-margin '((x y) (z (a b c) d)) x))
 (defn test8 [& x] (write-margin '((x y) [z (a b c) d]) x))
 (defn test9 [& x] (write-margin '((x y) [z {:first a :second b :third c} d]) x))
+(defn test10 [& x] 
+  (write-margin 
+   '(defmethod write-token :start-block [this token]
+      (let [lb (:logical-block token)]
+	(dosync
+	 (prlabel write-start-block (:prefix (:logical-block token)))
+	 (if-let [prefix (:prefix lb)] 
+	   (.col-write this prefix))
+	 (let [col (.getColumn this)]
+	   (ref-set (:start-col lb) col)
+	   (ref-set (:indent lb) col)))))
+   x))

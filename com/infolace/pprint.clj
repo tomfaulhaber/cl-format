@@ -75,10 +75,6 @@
 	 :readably         'clojure.core/*print-readably*,
 	 :right-margin     'com.infolace.pprint/*print-right-margin*})
 
-(defn- proc-write-options [options]
-  (merge 
-   (into {} (for [[k v] write-option-table] [k (var-get (find-var v))]))
-   options))
 
 ;; TODO: build a macro that only rebinds changed things (base it on the
 ;; implementation of "binding")
@@ -108,32 +104,33 @@
      ~@body
      (if new-writer# (.flush ~write-sym))))
 
-(defn write [object options]
+(defn write [object & kw-args]
   "Write an object subject to the current bindings of the printer control variables.
 Use the options argument to override individual variables for this call (and any 
 recursive calls)"
-  (binding-map write-option-table options 
-    (let [optval (if (contains? options :stream) 
-		   (:stream options)
-		   true) 
-	  base-writer (condp = optval
-			       nil (java.io.StringWriter.)
-			       true *out*
-			       optval)]
-      (if *print-pretty*
-	(with-pretty-writer [pretty-writer base-writer]
-	  ;; TODO better/faster dispatch mechanism!
-	  (loop [dispatch @*print-pprint-dispatch*]
-	    (let [[test func] (first dispatch)]
-	      (cond
-	       (empty? dispatch) (binding [*out* pretty-writer]
-				   (print object))
-	       (test object) (func pretty-writer object nil nil)
-	       :else (recur (rest dispatch))))))
-	(binding [*out* base-writer]
-	  (print object)))
-      (if (nil? optval) 
-	(.toString base-writer)))))
+  (let [options (merge {:stream true} (apply hash-map kw-args))]
+    (binding-map write-option-table options 
+      (let [optval (if (contains? options :stream) 
+		     (:stream options)
+		     true) 
+	    base-writer (condp = optval
+				 nil (java.io.StringWriter.)
+				 true *out*
+				 optval)]
+	(if *print-pretty*
+	  (with-pretty-writer [pretty-writer base-writer]
+	    ;; TODO better/faster dispatch mechanism!
+	    (loop [dispatch @*print-pprint-dispatch*]
+	      (let [[test func] (first dispatch)]
+		(cond
+		 (empty? dispatch) (binding [*out* pretty-writer]
+				     (print object))
+		 (test object) (func pretty-writer object nil nil)
+		 :else (recur (rest dispatch))))))
+	  (binding [*out* base-writer]
+	    (print object)))
+	(if (nil? optval) 
+	  (.toString base-writer))))))
 
 (defmacro pprint-logical-block 
   ""
@@ -146,7 +143,7 @@ recursive calls)"
     (if (seq lis) 
       (loop [r lis]
 	;;  (prlabel ppli r)
-	(write (first r) {:stream writer})
+	(write (first r) :stream writer)
 	(if-let [r (rest r)] 
 	  (do
 	    (.write writer " ")
@@ -162,7 +159,7 @@ recursive calls)"
     (if (seq avec) 
       (loop [r avec]
 	;;  (prlabel ppli r)
-	(write (first r) {:stream writer})
+	(write (first r) :stream writer)
 	(if-let [r (rest r)] 
 	  (do
 	    (.write writer " ")
@@ -180,10 +177,10 @@ recursive calls)"
 	;;  (prlabel ppli r)
 	(.startBlock writer nil nil nil)
 	(let [[k v] (first r)] 
-	  (write k {:stream writer})
+	  (write k :stream writer)
 	  (.write writer " ")
 	  (.newline writer :linear)
-	  (write v {:stream writer}))
+	  (write v :stream writer))
 	(.endBlock writer)
 	(if-let [r (rest r)] 
 	  (do
