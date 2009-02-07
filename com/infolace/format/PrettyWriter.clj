@@ -102,6 +102,8 @@
 ;;; Functions to write tokens in the output buffer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare emit-nl)
+
 (defmulti write-token #(:type-tag %2))
 (defmethod write-token :start-block [this token]
   (let [lb (:logical-block token)]
