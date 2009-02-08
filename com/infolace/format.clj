@@ -7,7 +7,8 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns com.infolace.format
-  (:use com.infolace.format.utilities)
+  (:use com.infolace.format.utilities
+	com.infolace.pprint)
   (:import [com.infolace.format ColumnWriter]))
 
 ;;; Forward references
@@ -1349,16 +1350,16 @@ first character of the string even if it's a letter."
 	      (nil? (:rest navigator)))
 	  [exit navigator] navigator))))) 
 
-  ;; A stubbed out version of ~w so it at least prints stuff
   (\W 
    [] 
-   #{:at} {}
-   (let [stub-params {:mincol 0 :colinc 1 :minpad 0 :padchar \space }] 
-     (if (:at params)
-       #(binding [*print-level* nil
-		  *print-length* nil]
-	  (format-ascii print-str (merge stub-params (dissoc %1 :at)) %2 %3))
-       #(format-ascii print-str (merge stub-params %1) %2 %3))))
+   #{:at :colon :both} {}
+   (let [bindings (concat
+		   (if (:at params) [:level nil :length nil] [])
+		   (if (:colon params) [:pretty true] []))]
+     (fn [params navigator offsets]
+       (let [[arg navigator] (next-arg navigator)]
+	 (apply write arg bindings)
+	 navigator))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
