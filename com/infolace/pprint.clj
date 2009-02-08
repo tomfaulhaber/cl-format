@@ -124,11 +124,11 @@ recursive calls)"
 	      (let [[test func] (first dispatch)]
 		(cond
 		 (empty? dispatch) (binding [*out* pretty-writer]
-				     (print object))
+				     (pr object))
 		 (test object) (func pretty-writer object nil nil)
 		 :else (recur (rest dispatch))))))
 	  (binding [*out* base-writer]
-	    (print object)))
+	    (pr object)))
 	(if (nil? optval) 
 	  (.toString base-writer))))))
 
