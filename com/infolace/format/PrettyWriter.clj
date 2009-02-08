@@ -108,7 +108,6 @@
 (defmethod write-token :start-block [this token]
   (let [lb (:logical-block token)]
     (dosync
-     ;;   (prlabel write-start-block (:prefix (:logical-block token)))
      (if-let [prefix (:prefix lb)] 
        (.col-write this prefix))
      (let [col (.getColumn this)]
@@ -172,40 +171,46 @@
 
 (defn- write-token-string [this tokens]
   (let [[a b] (split-at-newline tokens)]
-;    (prlabel wts a b)
+;;     (prlabel wts a b)
     (if a (write-tokens this a))
     (if b
       (let [[section remainder] (get-section b)
 	    newl (first b)]
-;	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
-	(if-let [result (if (or @(:done-nl (:logical-block newl))
-				(not (tokens-fit? this section)))
-			  (do
-;			    (prlabel emit-nl newl)
-			    (emit-nl this newl)
-			    (if (not (tokens-fit? this section))
-			      (let [rem2 (write-token-string this section)]
-				(if (= rem2 section)
-				  (do ; If that didn't produce any output, it has no nls
+;; 	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
+	(let [result (if (or @(:done-nl (:logical-block newl))
+			     (not (tokens-fit? this section)))
+		       (do
+;; 			 (prlabel emit-nl newl)
+			 (emit-nl this newl)
+			 (if (not (tokens-fit? this section))
+			   (let [rem2 (write-token-string this section)]
+;; 			     (prlabel wts rem2)
+			     (if (= rem2 section)
+			       (do ; If that didn't produce any output, it has no nls
 					; so we'll force it
-				    (write-tokens this section)
-				    remainder)
-				  (into rem2 remainder))))))] 
-	  result
-	  (if remainder
-	    (do 
-	      (write-tokens this section)
-	      remainder)
-	    section))))))
+				 (write-tokens this section)
+				 remainder)
+			       (into rem2 remainder)))
+			   false))
+		       false)] 
+	  (if-not (false? result)
+		  result
+		  (if remainder
+		    (do 
+;; 		      (prerr "wts returning remainder")
+		      (write-tokens this section)
+		      remainder)
+		    section)))))))
 
 (defn- write-line [this]
- ; (prerr "@wl")
+;;   (prerr "@wl")
   (dosync
    (loop [buffer (getf :buffer)]
-;;;     (prlabel wl1 buffer)
+;;      (prlabel wl1 buffer)
      (setf :buffer (into [] buffer))
      (if (not (tokens-fit? this buffer))
        (let [new-buffer (write-token-string this buffer)]
+;; 	 (prlabel wl new-buffer)
 	 (if-not (identical? buffer new-buffer)
 		 (recur new-buffer)))))))
 

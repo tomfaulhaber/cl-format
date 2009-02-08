@@ -77,3 +77,8 @@
 	   (ref-set (:start-col lb) col)
 	   (ref-set (:indent lb) col)))))
    x))
+(defn test11 [& x] 
+  (write-margin 
+   '(prlabel write-start-block )
+      
+   x))
