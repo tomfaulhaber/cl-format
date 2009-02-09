@@ -761,7 +761,7 @@ Note this should only be used for the last one in the sequence"
 	;; TODO get the offset in here and call format exception
 	(throw (RuntimeException. "%{ construct not consuming any arguments: Infinite loop!")))
       (if (or (and (empty? (:rest args))
-		   (or (not (:colon-right params)) (> count 0)))
+		   (or (not (:colon (:right-params params))) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
 	(let [iter-result (execute-sub-format clause args (:base-args params))] 
@@ -781,7 +781,7 @@ Note this should only be used for the last one in the sequence"
     (loop [count 0
 	   arg-list arg-list]
       (if (or (and (empty? arg-list)
-		   (or (not (:colon-right params)) (> count 0)))
+		   (or (not (:colon (:right-params params))) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
 	(let [iter-result (execute-sub-format 
@@ -807,7 +807,7 @@ Note this should only be used for the last one in the sequence"
 	;; TODO get the offset in here and call format exception
 	(throw (RuntimeException. "%@{ construct not consuming any arguments: Infinite loop!")))
       (if (or (and (empty? (:rest navigator))
-		   (or (not (:colon-right params)) (> count 0)))
+		   (or (not (:colon (:right-params params))) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
 	(let [iter-result (execute-sub-format clause navigator (:base-args params))] 
@@ -828,7 +828,7 @@ Note this should only be used for the last one in the sequence"
     (loop [count 0
 	   navigator navigator]
       (if (or (and (empty? (:rest navigator))
-		   (or (not (:colon-right params)) (> count 0)))
+		   (or (not (:colon (:right-params params))) (> count 0)))
 	      (and max-count (>= count max-count)))
 	navigator
 	(let [[sublist navigator] (next-arg-or-nil navigator)
@@ -1515,7 +1515,7 @@ first character of the string even if it's a letter."
 	  (process-bracket this remainder)
 
 	  (= (:right bracket-info) (:directive (:def this)))
-	  [ nil [:right-bracket (:colon (:params this)) nil remainder]]
+	  [ nil [:right-bracket (:params this) nil remainder]]
 
 	  (else-separator? this)
 	  [nil [:else nil (:params this) remainder]]
@@ -1531,13 +1531,13 @@ first character of the string even if it's a letter."
   (frest
    (consume
     (fn [[clause-map saw-else remainder]]
-      (let [[clause [type colon-right else-params remainder]] 
+      (let [[clause [type right-params else-params remainder]] 
 	    (process-clause bracket-info offset remainder)]
 	(cond
 	 (= type :right-bracket)
 	 [nil [(merge-with concat clause-map 
 			   {(if saw-else :else :clauses) [clause] 
-			    :colon-right colon-right})
+			    :right-params right-params})
 	       remainder]]
 
 	 (= type :else)
