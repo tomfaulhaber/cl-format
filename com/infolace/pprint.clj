@@ -132,6 +132,20 @@ recursive calls)"
 	(if (nil? optval) 
 	  (.toString base-writer))))))
 
+(defn pprint 
+  "Pretty print object to the optional output writer. If the writer is not provided, 
+print the object to the currently bound value of *out*."
+  [object & more]
+  (let [stream (if (pos? (count more))
+		 (first more)
+		 *out*)]
+    (write object :stream stream :pretty true)))
+
+(defmacro pp 
+  "A convenience macro that pretty prints the last thing output. This is
+exactly equivalent to (pprint *1)."
+  [] `(pprint *1))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Support for the functional interface to the pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -143,7 +157,7 @@ recursive calls)"
       (recur (drop 2 body) (concat acc (take 2 body)))
       [(apply hash-map acc) body])))
 
-(defn check-enumerated-arg [arg choices]
+(defn- check-enumerated-arg [arg choices]
   (if-not (choices arg)
 	  (throw
 	   (IllegalArgumentException.
