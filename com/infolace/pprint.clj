@@ -132,14 +132,108 @@ recursive calls)"
 	(if (nil? optval) 
 	  (.toString base-writer))))))
 
-(defmacro pprint-logical-block 
-  ""
-  [stream-sym arg-list options & body])
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Support for the functional interface to the pretty printer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO replace direct stream calls with pp macros
+(defn- parse-lb-options [opts body]
+  (loop [body body
+	 acc []]
+    (if (opts (first body))
+      (recur (drop 2 body) (concat acc (take 2 body)))
+      [(apply hash-map acc) body])))
+
+(defn check-enumerated-arg [arg choices]
+  (if-not (choices arg)
+	  (throw
+	   (IllegalArgumentException.
+	    ;; TODO clean up choices string
+	    (str "Bad argument: " arg ". It must be one of " choices)))))
+
+;;; TODO: Drop arg-list from the definition??
+(defmacro pprint-logical-block 
+  "Execute the body as a pretty printing logical block with output to stream-sym which 
+is a pretty printing writer wrapping base-stream (unless base-stream is already a pretty 
+printing writer in which case stream-sym just points to base-stream). 
+
+The arg-list indicates the list to be printed in the logical block.
+
+After the arg list, the caller can optionally specify :prefix, :per-line-prefix, and
+:suffix.
+
+N.B. Unlike in Common Lisp, stream-sym has lexical extent, not dynamic extent."
+  [[stream-sym base-stream] arg-list & body]
+  (let [[options body] (parse-lb-options #{:prefix :per-line-prefix :suffix} body)]
+    `(with-pretty-writer [~stream-sym ~base-stream]
+       (.startBlock ~stream-sym ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
+       ~@body
+       (.endBlock ~stream-sym)
+       nil)))
+
+(defn pprint-newline
+  "Print a conditional newline to a pretty printing stream. kind specifies if the 
+newline is :linear, :miser, :fill, or :mandatory. 
+
+Optionally, a second argument which is a stream may be used. If supplied, that is 
+the writer to which the newline is sent, otherwise *out* is used.
+
+If the requested stream is not a PrettyWriter, this function does nothing."
+  [kind & more] 
+  (check-enumerated-arg kind #{:linear :miser :fill :mandatory})
+  (let [stream (if (pos? (count more))
+		 (first more)
+		 *out*)]
+    (if (instance? PrettyWriter stream)
+      (.newline stream kind))))
+
+(defn pprint-indent 
+  "Create an indent at this point in the pretty printing stream. This defines how 
+following lines are indented. relative-to can be either :block or :current depending 
+whether the indent should be computed relative to the start of the logical block or
+the current column position. n is an offset. 
+
+Optionally, a third argument which is a stream may be used. If supplied, that is 
+the writer indented, otherwise *out* is used.
+
+If the requested stream is not a PrettyWriter, this function does nothing."
+  [relative-to n & more] 
+  (check-enumerated-arg relative-to #{:block :current})
+  (let [stream (if (pos? (count more))
+		 (first more)
+		 *out*)]
+    (if (instance? PrettyWriter stream)
+      (.indent stream relative-to n))))
+
+;; TODO a real implementation for pprint-tab
+(defn pprint-tab 
+  "Tab at this point in the pretty printing stream. kind specifies whether the tab
+is :line, :section, :line-relative, or :section-relative. 
+
+Colnum and colinc specify the target column and the increment to move the target
+forward if the output is already past the original target.
+
+Optionally, a fourth argument which is a stream may be used. If supplied, that is 
+the writer indented, otherwise *out* is used.
+
+If the requested stream is not a PrettyWriter, this function does nothing.
+
+THIS FUNCTION IS NOT YET IMPLEMENTED."
+  [kind colnum colinc & more] 
+  (check-enumerated-arg kind #{:line :section :line-relative :section-relative})
+  (let [stream (if (pos? (count more))
+		 (first more)
+		 *out*)]
+    (if (instance? PrettyWriter stream)
+      (throw (UnsupportedOperationException. "pprint-tab is not yet implemented")))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Implementations of specific dispatch table entries
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO replace direct stream calls with formatter funcs, when possible,
+;; pprint macros otherwise
 (defn pprint-list [writer lis colon? at-sign?]
-  (do
-    (.startBlock writer "(" nil ")")
+  (pprint-logical-block [writer writer] lis :prefix "(" :suffix ")"
     (if (seq lis) 
       (loop [r lis]
 	;;  (prlabel ppli r)
@@ -147,11 +241,11 @@ recursive calls)"
 	(if-let [r (rest r)] 
 	  (do
 	    (.write writer " ")
-	    (.newline writer :linear)
-	    (recur r)))))
-    (.endBlock writer)))
+	    (pprint-newline :linear writer)
+	    (recur r)))))))
 
 (dosync (alter *print-pprint-dispatch* conj [list? pprint-list]))
+(dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
 
 (defn pprint-vector [writer avec colon? at-sign?]
   (do
