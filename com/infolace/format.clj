@@ -838,6 +838,27 @@ Note this should only be used for the last one in the sequence"
 	    (recur (inc count) navigator)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; The '~< directive has two completely different meanings
+;;; in the '~<...~>' form it does justification, but with
+;;; ~<...~:>' it represents the logical block operation of the
+;;; pretty printer.
+;;; 
+;;; Unfortunately, the current architecture decides what function
+;;; to call at form parsing time before the sub-clauses have been
+;;; folded, so it is left to run-time to make the decision.
+;;; 
+;;; TODO: make it possible to make these decisions at compile-time.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(declare format-logical-block)
+(declare justify-clauses)
+
+(defn- logical-block-or-justify [params navigator offsets]
+  (if (:colon (:right-params params))
+    (format-logical-block params navigator offsets)
+    (justify-clauses params navigator offsets)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for the '~<...~>' justification directive
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1078,6 +1099,46 @@ first character of the string even if it's a letter."
 	space-count (+ colrel (if (= 0 offset) 0 (- colinc offset)))]
     (print (apply str (replicate space-count \space))))
   navigator)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Support for accessing the pretty printer from a format
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: support ~@; per-line-prefix separator
+;; TODO: get the whole format wrapped so we can start the lb at any column
+(defn- format-logical-block [params navigator offsets]
+  (let [clauses (:clauses params)
+	clause-count (count clauses)
+	prefix (cond
+		(> clause-count 1) (first clauses)
+		(:colon params) "(")
+	body (nth clauses (if (> clause-count 1) 1 0))
+	suffix (cond
+		(> clause-count 2) (nth clauses 2)
+		(:colon params) ")")
+	[arg navigator] (next-arg navigator)]
+    (pprint-logical-block [writer *out*] arg :prefix prefix :suffix suffix
+     (binding [*out* writer]
+       (execute-sub-format 
+	body 
+	(init-navigator arg)
+	(:base-args params))))
+    navigator))
+
+(defn set-indent [params navigator offsets]
+  (let [relative-to (if (:colon params) :current :block)]
+    (pprint-indent relative-to (:n params))
+    navigator))
+
+;;; TODO: support ~:T section options for ~T
+
+(defn conditional-newline [params navigator offsets]
+  (let [kind (if (:colon params) 
+	       (if (:at params) :mandatory :fill)
+	       (if (:at params) :miser :linear))]
+    (pprint-newline kind)
+    navigator))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The table of directives we support, each with its params,
@@ -1322,7 +1383,7 @@ first character of the string even if it's a letter."
   (\<
    [:mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character]]
    #{:colon :at :both :column} { :right \>, :allows-separator true, :else :first }
-   justify-clauses)
+   logical-block-or-justify)
 
   (\> [] #{:colon} {} nil) 
 
@@ -1360,6 +1421,16 @@ first character of the string even if it's a letter."
        (let [[arg navigator] (next-arg navigator)]
 	 (apply write arg bindings)
 	 navigator))))
+
+  (\_
+   []
+   #{:at :colon :both} {}
+   conditional-newline)
+
+  (\I
+   [:n [0 Integer]]
+   #{:colon} {}
+   set-indent)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

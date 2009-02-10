@@ -96,10 +96,14 @@
 ;; 		  options)]
 ;;        ~@body)))
 
+(defn pretty-writer? [x] (instance? PrettyWriter x))
+(defn make-pretty-writer [base-writer right-margin]
+  (PrettyWriter. base-writer right-margin))
+
 (defmacro with-pretty-writer [[write-sym base-writer] & body]
-  `(let [new-writer# (not (instance? PrettyWriter ~base-writer))
+  `(let [new-writer# (not (pretty-writer? ~base-writer))
 	 ~write-sym (if new-writer#
-		      (PrettyWriter. ~base-writer *print-right-margin*)
+		      (make-pretty-writer ~base-writer *print-right-margin*)
 		      ~base-writer)]
      ~@body
      (if new-writer# (.flush ~write-sym))))
