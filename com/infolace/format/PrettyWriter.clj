@@ -274,7 +274,7 @@
       Integer
       (let [c #^Character x]
 	(if (= c (int \newline))
-	  (write-initial-lines "\n")
+	  (write-initial-lines this "\n")
 	  (add-to-buffer this (make-buffer-blob (str (char c)))))))))
 
 (defn- -flush [this]

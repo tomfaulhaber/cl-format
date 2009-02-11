@@ -9,7 +9,7 @@
 (ns com.infolace.format
   (:use com.infolace.format.utilities
 	com.infolace.pprint)
-  (:import [com.infolace.format ColumnWriter]))
+  (:import [com.infolace.format PrettyWriter]))
 
 ;;; Forward references
 (declare compile-format)
@@ -1066,10 +1066,10 @@ first character of the string even if it's a letter."
 ;;; If necessary, wrap the writer in a ColumnWriter object
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn column-writer [writer]
-  (if (instance? ColumnWriter writer) 
+(defn pretty-writer [writer]
+  (if (instance? PrettyWriter writer) 
     writer
-    (ColumnWriter. writer)))
+    (PrettyWriter. writer *print-right-margin*)))
  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for column-aware operations ~&, ~T
@@ -1260,7 +1260,7 @@ first character of the string even if it's a letter."
 
   (\&
    [ :count [1 Integer] ] 
-   #{ :column } {}
+   #{ :pretty } {}
    (fn [params arg-navigator offsets]
      (let [cnt (:count params)]
        (if (pos? cnt) (fresh-line))
@@ -1294,7 +1294,7 @@ first character of the string even if it's a letter."
 
   (\T
    [ :colnum [1 Integer] :colinc [1 Integer] ] 
-   #{ :at :column } {}
+   #{ :at :pretty } {}
    (if (:at params)
      #(relative-tabulation %1 %2 %3)
      #(absolute-tabulation %1 %2 %3)))
@@ -1382,7 +1382,7 @@ first character of the string even if it's a letter."
 
   (\<
    [:mincol [0 Integer] :colinc [1 Integer] :minpad [0 Integer] :padchar [\space Character]]
-   #{:colon :at :both :column} { :right \>, :allows-separator true, :else :first }
+   #{:colon :at :both :pretty} { :right \>, :allows-separator true, :else :first }
    logical-block-or-justify)
 
   (\> [] #{:colon} {} nil) 
@@ -1682,14 +1682,14 @@ performance when you're using the same format string repeatedly"
 	      [(compile-raw-string (subs s 0 tilde) offset) [(subs s tilde) (+ tilde offset)]]))))
        [format-str 0])))))
 
-(defn- needs-columns 
+(defn- needs-pretty 
   "determine whether a given compiled format has any directives that depend on the
-column number"
+column number or pretty printing"
   [format]
   (loop [format format]
     (if (nil? format)
       false
-      (if (or (:column (:flags (:def (first format))))
+      (if (or (:pretty (:flags (:def (first format))))
 	      (some needs-columns (first (:clauses (:params (first format)))))
 	      (some needs-columns (first (:else (:params (first format))))))
 	true
@@ -1700,9 +1700,9 @@ column number"
 		     (not stream) (java.io.StringWriter.)
 		     (true? stream) *out*
 		     :else stream)
-	wrapped-stream (if (and (needs-columns format) 
-				(not (instance? ColumnWriter real-stream)))
-			 (column-writer real-stream)
+	wrapped-stream (if (and (needs-pretty format) 
+				(not (instance? PrettyWriter real-stream)))
+			 (pretty-writer real-stream)
 			 real-stream)]
     (binding [*out* wrapped-stream]
       (map-passing-context 
