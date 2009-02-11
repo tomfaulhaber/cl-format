@@ -14,7 +14,7 @@
   (:import [com.infolace.format PrettyWriter]))
 
 (defn test1 [] 
-  (let [writer (PrettyWriter. *out* 15)]
+  (let [writer (PrettyWriter. *out* 15 nil)]
     (.startBlock writer "(" nil ")")
     (.write writer "x ")
     (.newline writer :linear)
@@ -40,18 +40,18 @@
     (.write writer (print-str lis))))
 
 (defn test2 [] 
-  (let [writer (PrettyWriter. *out* 15)]
+  (let [writer (PrettyWriter. *out* 15 nil)]
     (pp-list-internal writer '((x y) (z (a b c) d)))
     (.write writer "\n")
     (.close writer)))
 
 (defn test3 [] 
-  (with-open [writer (PrettyWriter. *out* 30)]
+  (with-open [writer (PrettyWriter. *out* 30 nil)]
     (pp-list-internal writer '((x y) (z (a b c) d)))
     (.write writer "\n")))
 
 (defn pp-list [lis max-col]
-  (with-open [writer (PrettyWriter. *out* max-col)]
+  (with-open [writer (PrettyWriter. *out* max-col nil)]
     (pp-list-internal writer lis)
     (.write writer "\n")))
 

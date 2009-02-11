@@ -1063,13 +1063,13 @@ first character of the string even if it's a letter."
       (execute-sub-format clause navigator (:base-args params)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; If necessary, wrap the writer in a ColumnWriter object
+;;; If necessary, wrap the writer in a PrettyWriter object
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn pretty-writer [writer]
   (if (instance? PrettyWriter writer) 
     writer
-    (PrettyWriter. writer *print-right-margin*)))
+    (PrettyWriter. writer *print-right-margin* *print-miser-width*)))
  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support for column-aware operations ~&, ~T
@@ -1690,8 +1690,8 @@ column number or pretty printing"
     (if (nil? format)
       false
       (if (or (:pretty (:flags (:def (first format))))
-	      (some needs-columns (first (:clauses (:params (first format)))))
-	      (some needs-columns (first (:else (:params (first format))))))
+	      (some needs-pretty (first (:clauses (:params (first format)))))
+	      (some needs-pretty (first (:else (:params (first format))))))
 	true
 	(recur (rest format))))))
 

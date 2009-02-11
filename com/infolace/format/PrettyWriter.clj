@@ -11,11 +11,13 @@
   (:gen-class
    :extends com.infolace.format.ColumnWriter
    :init init
-   :constructors {[java.io.Writer Integer] [java.io.Writer]}
+   :constructors {[java.io.Writer Integer Object] [java.io.Writer]}
    :methods [[startBlock [String String String] void]
 	     [endBlock [] void]
 	     [newline [clojure.lang.Keyword] void]
-	     [indent [clojure.lang.Keyword Integer] void]]
+	     [indent [clojure.lang.Keyword Integer] void]
+	     [getMiserWidth [] Object]
+	     [setMiserWidth [Object] void]]
    :exposes-methods {write col-write}
    :state state))
 
@@ -88,15 +90,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- -init 
-  [writer max-columns] [[writer max-columns] 
-			(let [lb (struct logical-block nil nil (ref 0) (ref 0) (ref false))]
-			  (ref {:logical-blocks lb 
-				:sections nil
-				:mode :writing
-				:buffer []
-				:buffer-block lb
-				:buffer-level 1
-				:max max-columns, :cur 0, :base writer}))])
+  [writer max-columns miser-width]
+  [[writer max-columns] 
+   (let [lb (struct logical-block nil nil (ref 0) (ref 0) (ref false))]
+     (ref {:logical-blocks lb 
+	   :sections nil
+	   :mode :writing
+	   :buffer []
+	   :buffer-block lb
+	   :buffer-level 1
+	   :miser-width miser-width
+	   :max max-columns, :cur 0, :base writer}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions to write tokens in the output buffer
@@ -138,6 +142,22 @@
   (doseq [token tokens]
     (write-token this token)))
 
+(defmulti emit-nl? (fn [t _ _] (:type t)))
+
+(defn- tokens-fit? [this tokens]
+  (<= (+ (.getColumn this) (buffer-length tokens))
+      (.getMaxColumn this)))
+
+(defmethod emit-nl? :linear [newl this section]
+  (or @(:done-nl (:logical-block newl))
+      (not (tokens-fit? this section))))
+
+(defmethod emit-nl? :miser [newl this section]
+  (let [lb (:logical-block newl)]
+    (and (>= @(:start-col lb) (- (.getMaxColumn this) (.getMiserWidth this)))
+	 (or @(:done-nl lb)
+	     (not (tokens-fit? this section))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Various support functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -165,10 +185,6 @@
   (let [pre (take-while #(not (nl? %)) tokens)]
     [pre (drop (count pre) tokens)]))
 
-(defn- tokens-fit? [this tokens]
-  (<= (+ (.getColumn this) (buffer-length tokens))
-      (.getMaxColumn this)))
-
 (defn- write-token-string [this tokens]
   (let [[a b] (split-at-newline tokens)]
 ;;     (prlabel wts a b)
@@ -177,8 +193,7 @@
       (let [[section remainder] (get-section b)
 	    newl (first b)]
 ;; 	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
-	(let [result (if (or @(:done-nl (:logical-block newl))
-			     (not (tokens-fit? this section)))
+	(let [result (if (emit-nl? newl this section)
 		       (do
 ;; 			 (prlabel emit-nl newl)
 			 (emit-nl this newl)
@@ -273,9 +288,11 @@
 
       Integer
       (let [c #^Character x]
-	(if (= c (int \newline))
-	  (write-initial-lines this "\n")
-	  (add-to-buffer this (make-buffer-blob (str (char c)))))))))
+	(if (= (getf :mode) :writing)
+	  (.col-write this x)
+	  (if (= c (int \newline))
+	    (write-initial-lines this "\n")
+	    (add-to-buffer this (make-buffer-blob (str (char c))))))))))
 
 (defn- -flush [this]
   (if (= (getf :mode) :buffering)
@@ -328,3 +345,10 @@
 			   :block @(:start-col lb)
 			   :current (.getColumn this))))
        (add-to-buffer this (make-indent lb relative-to offset))))))
+
+(defn- -getMiserWidth [this]
+  (getf :miser-width))
+
+(defn- -setMiserWidth [this new-miser-width]
+  (dosync (setf :miser-width new-miser-width)))
+
