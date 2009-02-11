@@ -1705,17 +1705,21 @@ column number or pretty printing"
 			 (pretty-writer real-stream)
 			 real-stream)]
     (binding [*out* wrapped-stream]
-      (map-passing-context 
-       (fn [element context]
-	 (if (abort? context)
-	   [nil context]
-	   (let [[params args] (realize-parameter-list 
-				(:params element) context)
-		 [params offsets] (unzip-map params)
-		 params (assoc params :base-args args)]
-	     [nil (apply (:func element) [params args offsets])])))
-       args
-       format)
+      (try
+       (map-passing-context 
+	(fn [element context]
+	  (if (abort? context)
+	    [nil context]
+	    (let [[params args] (realize-parameter-list 
+				 (:params element) context)
+		  [params offsets] (unzip-map params)
+		  params (assoc params :base-args args)]
+	      [nil (apply (:func element) [params args offsets])])))
+	args
+	format)
+       (finally
+	(if-not (identical? real-stream wrapped-stream)
+		(.flush wrapped-stream))))
       (if (not stream) (.toString real-stream)))))
 
 
