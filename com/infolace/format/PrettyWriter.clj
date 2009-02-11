@@ -258,8 +258,9 @@
 	 (if (= :buffering (getf :mode))
 	   (do
 	     (add-to-buffer this (make-buffer-blob (first lines)))
-	     (write-buffered-output this)
-	     (.col-write this (int \newline))))
+	     (write-buffered-output this))
+	   (.col-write this (first lines)))
+	 (.col-write this (int \newline))
 	 (doseq [l (rest (butlast lines))]
 	   (.col-write this l)
 	   (.col-write this (int \newline))
