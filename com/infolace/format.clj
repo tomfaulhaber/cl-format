@@ -21,7 +21,7 @@
   "An implementation of a Common Lisp compatible format function"
   [stream format-in & args]
   (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	navigator (init-navigator args) ]
+	navigator (init-navigator args)]
     (execute-format stream compiled-format navigator)))
 
 (def #^{:private true} *format-str* nil)
@@ -974,7 +974,7 @@ Note this should only be used for the last one in the sequence"
 
 (defn- capitalize-string
   "Capitalizes the words in a string. If first? is false, don't capitalize the 
-first character of the string even if it's a letter."
+				      first character of the string even if it's a letter."
   [s first?]
   (let [f (first s) 
 	s (if (and first? f (Character/isLetter f))
@@ -1463,7 +1463,7 @@ first character of the string even if it's a letter."
 
 (defn- translate-param [[p offset]]
   "Translate the string representation of a param to the internalized
-  representation"
+				      representation"
   [(cond 
     (= (.length p) 0) nil
     (and (= (.length p) 1) (contains? #{\v \V} (nth p 0))) :parameter-from-args
@@ -1505,17 +1505,17 @@ first character of the string even if it's a letter."
 
 (defn- map-params [def params flags offset]
   "Takes a directive definition and the list of actual parameters and
-   a map of flags and returns a map of the parameters and flags with defaults
-   filled in. We check to make sure that there are the right types and number
-   of parameters as well."
+				      a map of flags and returns a map of the parameters and flags with defaults
+				      filled in. We check to make sure that there are the right types and number
+				      of parameters as well."
   (check-flags def flags)
   (if (> (count params) (count (:params def)))
     (format-error 
      (cl-format 
       nil 
-      "Too many parameters for directive \"~C\": ~D~:* ~[were~;was~:;were~] specified but only ~D~:* ~[are~;is~:;are~] allowed"
-      (:directive def) (count params) (count (:params def)))
-     (frest (first params))))
+      "Too many parameters for directive \"~C\": ~D~:* ~[were~;was~:;were~] specified but only ~D~:* ~[are~;is~:;are~] allowed" ;
+							 (:directive def) (count params) (count (:params def)))
+				      (frest (first params))))
 
   (doall
    (map #(let [val (first %1)]
@@ -1723,3 +1723,14 @@ column number or pretty printing"
       (if (not stream) (.toString real-stream)))))
 
 
+(defn formatter 
+  "Makes a function which can directly run format-in. The function is
+fn [stream & args] ... and returns nil unless the stream is nil (meaning 
+output to a string) in which case it returns the resulting string.
+
+format-in can be either a control string or a previously compiled format."
+  [format-in]
+  (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)]
+    (fn [stream & args] 
+      (let [navigator (init-navigator args)] 
+	(execute-format stream compiled-format navigator)))))

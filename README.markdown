@@ -89,25 +89,29 @@ cl-format you found it in and I'll try to get it fixed.
 I also intend to have good built-in documentation for the directives,
 but I haven't built that yet.
 
-Pretty printing isn't supported (at least at the moment) and with it,
-the following directives specified as part of the X3J13 updates are
-not supported: ~:T and ~@:T (but all other forms of ~T work), ~_,
-~I, and extensions with ~/. ~W is supported, but without any pretty
-printing functionality.
+Pretty printing is currently under development and not fully working.
 
-I'm still considering what to do about the pretty printer. CL defines
-a super-powerful pretty printer based on the format function. But it's 
-because it has more functions and variables, it interacts with the
-rest of the system more and will, therefore, be harder to implement
-with 100% compatibility.
+In particular, 
+the following directives are
+not supported: ~:T and ~@:T (but all other forms of ~T work) 
+and extensions with ~/. 
+
+The pretty printer interface is similar, but not identical to the 
+interface in Common Lisp.
+
+The custom dispatch table functionality is not fully fleshed out yet.
 
 Next up: 
 
-* Support for the CL formatter function
+* Debug pretty printer functionality
+* Support for ~/
+* Build up standard dispatch tables
+* Documentation of the pretty printer.
+* Restructure unit tests into modular chunks.
+* Ant support for running unit tests
 * Import tests from CLISP and SBCL.
 * Unit tests for exception conditions.
 * Interactive documentation
-* Think about pretty printing
  
 ### How to use cl-format ###
 
