@@ -19,9 +19,8 @@
 	     [getMiserWidth [] Object]
 	     [setMiserWidth [Object] void]]
    :exposes-methods {write col-write}
-   :state state))
+   :state pwstate))
 
-;; TODO: support all newline types
 ;; TODO: Support for tab directives
 ;; TODO: Trim whitespace before newlines
 
@@ -34,12 +33,12 @@
   getf 
   "Get the value of the field a named by the argument (which should be a keyword)."
   [sym]
-  `(~sym @(.state ~'this)))
+  `(~sym @(.pwstate ~'this)))
 
 (defmacro #^{:private true} 
   setf [sym new-val] 
   "Set the value of the field SYM to NEW-VAL"
-  `(alter (.state ~'this) assoc ~sym ~new-val))
+  `(alter (.pwstate ~'this) assoc ~sym ~new-val))
 
 (defmacro deftype [type-name & fields]
   (let [name-str (name type-name)]
@@ -99,8 +98,7 @@
 	   :buffer []
 	   :buffer-block lb
 	   :buffer-level 1
-	   :miser-width miser-width
-	   :max max-columns, :cur 0, :base writer}))])
+	   :miser-width miser-width}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions to write tokens in the output buffer
