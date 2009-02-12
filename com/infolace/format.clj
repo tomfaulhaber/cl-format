@@ -1111,11 +1111,11 @@ first character of the string even if it's a letter."
   (let [clauses (:clauses params)
 	clause-count (count clauses)
 	prefix (cond
-		(> clause-count 1) (first clauses)
+		(> clause-count 1) (:string (:params (first (first clauses))))
 		(:colon params) "(")
 	body (nth clauses (if (> clause-count 1) 1 0))
 	suffix (cond
-		(> clause-count 2) (nth clauses 2)
+		(> clause-count 2) (:string (:params (first (nth clauses 2))))
 		(:colon params) ")")
 	[arg navigator] (next-arg navigator)]
     (pprint-logical-block [writer *out*] arg :prefix prefix :suffix suffix
@@ -1554,7 +1554,7 @@ first character of the string even if it's a letter."
        [remainder offset])]))
     
 (defn- compile-raw-string [s offset]
-  (struct compiled-directive (fn [_ a _] (print s) a) nil nil offset))
+  (struct compiled-directive (fn [_ a _] (print s) a) nil { :string s } offset))
 
 (defn- right-bracket [this] (:right (:bracket-info (:def this))))
 (defn- separator? [this] (:separator (:bracket-info (:def this))))
