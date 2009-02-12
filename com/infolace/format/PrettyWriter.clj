@@ -135,28 +135,52 @@
   (.col-write this (:data token)))
 
 (defmethod write-token :nl [this token]
-  (if @(:done-nl (:logical-block token))
+  (if (and (not (= (:type token) :fill))
+	   @(:done-nl (:logical-block token)))
     (emit-nl this token)))
 
 (defn- write-tokens [this tokens]
   (doseq [token tokens]
     (write-token this token)))
 
-(defmulti emit-nl? (fn [t _ _] (:type t)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; emit-nl? method defs for each type of new line. This makes
+;;; the decision about whether to print this type of new line.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn- tokens-fit? [this tokens]
   (<= (+ (.getColumn this) (buffer-length tokens))
       (.getMaxColumn this)))
 
-(defmethod emit-nl? :linear [newl this section]
-  (or @(:done-nl (:logical-block newl))
+(defn- linear-nl? [this lb section]
+  (or @(:done-nl lb)
       (not (tokens-fit? this section))))
 
-(defmethod emit-nl? :miser [newl this section]
+(defn- miser-nl? [this lb section]
+  (let [miser-width (.getMiserWidth this)]
+    (and miser-width
+	 (>= @(:start-col lb) (- (.getMaxColumn this) miser-width))
+	 (linear-nl? this lb section))))
+
+(defmulti emit-nl? (fn [t _ _ _] (:type t)))
+
+(defmethod emit-nl? :linear [newl this section _]
   (let [lb (:logical-block newl)]
-    (and (>= @(:start-col lb) (- (.getMaxColumn this) (.getMiserWidth this)))
-	 (or @(:done-nl lb)
-	     (not (tokens-fit? this section))))))
+    (linear-nl? this lb section)))
+
+(defmethod emit-nl? :miser [newl this section _]
+  (let [lb (:logical-block newl)]
+    (miser-nl? this lb section)))
+
+;;; TODO: support clause (b) of the definition -> break if previous section broke
+(defmethod emit-nl? :fill [newl this section subsection]
+  (let [lb (:logical-block newl)]
+    (or (not (tokens-fit? this subsection))
+	(miser-nl? this lb section))))
+
+(defmethod emit-nl? :mandatory [_ _ _ _]
+  true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Various support functions
@@ -169,6 +193,14 @@
 	section (take-while #(not (and (nl? %) (ancestor? (:logical-block %) lb)))
 			    (rest buffer))]
     [section (drop (inc (count section)) buffer)])) 
+
+(defn- get-sub-section [buffer]
+  (let [nl (first buffer) 
+	lb (:logical-block nl)
+	section (take-while #(let [nl-lb (:logical-block %)]
+			       (not (and (nl? %) (or (= nl-lb lb) (ancestor? nl-lb lb)))))
+			    (rest buffer))]
+    section)) 
 
 (defn emit-nl [this nl]
   (.col-write this (int \newline))
@@ -193,7 +225,7 @@
       (let [[section remainder] (get-section b)
 	    newl (first b)]
 ;; 	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
-	(let [result (if (emit-nl? newl this section)
+	(let [result (if (emit-nl? newl this section (get-sub-section b))
 		       (do
 ;; 			 (prlabel emit-nl newl)
 			 (emit-nl this newl)
