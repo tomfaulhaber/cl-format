@@ -8,8 +8,7 @@
 
 (ns com.infolace.format.test.base
   (:refer-clojure :exclude [format])
-  (:use unit-test com.infolace.format)
-  (:import [com.infolace.format ColumnWriter]))
+  (:use unit-test com.infolace.format))
 
 (def format cl-format)
 
