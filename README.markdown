@@ -75,12 +75,12 @@ the commas. Yuck!
 ### Current Status ###
 
 cl-format is 100% compatible with the Common Lisp standard as
-specified in CLtLv2 with the exception of the support directives 
-for the pretty printer.
+specified in CLtLv2.
 This includes all of the functionality of Common
 Lisp's format function including iteration, conditionals, 
 text justification and rich
-options for displaying real and integer values. 
+options for displaying real and integer values. It also includes the
+directives to support pretty printing structured output.
 
 If you find a bug in a directive, drop me a line
 with a chunk of code that exhibits the bug and the version of
