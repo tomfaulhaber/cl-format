@@ -70,7 +70,7 @@
 (defn buffer-length [l] (reduce + (map blob-length l)))
 
 ; A blob of characters (aka a string)
-(deftype buffer-blob :data)
+(deftype buffer-blob :data :trailing-white-space)
 (defmethod blob-length :buffer-blob [b] (count (:data b)))
 
 ; A newline
@@ -98,7 +98,8 @@
 	   :buffer []
 	   :buffer-block lb
 	   :buffer-level 1
-	   :miser-width miser-width}))])
+	   :miser-width miser-width
+	   :trailing-white-space (ref nil)}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions to write tokens in the output buffer
@@ -287,7 +288,7 @@
        (let [prefix (:per-line-prefix (first (getf :logical-blocks)))] 
 	 (if (= :buffering (getf :mode))
 	   (do
-	     (add-to-buffer this (make-buffer-blob (first lines)))
+	     (add-to-buffer this (make-buffer-blob (first lines) nil))
 	     (write-buffered-output this))
 	   (.col-write this (first lines)))
 	 (.col-write this (int \newline))
@@ -311,11 +312,15 @@
       (class x)
 
       String 
-      (let [s (write-initial-lines this x)
+      (let [s0 (write-initial-lines this x)
+	    s (.replaceFirst s0 "\\s+$" "")
+	    white-space (.substring s0 (count s))
 	    mode (getf :mode)]
 	(if (= mode :writing)
-	  (.col-write this s)
-	  (add-to-buffer this (make-buffer-blob s))))
+	  (dosync
+	   (.col-write this s)
+	   (setf :trailing-white-space white-space))
+	  (add-to-buffer this (make-buffer-blob s white-space))))
 
       Integer
       (let [c #^Character x]
