@@ -22,7 +22,6 @@
    :state pwstate))
 
 ;; TODO: Support for tab directives
-;; TODO: Trim whitespace before newlines
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Macros to simplify dealing with types and classes. These are
@@ -99,7 +98,7 @@
 	   :buffer-block lb
 	   :buffer-level 1
 	   :miser-width miser-width
-	   :trailing-white-space (ref nil)}))])
+	   :trailing-white-space nil}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions to write tokens in the output buffer
@@ -136,11 +135,17 @@
 (defmethod write-token :nl [this token]
   (if (and (not (= (:type token) :fill))
 	   @(:done-nl (:logical-block token)))
-    (emit-nl this token)))
+    (emit-nl this token)
+    (if-let [tws (getf :trailing-white-space)]
+      (.col-write this tws))))
 
 (defn- write-tokens [this tokens]
   (doseq [token tokens]
-    (write-token this token)))
+    (if-not (= (:type-tag token) :nl)
+	    (if-let [tws (getf :trailing-white-space)]
+	      (.col-write this tws)))
+    (write-token this token)
+    (setf :trailing-white-space (:trailing-white-space token))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; emit-nl? method defs for each type of new line. This makes
@@ -318,6 +323,8 @@
 	    mode (getf :mode)]
 	(if (= mode :writing)
 	  (dosync
+	   (if-let [tws (getf :trailing-white-space)]
+	     (.col-write this tws))
 	   (.col-write this s)
 	   (setf :trailing-white-space white-space))
 	  (add-to-buffer this (make-buffer-blob s white-space))))
@@ -325,10 +332,14 @@
       Integer
       (let [c #^Character x]
 	(if (= (getf :mode) :writing)
-	  (.col-write this x)
+	  (do
+	    (if-let [tws (getf :trailing-white-space)]
+	      (.col-write this tws))
+	    (.col-write this x)
+	    (setf :trailing-white-space nil))
 	  (if (= c (int \newline))
 	    (write-initial-lines this "\n")
-	    (add-to-buffer this (make-buffer-blob (str (char c))))))))))
+	    (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))
 
 (defn- -flush [this]
   (if (= (getf :mode) :buffering)
