@@ -1505,9 +1505,9 @@ Note this should only be used for the last one in the sequence"
 
 (defn- map-params [def params flags offset]
   "Takes a directive definition and the list of actual parameters and
-				      a map of flags and returns a map of the parameters and flags with defaults
-				      filled in. We check to make sure that there are the right types and number
-				      of parameters as well."
+a map of flags and returns a map of the parameters and flags with defaults
+filled in. We check to make sure that there are the right types and number
+of parameters as well."
   (check-flags def flags)
   (if (> (count params) (count (:params def)))
     (format-error 
