@@ -11,7 +11,7 @@
   (:gen-class
    :extends com.infolace.format.ColumnWriter
    :init init
-   :constructors {[java.io.Writer Integer Object] [java.io.Writer]}
+   :constructors {[java.io.Writer Integer Object] [java.io.Writer Integer]}
    :methods [[startBlock [String String String] void]
 	     [endBlock [] void]
 	     [newline [clojure.lang.Keyword] void]
@@ -70,7 +70,10 @@
 
 ; A blob of characters (aka a string)
 (deftype buffer-blob :data :trailing-white-space)
-(defmethod blob-length :buffer-blob [b] (count (:data b)))
+(defmethod blob-length :buffer-blob [b]
+  (+
+   (count (:data b))
+   (count (:trailing-white-space b))))
 
 ; A newline
 (deftype nl :type :logical-block)
@@ -306,12 +309,19 @@
 	 (last lines))))))
 
 
+(defn write-white-space [this]
+  (if-let [tws (getf :trailing-white-space)]
+    (dosync
+     (.col-write this tws)
+     (setf :trailing-white-space nil))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Writer overrides
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- -write 
   ([this x]
+;;     (prlabel write x (getf :mode))
      (condp 
       =	    ;TODO put these back up when the parser understands condp 
       (class x)
@@ -323,8 +333,7 @@
 	    mode (getf :mode)]
 	(if (= mode :writing)
 	  (dosync
-	   (if-let [tws (getf :trailing-white-space)]
-	     (.col-write this tws))
+	   (write-white-space this)
 	   (.col-write this s)
 	   (setf :trailing-white-space white-space))
 	  (add-to-buffer this (make-buffer-blob s white-space))))
@@ -332,11 +341,7 @@
       Integer
       (let [c #^Character x]
 	(if (= (getf :mode) :writing)
-	  (do
-	    (if-let [tws (getf :trailing-white-space)]
-	      (.col-write this tws))
-	    (.col-write this x)
-	    (setf :trailing-white-space nil))
+	  (write-white-space this)
 	  (if (= c (int \newline))
 	    (write-initial-lines this "\n")
 	    (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))
@@ -361,6 +366,7 @@
      (setf :logical-blocks lb)
      (if (= (getf :mode) :writing)
        (do
+	 (write-white-space this)
 	 (if prefix 
 	   (.col-write this prefix))
 	 (let [col (.getColumn this)]
@@ -372,8 +378,10 @@
   (dosync
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
-       (if-let [suffix (:suffix lb)]
-	 (.col-write this suffix))
+       (do
+	 (write-white-space this)
+`	 (if-let [suffix (:suffix lb)]
+	   (.col-write this suffix)))
        (add-to-buffer this (make-end-block lb)))
      (setf :logical-blocks (:parent lb)))))
 
@@ -386,11 +394,13 @@
   (dosync 
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
-       (ref-set (:indent lb) 
-		(+ offset (condp 
-			   = relative-to
-			   :block @(:start-col lb)
-			   :current (.getColumn this))))
+       (do
+	 (write-white-space this)
+	 (ref-set (:indent lb) 
+		  (+ offset (condp 
+			     = relative-to
+			     :block @(:start-col lb)
+			     :current (.getColumn this)))))
        (add-to-buffer this (make-indent lb relative-to offset))))))
 
 (defn- -getMiserWidth [this]
