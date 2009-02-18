@@ -140,7 +140,8 @@
 	   @(:done-nl (:logical-block token)))
     (emit-nl this token)
     (if-let [tws (getf :trailing-white-space)]
-      (.col-write this tws))))
+      (.col-write this tws)))
+  (dosync (setf :trailing-white-space nil)))
 
 (defn- write-tokens [this tokens]
   (doseq [token tokens]
@@ -211,6 +212,7 @@
 
 (defn emit-nl [this nl]
   (.col-write this (int \newline))
+  (dosync (setf :trailing-white-space nil))
   (let [lb (:logical-block nl)
 	prefix (:per-line-prefix lb)] 
     (if prefix 
