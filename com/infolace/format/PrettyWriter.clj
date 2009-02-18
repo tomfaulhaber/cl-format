@@ -51,7 +51,9 @@
 ;;; The data structures used by PrettyWriter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct #^{:private true} logical-block :parent :section :start-col :indent :done-nl
+(defstruct #^{:private true} logical-block
+	   :parent :section :start-col :indent
+	   :done-nl :intra-block-nl
 	   :prefix :per-line-prefix :suffix)
 
 (defn ancestor? [parent child]
@@ -93,7 +95,7 @@
 (defn- -init 
   [writer max-columns miser-width]
   [[writer max-columns] 
-   (let [lb (struct logical-block nil nil (ref 0) (ref 0) (ref false))]
+   (let [lb (struct logical-block nil nil (ref 0) (ref 0) (ref false) (ref false))]
      (ref {:logical-blocks lb 
 	   :sections nil
 	   :mode :writing
@@ -181,10 +183,10 @@
   (let [lb (:logical-block newl)]
     (miser-nl? this lb section)))
 
-;;; TODO: support clause (b) of the definition -> break if previous section broke
 (defmethod emit-nl? :fill [newl this section subsection]
   (let [lb (:logical-block newl)]
-    (or (not (tokens-fit? this subsection))
+    (or @(:intra-block-nl lb)
+	(not (tokens-fit? this subsection))
 	(miser-nl? this lb section))))
 
 (defmethod emit-nl? :mandatory [_ _ _ _]
@@ -210,6 +212,16 @@
 			    (rest buffer))]
     section)) 
 
+(defn- update-nl-state [lb]
+  (dosync
+   (ref-set (:intra-block-nl lb) false)
+   (ref-set (:done-nl lb) false)
+   (loop [lb (:parent lb)]
+     (if lb
+       (do (ref-set (:done-nl lb) true)
+	   (ref-set (:intra-block-nl lb) true)
+	   (recur (:parent lb)))))))
+
 (defn emit-nl [this nl]
   (.col-write this (int \newline))
   (dosync (setf :trailing-white-space nil))
@@ -219,8 +231,7 @@
       (.col-write this prefix))
     (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
 					   \space)))
-    (dosync
-     (ref-set (:done-nl lb) true))))
+    (update-nl-state lb)))
 
 (defn- split-at-newline [tokens]
   (let [pre (take-while #(not (nl? %)) tokens)]
@@ -363,7 +374,8 @@
 
 (defn- -startBlock [this prefix per-line-prefix suffix]
   (dosync 
-   (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0) (ref false) 
+   (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0)
+		    (ref false) (ref false)
 		    prefix per-line-prefix suffix)]
      (setf :logical-blocks lb)
      (if (= (getf :mode) :writing)
