@@ -8,7 +8,7 @@
 
 (ns com.infolace.format.test.pretty
   (:refer-clojure :exclude [format])
-  (:use unit-test com.infolace.format com.infolace.pprint))
+  (:use unit-test com.infolace.format com.infolace.pprint com.infolace.dispatch))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -41,3 +41,18 @@
   (binding [*print-right-margin* 10, *print-miser-width* 10]
     (cl-format nil "~<{~;LIST ~@_~W ~@_~W ~@_~W~;}~:>" '(first second third)))
   "{LIST\n first\n second\n third}")
+
+(simple-tests pprint-test
+  (write '(defn foo [x y] 
+	     (let [result (* x y)] 
+	       (if (> result 400) 
+		 (cl-format true "That number is too big")
+		 (cl-format true "The  result of ~d x ~d is ~d" x y result))))
+	 :stream nil)
+  "(defn
+ foo [x y]
+ (let [result (* x y)]
+  (if
+   (> result 400)
+   (cl-format true \"That number is too big\")
+   (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))")
