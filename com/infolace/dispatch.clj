@@ -15,58 +15,19 @@
 ;; Implementations of specific dispatch table entries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO replace direct stream calls with formatter funcs, when possible,
-;; pprint macros otherwise
-(defn pprint-list [writer lis colon? at-sign?]
-  (pprint-logical-block [writer writer] lis :prefix "(" :suffix ")"
-    (if (seq lis) 
-      (loop [r lis]
-	;;  (prlabel ppli r)
-	(write (first r) :stream writer)
-	(if-let [r (rest r)] 
-	  (do
-	    (.write writer " ")
-	    (pprint-newline :linear writer)
-	    (recur r)))))))
+(defn pprint-list [writer lis]
+  (formatter "~:<~{~w~^ ~_~}~:>"))
 
 (dosync (alter *print-pprint-dispatch* conj [list? pprint-list]))
 (dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
 
-(defn pprint-vector [writer avec colon? at-sign?]
-  (do
-    (.startBlock writer "[" nil "]")
-    (if (seq avec) 
-      (loop [r avec]
-	;;  (prlabel ppli r)
-	(write (first r) :stream writer)
-	(if-let [r (rest r)] 
-	  (do
-	    (.write writer " ")
-	    (.newline writer :linear)
-	    (recur r)))))
-    (.endBlock writer)))
+(defn pprint-vector [writer avec]
+  (formatter "~<[~;~{~w~^ ~_~}~;]~:>"))
 
 (dosync (alter *print-pprint-dispatch* conj [vector? pprint-vector]))
 
-(defn pprint-map [writer amap colon? at-sign?]
-  (do
-    (.startBlock writer "{" nil "}")
-    (if (seq amap) 
-      (loop [r amap]
-	;;  (prlabel ppli r)
-	(.startBlock writer nil nil nil)
-	(let [[k v] (first r)] 
-	  (write k :stream writer)
-	  (.write writer " ")
-	  (.newline writer :linear)
-	  (write v :stream writer))
-	(.endBlock writer)
-	(if-let [r (rest r)] 
-	  (do
-	    (.write writer ", ")
-	    (.newline writer :linear)
-	    (recur r)))))
-    (.endBlock writer)))
+(defn pprint-map [writer amap]
+  (formatter "~<{~;~{~<~w~^, ~_~w~:>~^ ~_~}~;}~:>"))
 
 (dosync (alter *print-pprint-dispatch* conj [map? pprint-map]))
 

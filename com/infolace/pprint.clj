@@ -129,7 +129,7 @@ recursive calls)"
 		(cond
 		 (empty? dispatch) (binding [*out* pretty-writer]
 				     (pr object))
-		 (test object) (func pretty-writer object nil nil)
+		 (test object) (func pretty-writer object)
 		 :else (recur (rest dispatch))))))
 	  (binding [*out* base-writer]
 	    (pr object)))
