@@ -160,8 +160,8 @@
 
 
 (defn- tokens-fit? [this tokens]
-  (<= (+ (.getColumn this) (buffer-length tokens))
-      (.getMaxColumn this)))
+  (< (+ (.getColumn this) (buffer-length tokens))
+     (.getMaxColumn this)))
 
 (defn- linear-nl? [this lb section]
   (or @(:done-nl lb)

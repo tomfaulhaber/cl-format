@@ -20,12 +20,12 @@
   (binding [*print-right-margin* 38]
     (cl-format nil "(let ~:<~@{~:<~w ~_~w~:>~^ ~:_~}~:>~_ ...)~%"
 	       '((x 4) (*print-length* nil) (z 2) (list nil))))
-  "(let ((x 4) (*print-length* nil)\n      (z 2) (list nil))\n...)\n"
+  "(let ((x 4) (*print-length* nil)\n      (z 2) (list nil))\n ...)\n"
 
   (binding [*print-right-margin* 22]
     (cl-format nil "(let ~:<~@{~:<~w ~_~w~:>~^ ~:_~}~:>~_ ...)~%"
 	       '((x 4) (*print-length* nil) (z 2) (list nil))))
-  "(let ((x 4)\n      (*print-length*\n       nil)\n      (z 2)\n      (list nil))\n...)\n")
+  "(let ((x 4)\n      (*print-length*\n       nil)\n      (z 2)\n      (list nil))\n ...)\n")
 
 (simple-tests xp-miser-test
   (binding [*print-right-margin* 10, *print-miser-width* 9]
