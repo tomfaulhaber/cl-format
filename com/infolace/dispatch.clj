@@ -15,20 +15,16 @@
 ;; Implementations of specific dispatch table entries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn pprint-list [writer lis]
-  (formatter "~:<~{~w~^ ~_~}~:>"))
+(dosync (ref-set *print-pprint-dispatch* []))
 
+(def pprint-list (formatter "~:<~@{~w~^ ~_~}~:>"))
 (dosync (alter *print-pprint-dispatch* conj [list? pprint-list]))
 (dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
 
-(defn pprint-vector [writer avec]
-  (formatter "~<[~;~{~w~^ ~_~}~;]~:>"))
-
+(def pprint-vector (formatter "~<[~;~@{~w~^ ~_~}~;]~:>"))
 (dosync (alter *print-pprint-dispatch* conj [vector? pprint-vector]))
 
-(defn pprint-map [writer amap]
-  (formatter "~<{~;~{~<~w~^, ~_~w~:>~^ ~_~}~;}~:>"))
-
+(def pprint-map (formatter "~<{~;~@{~<~w~^, ~_~w~:>~^ ~_~}~;}~:>"))
 (dosync (alter *print-pprint-dispatch* conj [map? pprint-map]))
 
 nil
