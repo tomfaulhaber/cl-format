@@ -25,7 +25,7 @@
  *print-pretty* true)
 
 ;;; TODO: implement true data-driven dispatch
-(def
+(defonce ; If folks have added stuff here, don't overwrite
  #^{ :doc "The pretty print dispatch table"}
  *print-pprint-dispatch* (ref []))
 
@@ -33,7 +33,6 @@
  #^{ :doc "Pretty printing will try to avoid anything going beyond this column."}
  *print-right-margin* 72)
 
-;;; TODO implement miser style
 (def
  #^{ :doc "The column at which to enter miser style (N.B. This is not yet used)"}
  *print-miser-width* nil)
