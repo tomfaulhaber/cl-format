@@ -55,4 +55,9 @@
   (if
    (> result 400)
    (cl-format true \"That number is too big\")
-   (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))")
+   (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))"
+  (binding [*print-right-margin* 15] 
+    (write '(fn (cons (car x) (cdr y))) :stream nil))
+  "(fn\n (cons\n  (car x)\n  (cdr y)))")
+
+
