@@ -50,8 +50,10 @@
 		 (cl-format true "The  result of ~d x ~d is ~d" x y result))))
 	 :stream nil)
   "(defn
- foo [x y]
- (let [result (* x y)]
+ foo
+ [x y]
+ (let
+  [result (* x y)]
   (if
    (> result 400)
    (cl-format true \"That number is too big\")
