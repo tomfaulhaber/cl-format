@@ -31,9 +31,22 @@
 (dosync (alter *print-pprint-dispatch* conj [set? pprint-set]))
 
 (defn pprint-ref [writer ref]
-  (pprint-logical-block [writer writer] ref
-    (.write writer "@")
+  (pprint-logical-block [writer writer] ref :prefix "#<Ref " :suffix ">"
     (write @ref :stream writer)))
 (dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
+
+(defn pprint-atom [writer ref]
+  (pprint-logical-block [writer writer] ref :prefix "#<Atom " :suffix ">"
+    (write @ref :stream writer)))
+(dosync 
+ (alter 
+  *print-pprint-dispatch* conj
+  [#(instance? clojure.proxy.java.util.concurrent.atomic.AtomicReference$IRef %)
+   pprint-atom]))
+
+(defn pprint-agent [writer ref]
+  (pprint-logical-block [writer writer] ref :prefix "#<Agent " :suffix ">"
+    (write @ref :stream writer)))
+(dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
 nil
