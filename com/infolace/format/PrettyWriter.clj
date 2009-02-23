@@ -368,7 +368,9 @@
       Integer
       (let [c #^Character x]
 	(if (= (getf :mode) :writing)
-	  (write-white-space this)
+	  (do 
+	    (write-white-space this)
+	    (.col-write this x))
 	  (if (= c (int \newline))
 	    (write-initial-lines this "\n")
 	    (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))
