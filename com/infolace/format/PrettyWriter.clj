@@ -160,10 +160,12 @@
 
 
 (defn- tokens-fit? [this tokens]
+;  (prlabel tf? (.getColumn this) (buffer-length tokens))
   (< (+ (.getColumn this) (buffer-length tokens))
      (.getMaxColumn this)))
 
 (defn- linear-nl? [this lb section]
+;  (prlabel lnl? @(:done-nl lb) (tokens-fit? this section))
   (or @(:done-nl lb)
       (not (tokens-fit? this section))))
 
@@ -237,37 +239,49 @@
   (let [pre (take-while #(not (nl? %)) tokens)]
     [pre (drop (count pre) tokens)]))
 
+;;; Methods for showing token strings for debugging
+
+(defmulti tok :type-tag)
+(defmethod tok :nl [token]
+  (:type token))
+(defmethod tok :buffer-blob [token]
+  (str \" (:data token) (:trailing-white-space token) \"))
+(defmethod tok :default [token]
+  (:type-tag token))
+(defn toks [toks] (map tok toks))
+
+;;; write-token-string is called when the set of tokens in the buffer
+;;; is longer than the available space on the line
+
 (defn- write-token-string [this tokens]
   (let [[a b] (split-at-newline tokens)]
-;;     (prlabel wts a b)
+;;    (prlabel wts (toks a) (toks b))
     (if a (write-tokens this a))
     (if b
       (let [[section remainder] (get-section b)
 	    newl (first b)]
-;; 	(prlabel wts section) (prlabel wts newl) (prlabel wts remainder) 
-	(let [result (if (emit-nl? newl this section (get-sub-section b))
+;; 	(prlabel wts (toks section)) (prlabel wts (:type newl)) (prlabel wts (toks remainder)) 
+	(let [do-nl (emit-nl? newl this section (get-sub-section b))
+	      result (if do-nl 
 		       (do
-;; 			 (prlabel emit-nl newl)
+;; 			 (prlabel emit-nl (:type newl))
 			 (emit-nl this newl)
-			 (if (not (tokens-fit? this section))
-			   (let [rem2 (write-token-string this section)]
-;; 			     (prlabel wts rem2)
-			     (if (= rem2 section)
-			       (do ; If that didn't produce any output, it has no nls
+			 (rest b))
+		       b)
+	      long-section (not (tokens-fit? this result))
+	      result (if long-section
+		       (let [rem2 (write-token-string this section)]
+;;; 			     (prlabel recurse (toks rem2))
+			 (if (= rem2 section)
+			   (do ; If that didn't produce any output, it has no nls
 					; so we'll force it
-				 (write-tokens this section)
-				 remainder)
-			       (into rem2 remainder)))
-			   false))
-		       false)] 
-	  (if-not (false? result)
-		  result
-		  (if remainder
-		    (do 
-;; 		      (prerr "wts returning remainder")
-		      (write-tokens this section)
-		      remainder)
-		    section)))))))
+			     (write-tokens this section)
+			     remainder)
+			   (into [] (concat rem2 remainder))))
+		       result)
+;;	      ff (prlabel wts (toks result))
+	      ] 
+	  result)))))
 
 (defn- write-line [this]
 ;;   (prerr "@wl")
@@ -394,7 +408,7 @@
      (if (= (getf :mode) :writing)
        (do
 	 (write-white-space this)
-`	 (if-let [suffix (:suffix lb)]
+	 (if-let [suffix (:suffix lb)]
 	   (.col-write this suffix)))
        (add-to-buffer this (make-end-block lb)))
      (setf :logical-blocks (:parent lb)))))
