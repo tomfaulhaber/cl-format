@@ -24,7 +24,7 @@
 (def pprint-vector (formatter "~<[~;~@{~w~^ ~_~}~;]~:>"))
 (dosync (alter *print-pprint-dispatch* conj [vector? pprint-vector]))
 
-(def pprint-map (formatter "~<{~;~@{~<~w~^, ~_~w~:>~^ ~_~}~;}~:>"))
+(def pprint-map (formatter "~<{~;~@{~<~w~^ ~_~w~:>~^, ~_~}~;}~:>"))
 (dosync (alter *print-pprint-dispatch* conj [map? pprint-map]))
 
 (def pprint-set (formatter "~<#{~;~@{~w~^ ~:_~}~;}~:>"))
@@ -32,7 +32,7 @@
 
 (defn pprint-ref [writer ref]
   (pprint-logical-block [writer writer] ref
-    (write "@" :stream writer)
+    (.write writer "@")
     (write @ref :stream writer)))
 (dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
 
