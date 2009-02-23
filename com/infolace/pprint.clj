@@ -110,7 +110,7 @@
 (defn write [object & kw-args]
   "Write an object subject to the current bindings of the printer control variables.
 Use the options argument to override individual variables for this call (and any 
-recursive calls)"
+recursive calls). Returns the string result if :stream is nil or nil otherwise."
   (let [options (merge {:stream true} (apply hash-map kw-args))]
     (binding-map write-option-table options 
       (let [optval (if (contains? options :stream) 
@@ -139,10 +139,13 @@ recursive calls)"
   "Pretty print object to the optional output writer. If the writer is not provided, 
 print the object to the currently bound value of *out*."
   [object & more]
-  (let [stream (if (pos? (count more))
+  (let [base-stream (if (pos? (count more))
 		 (first more)
 		 *out*)]
-    (write object :stream stream :pretty true)))
+    (with-pretty-writer [stream base-stream]
+      (write object :stream stream :pretty true)
+      (if (not (= 0 (.getColumn stream)))
+	(.write stream (int \newline))))))
 
 (defmacro pp 
   "A convenience macro that pretty prints the last thing output. This is
