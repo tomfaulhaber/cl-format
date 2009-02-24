@@ -15,38 +15,48 @@
 ;; Implementations of specific dispatch table entries
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(dosync (ref-set *print-pprint-dispatch* []))
+(def *simple-dispatch* (ref []))
+(def *code-dispatch* (ref []))
 
-(def pprint-list (formatter "~:<~@{~w~^ ~_~}~:>"))
-(dosync (alter *print-pprint-dispatch* conj [list? pprint-list]))
-(dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
+(def reader-macros {'quote \', 'clojure.core/meta \^, 'clojure.core/deref \@,  })
+(def pprint-simple-list (formatter "~:<~@{~w~^ ~_~}~:>"))
+(defn pprint-list [writer alis]
+  (if-let [macro-char (reader-macros (first alis))]
+    (do
+      (.write writer (int macro-char))
+      (write (frest alis) :stream writer))
+    (pprint-simple-list writer alis)))
+(dosync (alter *simple-dispatch* conj [list? pprint-list]))
+(dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
 
 (def pprint-vector (formatter "~<[~;~@{~w~^ ~_~}~;]~:>"))
-(dosync (alter *print-pprint-dispatch* conj [vector? pprint-vector]))
+(dosync (alter *simple-dispatch* conj [vector? pprint-vector]))
 
 (def pprint-map (formatter "~<{~;~@{~<~w~^ ~_~w~:>~^, ~_~}~;}~:>"))
-(dosync (alter *print-pprint-dispatch* conj [map? pprint-map]))
+(dosync (alter *simple-dispatch* conj [map? pprint-map]))
 
 (def pprint-set (formatter "~<#{~;~@{~w~^ ~:_~}~;}~:>"))
-(dosync (alter *print-pprint-dispatch* conj [set? pprint-set]))
+(dosync (alter *simple-dispatch* conj [set? pprint-set]))
 
 (defn pprint-ref [writer ref]
   (pprint-logical-block [writer writer] ref :prefix "#<Ref " :suffix ">"
     (write @ref :stream writer)))
-(dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
+(dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
 
 (defn pprint-atom [writer ref]
   (pprint-logical-block [writer writer] ref :prefix "#<Atom " :suffix ">"
     (write @ref :stream writer)))
 (dosync 
  (alter 
-  *print-pprint-dispatch* conj
+  *simple-dispatch* conj
   [#(instance? clojure.proxy.java.util.concurrent.atomic.AtomicReference$IRef %)
    pprint-atom]))
 
 (defn pprint-agent [writer ref]
   (pprint-logical-block [writer writer] ref :prefix "#<Agent " :suffix ">"
     (write @ref :stream writer)))
-(dosync (alter *print-pprint-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
+(dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
+(dosync (ref-set *print-pprint-dispatch* @*simple-dispatch*))
 nil
+
