@@ -18,12 +18,14 @@
 (def *simple-dispatch* (ref []))
 (def *code-dispatch* (ref []))
 
-(def reader-macros {'quote \', 'clojure.core/meta \^, 'clojure.core/deref \@,  })
+(def reader-macros
+     {'quote (int \'), 'clojure.core/meta (int \^), 'clojure.core/deref (int \@), 
+      'var "#'", })
 (def pprint-simple-list (formatter "~:<~@{~w~^ ~_~}~:>"))
 (defn pprint-list [writer alis]
   (if-let [macro-char (reader-macros (first alis))]
     (do
-      (.write writer (int macro-char))
+      (.write writer macro-char)
       (write (frest alis) :stream writer))
     (pprint-simple-list writer alis)))
 (dosync (alter *simple-dispatch* conj [list? pprint-list]))
@@ -58,5 +60,39 @@
 (dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
 (dosync (ref-set *print-pprint-dispatch* @*simple-dispatch*))
+
+(defn- single-defn [writer alis])
+(defn- multi-defn [writer alis])
+
+;;; TODO: figure out how to support capturing metadata in defns (we might need a 
+;;; special reader
+(defn pprint-defn [writer alis]
+  (let [[defn-sym defn-name & stuff] alis
+	[doc-str stuff] (if (string? (first stuff))
+			  [(first stuff) (rest stuff)]
+			  [nil stuff])]
+    (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
+      (cl-format writer "~w ~1I~@_~w" defn-sym defn-name)
+      (if doc-str (cl-format writer " ~_~w" doc-str))
+      (cond
+       (vector? (first stuff)) (single-defn writer stuff)
+       (list? (first stuff)) (multi-defn writer stuff)
+       :else (pprint-list writer stuff)))))
+
+(def code-table { 'defn pprint-defn, })
+(defn pprint-code-list [writer alis]
+  )
+
+;;; For testing
+(comment
+
+(pprint-defn *out* '(defn cl-format 
+  "An implementation of a Common Lisp compatible format function"
+  [stream format-in & args]
+  (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
+	navigator (init-navigator args)]
+    (execute-format stream compiled-format navigator))))
+
+)
 nil
 
