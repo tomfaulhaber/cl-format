@@ -23,12 +23,17 @@
 (def reader-macros
      {'quote (int \'), 'clojure.core/meta (int \^), 'clojure.core/deref (int \@), 
       'var "#'", })
+(defn pprint-reader-macro [writer alis]
+  (let [macro-char (reader-macros (first alis))]
+    (if (and macro-char (= 2 (count alis)))
+      (do
+	(.write writer macro-char)
+	(write (frest alis) :stream writer)
+	true))))
+
 (def pprint-simple-list (formatter "~:<~@{~w~^ ~_~}~:>"))
 (defn pprint-list [writer alis]
-  (if-let [macro-char (reader-macros (first alis))]
-    (do
-      (.write writer macro-char)
-      (write (frest alis) :stream writer))
+  (if-not (pprint-reader-macro writer alis)
     (pprint-simple-list writer alis)))
 (dosync (alter *simple-dispatch* conj [list? pprint-list]))
 (dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
