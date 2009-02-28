@@ -66,7 +66,20 @@
     (write @ref :stream writer)))
 (dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
-(dosync (ref-set *print-pprint-dispatch* @*simple-dispatch*))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Dispatch for the code table
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(dosync (alter *code-dispatch* conj [vector? pprint-vector]))
+(dosync (alter *code-dispatch* conj [map? pprint-map]))
+(dosync (alter *code-dispatch* conj [set? pprint-set]))
+(dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
+(dosync 
+ (alter 
+  *code-dispatch* conj
+  [#(instance? clojure.proxy.java.util.concurrent.atomic.AtomicReference$IRef %)
+   pprint-atom]))
+(dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
 ;;; Format a defn with a single arity
 (defn- single-defn [writer alis has-doc-str?]
@@ -99,56 +112,65 @@
        :else (pprint-list writer stuff)))))
 
 (def pprint-simple-code-list (formatter "~:<~1I~@{~w~^ ~_~}~:>"))
-(def code-table { 'defn pprint-defn, })
+(def code-table { 'defn pprint-defn, 'defn- pprint-defn, })
 (defn pprint-code-list [writer alis]
-  (if-let [special-form (code-table (first alis))]
-    (special-form writer alis)
-    (pprint-simple-code-list writer alis)))
+  (if-not (pprint-reader-macro writer alis) 
+	  (if-let [special-form (code-table (first alis))]
+	    (special-form writer alis)
+	    (pprint-simple-code-list writer alis))))
+(dosync (alter *code-dispatch* conj [list? pprint-code-list]))
+(dosync (alter *code-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
+
+(dosync (ref-set *print-pprint-dispatch* @*code-dispatch*))
+
 
 ;;; For testing
 (comment
 
-(pprint-code-list *out* '(defn cl-format 
-  "An implementation of a Common Lisp compatible format function"
-  [stream format-in & args]
-  (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	navigator (init-navigator args)]
-    (execute-format stream compiled-format navigator))))
+(pprint 
+ '(defn cl-format 
+    "An implementation of a Common Lisp compatible format function"
+    [stream format-in & args]
+    (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
+	  navigator (init-navigator args)]
+      (execute-format stream compiled-format navigator))))
 
-(pprint-defn *out* '(defn cl-format 
-  [stream format-in & args]
-  (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	navigator (init-navigator args)]
-    (execute-format stream compiled-format navigator))))
+(pprint 
+ '(defn cl-format 
+    [stream format-in & args]
+    (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
+	  navigator (init-navigator args)]
+      (execute-format stream compiled-format navigator))))
 
-(pprint-defn *out* '(defn- -write 
-  ([this x]
-;;     (prlabel write x (getf :mode))
-     (condp 
-      =	    ;TODO put these back up when the parser understands condp 
-      (class x)
+(pprint
+ '(defn- -write 
+    ([this x]
+       ;;     (prlabel write x (getf :mode))
+       (condp 
+	=   ;TODO put these back up when the parser understands condp 
+	(class x)
 
-      String 
-      (let [s0 (write-initial-lines this x)
-	    s (.replaceFirst s0 "\\s+$" "")
-	    white-space (.substring s0 (count s))
-	    mode (getf :mode)]
-	(if (= mode :writing)
-	  (dosync
-	   (write-white-space this)
-	   (.col-write this s)
-	   (setf :trailing-white-space white-space))
-	  (add-to-buffer this (make-buffer-blob s white-space))))
+	String 
+	(let [s0 (write-initial-lines this x)
+	      s (.replaceFirst s0 "\\s+$" "")
+	      white-space (.substring s0 (count s))
+	      mode (getf :mode)]
+	  (if (= mode :writing)
+	    (dosync
+	     (write-white-space this)
+	     (.col-write this s)
+	     (setf :trailing-white-space white-space))
+	    (add-to-buffer this (make-buffer-blob s white-space))))
 
-      Integer
-      (let [c #^Character x]
-	(if (= (getf :mode) :writing)
-	  (do 
-	    (write-white-space this)
-	    (.col-write this x))
-	  (if (= c (int \newline))
-	    (write-initial-lines this "\n")
-	    (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))))))
+	Integer
+	(let [c #^Character x]
+	  (if (= (getf :mode) :writing)
+	    (do 
+	      (write-white-space this)
+	      (.col-write this x))
+	    (if (= c (int \newline))
+	      (write-initial-lines this "\n")
+	      (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))))))
 )
 nil
 
