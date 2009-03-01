@@ -91,6 +91,8 @@
 ;;; Dispatch for the code table
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare pprint-simple-code-list)
+
 (dosync (alter *code-dispatch* conj [vector? pprint-vector]))
 (dosync (alter *code-dispatch* conj [map? pprint-map]))
 (dosync (alter *code-dispatch* conj [set? pprint-set]))
@@ -123,23 +125,25 @@
 ;;; TODO: figure out how to support capturing metadata in defns (we might need a 
 ;;; special reader)
 (defn pprint-defn [writer alis]
-  (let [[defn-sym defn-name & stuff] alis
-	[doc-str stuff] (if (string? (first stuff))
-			  [(first stuff) (rest stuff)]
-			  [nil stuff])
-	[attr-str stuff] (if (string? (first stuff))
-			   [(first stuff) (rest stuff)]
-			   [nil stuff])]
-    (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
-      (cl-format writer "~w ~1I~@_~w" defn-sym defn-name)
-      (if doc-str
-	(cl-format writer " ~_~w" doc-str))
-      (if attr-str
-	(cl-format writer " ~_~w" attr-str))
-      (cond
-       (vector? (first stuff)) (single-defn writer stuff (and doc-str attr-str))
-       (list? (first stuff)) (multi-defn writer stuff (and doc-str attr-str))
-       :else (pprint-list writer stuff)))))
+  (if (seq (rest alis)) 
+    (let [[defn-sym defn-name & stuff] alis
+	  [doc-str stuff] (if (string? (first stuff))
+			    [(first stuff) (rest stuff)]
+			    [nil stuff])
+	  [attr-map stuff] (if (map? (first stuff))
+			     [(first stuff) (rest stuff)]
+			     [nil stuff])]
+      (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
+	(cl-format writer "~w ~1I~@_~w" defn-sym defn-name)
+	(if doc-str
+	  (cl-format writer " ~_~w" doc-str))
+	(if attr-map
+	  (cl-format writer " ~_~w" attr-map))
+	;; Note: the multi-defn case will work OK for malformed defns too
+	(cond
+	 (vector? (first stuff)) (single-defn writer stuff (or doc-str attr-map))
+	 :else (multi-defn writer stuff (or doc-str attr-map)))))
+    (pprint-simple-code-list writer alis)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Format something with a binding form
