@@ -20,9 +20,25 @@
 (def *simple-dispatch* (ref []))
 (def *code-dispatch* (ref []))
 
+;;; Handle forms that can be "back-translated" to reader macros
+;;; Not all reader macros can be dealt with this way or at all. 
+;;; Macros that we can't deal with at all are:
+;;; ;  - The comment character is aborbed by the reader and never is part of the form
+;;; `  - Is fully processed at read time into a lisp expression (which will contain concats
+;;;      and regular quotes).
+;;; ~@ - Also fully eaten by the processing of ` and can't be used outside.
+;;; ,  - is whitespace and is lost (like all other whitespace). Formats can generate commas
+;;;      where they deem them to help readability.
+;;; #^ - Adding metadata completely disappears at read time and the data appears to be
+;;;      completely lost.
+;;;
+;;; Most other syntax stuff is dealt with directly by the formats (like (), [], {}, and #{})
+;;; or directly by printing the objects using Clojure's built-in print functions (like
+;;; :keyword, \char, or ""). TODO: The notable exception is #() which is special-cased.
+
 (def reader-macros
      {'quote (int \'), 'clojure.core/meta (int \^), 'clojure.core/deref (int \@), 
-      'var "#'", })
+      'var "#'", 'clojure.core/unquote (int \~)})
 (defn pprint-reader-macro [writer alis]
   (let [macro-char (reader-macros (first alis))]
     (if (and macro-char (= 2 (count alis)))
@@ -30,6 +46,11 @@
 	(.write writer macro-char)
 	(write (frest alis) :stream writer)
 	true))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Dispatch for the basic data types when interpreted
+;; as data (as opposed to code).
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def pprint-simple-list (formatter "~:<~@{~w~^ ~_~}~:>"))
 (defn pprint-list [writer alis]
@@ -81,7 +102,11 @@
    pprint-atom]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
-;;; Format a defn with a single arity
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Format something that looks like a defn or defmacro
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Format the params and body of a defn with a single arity
 (defn- single-defn [writer alis has-doc-str?]
   (if (seq alis)
     (do
@@ -90,7 +115,7 @@
 	(cl-format writer " ~@_"))
       (cl-format writer "~{~w~^ ~_~}" alis))))
 
-;;; Format a defn with multiple arities
+;;; Format the param and body sublists of a defn with multiple arities
 (defn- multi-defn [writer alis has-doc-str?]
   (if (seq alis)
     (cl-format writer " ~_~{~w~^ ~_~}" alis)))
@@ -101,18 +126,51 @@
   (let [[defn-sym defn-name & stuff] alis
 	[doc-str stuff] (if (string? (first stuff))
 			  [(first stuff) (rest stuff)]
-			  [nil stuff])]
+			  [nil stuff])
+	[attr-str stuff] (if (string? (first stuff))
+			   [(first stuff) (rest stuff)]
+			   [nil stuff])]
     (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
       (cl-format writer "~w ~1I~@_~w" defn-sym defn-name)
       (if doc-str
 	(cl-format writer " ~_~w" doc-str))
+      (if attr-str
+	(cl-format writer " ~_~w" attr-str))
       (cond
-       (vector? (first stuff)) (single-defn writer stuff doc-str)
-       (list? (first stuff)) (multi-defn writer stuff doc-str)
+       (vector? (first stuff)) (single-defn writer stuff (and doc-str attr-str))
+       (list? (first stuff)) (multi-defn writer stuff (and doc-str attr-str))
        :else (pprint-list writer stuff)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Format something with a binding form
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; TODO: fix
+(defn pprint-binding-form [writer binding-vec]
+  (cl-format writer "~<[~;~@{~w~^ ~_~w~^, ~_~}~;]~:>" binding-vec))
+
+(defn pprint-let [writer alis]
+  (let [base-sym (first alis)]
+    (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
+      (if (and (rest alis) (vector? (frest alis)))
+	(do
+	  (cl-format writer "~w ~1I~@_" base-sym)
+	  (pprint-binding-form writer (frest alis))
+	  (cl-format writer " ~_~{~w~^ ~_~}" (rrest alis)))
+	(pprint-simple-code-list writer alis)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; The master definitions for formatting lists in code (that is, (fn args...) or
+;;; special forms).
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def pprint-simple-code-list (formatter "~:<~1I~@{~w~^ ~_~}~:>"))
-(def code-table { 'defn pprint-defn, 'defn- pprint-defn, })
+
+(def code-table
+     {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
+      'let pprint-let,
+      })
+
 (defn pprint-code-list [writer alis]
   (if-not (pprint-reader-macro writer alis) 
 	  (if-let [special-form (code-table (first alis))]
