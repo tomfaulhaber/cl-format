@@ -149,9 +149,20 @@
 ;;; Format something with a binding form
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; TODO: fix
 (defn pprint-binding-form [writer binding-vec]
-  (cl-format writer "~<[~;~@{~w~^ ~_~w~^, ~_~}~;]~:>" binding-vec))
+    (pprint-logical-block [writer writer] binding-vec :prefix "[" :suffix "]"
+      (loop [binding binding-vec]
+	(when (seq binding)
+	  (pprint-logical-block [writer writer] binding
+	    (write (first binding) :stream writer)
+	    (when (seq (rest binding))
+	      (.write writer " ")
+	      (pprint-newline :linear writer)
+	      (write (frest binding) :stream writer)))
+	  (when (seq (rrest binding))
+	    (.write writer " ")
+	    (pprint-newline :linear writer)
+	    (recur (rrest binding)))))))
 
 (defn pprint-let [writer alis]
   (let [base-sym (first alis)]
@@ -172,7 +183,7 @@
 
 (def code-table
      {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
-      'let pprint-let,
+      'let pprint-let, 'loop pprint-let, 'binding pprint-let
       })
 
 (defn pprint-code-list [writer alis]
