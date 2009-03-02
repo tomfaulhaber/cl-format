@@ -17,38 +17,44 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (simple-tests xp-fill-test
-  (binding [*print-right-margin* 38]
+  (binding [*print-pprint-dispatch* *simple-dispatch*
+	    *print-right-margin* 38]
     (cl-format nil "(let ~:<~@{~:<~w ~_~w~:>~^ ~:_~}~:>~_ ...)~%"
 	       '((x 4) (*print-length* nil) (z 2) (list nil))))
   "(let ((x 4) (*print-length* nil)\n      (z 2) (list nil))\n ...)\n"
 
-  (binding [*print-right-margin* 22]
+  (binding [*print-pprint-dispatch* *simple-dispatch*
+	    *print-right-margin* 22]
     (cl-format nil "(let ~:<~@{~:<~w ~_~w~:>~^ ~:_~}~:>~_ ...)~%"
 	       '((x 4) (*print-length* nil) (z 2) (list nil))))
   "(let ((x 4)\n      (*print-length*\n       nil)\n      (z 2)\n      (list nil))\n ...)\n")
 
 (simple-tests xp-miser-test
-  (binding [*print-right-margin* 10, *print-miser-width* 9]
+  (binding [*print-pprint-dispatch* *simple-dispatch*
+	    *print-right-margin* 10, *print-miser-width* 9]
     (cl-format nil "~:<LIST ~@_~W ~@_~W ~@_~W~:>" '(first second third)))
   "(LIST\n first\n second\n third)"
 
-  (binding [*print-right-margin* 10, *print-miser-width* 8]
+  (binding [*print-pprint-dispatch* *simple-dispatch*
+	    *print-right-margin* 10, *print-miser-width* 8]
     (cl-format nil "~:<LIST ~@_~W ~@_~W ~@_~W~:>" '(first second third)))
   "(LIST first second third)")
 
 
 (simple-tests prefix-suffix-test
-  (binding [*print-right-margin* 10, *print-miser-width* 10]
+  (binding [*print-pprint-dispatch* *simple-dispatch*
+	    *print-right-margin* 10, *print-miser-width* 10]
     (cl-format nil "~<{~;LIST ~@_~W ~@_~W ~@_~W~;}~:>" '(first second third)))
   "{LIST\n first\n second\n third}")
 
 (simple-tests pprint-test
-  (write '(defn foo [x y] 
-	     (let [result (* x y)] 
-	       (if (> result 400) 
-		 (cl-format true "That number is too big")
-		 (cl-format true "The  result of ~d x ~d is ~d" x y result))))
-	 :stream nil)
+  (binding [*print-pprint-dispatch* *simple-dispatch*]
+    (write '(defn foo [x y] 
+	      (let [result (* x y)] 
+		(if (> result 400) 
+		  (cl-format true "That number is too big")
+		  (cl-format true "The  result of ~d x ~d is ~d" x y result))))
+	   :stream nil))
   "(defn
  foo
  [x y]
@@ -58,7 +64,19 @@
    (> result 400)
    (cl-format true \"That number is too big\")
    (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))"
-  (binding [*print-right-margin* 15] 
+  (write '(defn foo [x y] 
+	    (let [result (* x y)] 
+	      (if (> result 400) 
+		(cl-format true "That number is too big")
+		(cl-format true "The  result of ~d x ~d is ~d" x y result))))
+	 :stream nil)
+  "(defn foo [x y]
+  (let [result (* x y)]
+    (if (> result 400)
+      (cl-format true \"That number is too big\")
+      (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))"
+  (binding [*print-pprint-dispatch* *simple-dispatch*
+	    *print-right-margin* 15] 
     (write '(fn (cons (car x) (cdr y))) :stream nil))
   "(fn\n (cons\n  (car x)\n  (cdr y)))")
 

@@ -1118,12 +1118,11 @@ Note this should only be used for the last one in the sequence"
 		(> clause-count 2) (:string (:params (first (nth clauses 2))))
 		(:colon params) ")")
 	[arg navigator] (next-arg navigator)]
-    (pprint-logical-block [writer *out*] arg :prefix prefix :suffix suffix
-     (binding [*out* writer]
-       (execute-sub-format 
-	body 
-	(init-navigator arg)
-	(:base-args params))))
+    (pprint-logical-block *out* :prefix prefix :suffix suffix
+      (execute-sub-format 
+       body 
+       (init-navigator arg)
+       (:base-args params)))
     navigator))
 
 (defn set-indent [params navigator offsets]

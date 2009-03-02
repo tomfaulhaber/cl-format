@@ -69,13 +69,13 @@
 (dosync (alter *simple-dispatch* conj [set? pprint-set]))
 
 (defn pprint-ref [writer ref]
-  (pprint-logical-block [writer writer] ref :prefix "#<Ref " :suffix ">"
-    (write @ref :stream writer)))
+  (pprint-logical-block writer :prefix "#<Ref " :suffix ">"
+    (write @ref)))
 (dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
 
 (defn pprint-atom [writer ref]
-  (pprint-logical-block [writer writer] ref :prefix "#<Atom " :suffix ">"
-    (write @ref :stream writer)))
+  (pprint-logical-block writer :prefix "#<Atom " :suffix ">"
+    (write @ref)))
 (dosync 
  (alter 
   *simple-dispatch* conj
@@ -83,7 +83,7 @@
    pprint-atom]))
 
 (defn pprint-agent [writer ref]
-  (pprint-logical-block [writer writer] ref :prefix "#<Agent " :suffix ">"
+  (pprint-logical-block writer :prefix "#<Agent " :suffix ">"
     (write @ref :stream writer)))
 (dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
@@ -109,18 +109,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Format the params and body of a defn with a single arity
-(defn- single-defn [writer alis has-doc-str?]
+(defn- single-defn [alis has-doc-str?]
   (if (seq alis)
     (do
       (if has-doc-str?
-	(cl-format writer " ~_")
-	(cl-format writer " ~@_"))
-      (cl-format writer "~{~w~^ ~_~}" alis))))
+	(cl-format true " ~_")
+	(cl-format true " ~@_"))
+      (cl-format true "~{~w~^ ~_~}" alis))))
 
 ;;; Format the param and body sublists of a defn with multiple arities
-(defn- multi-defn [writer alis has-doc-str?]
+(defn- multi-defn [alis has-doc-str?]
   (if (seq alis)
-    (cl-format writer " ~_~{~w~^ ~_~}" alis)))
+    (cl-format true " ~_~{~w~^ ~_~}" alis)))
 
 ;;; TODO: figure out how to support capturing metadata in defns (we might need a 
 ;;; special reader)
@@ -133,16 +133,16 @@
 	  [attr-map stuff] (if (map? (first stuff))
 			     [(first stuff) (rest stuff)]
 			     [nil stuff])]
-      (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
-	(cl-format writer "~w ~1I~@_~w" defn-sym defn-name)
+      (pprint-logical-block writer :prefix "(" :suffix ")"
+	(cl-format true "~w ~1I~@_~w" defn-sym defn-name)
 	(if doc-str
-	  (cl-format writer " ~_~w" doc-str))
+	  (cl-format true " ~_~w" doc-str))
 	(if attr-map
-	  (cl-format writer " ~_~w" attr-map))
+	  (cl-format true " ~_~w" attr-map))
 	;; Note: the multi-defn case will work OK for malformed defns too
 	(cond
-	 (vector? (first stuff)) (single-defn writer stuff (or doc-str attr-map))
-	 :else (multi-defn writer stuff (or doc-str attr-map)))))
+	 (vector? (first stuff)) (single-defn stuff (or doc-str attr-map))
+	 :else (multi-defn stuff (or doc-str attr-map)))))
     (pprint-simple-code-list writer alis)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -150,29 +150,29 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn pprint-binding-form [writer binding-vec]
-    (pprint-logical-block [writer writer] binding-vec :prefix "[" :suffix "]"
-      (loop [binding binding-vec]
-	(when (seq binding)
-	  (pprint-logical-block [writer writer] binding
-	    (write (first binding) :stream writer)
-	    (when (seq (rest binding))
-	      (.write writer " ")
-	      (pprint-newline :linear writer)
-	      (write (frest binding) :stream writer)))
-	  (when (seq (rrest binding))
-	    (.write writer " ")
-	    (pprint-newline :linear writer)
-	    (recur (rrest binding)))))))
+  (pprint-logical-block writer :prefix "[" :suffix "]"
+    (loop [binding binding-vec]
+      (when (seq binding)
+	(pprint-logical-block *out* binding
+	  (write (first binding))
+	  (when (seq (rest binding))
+	    (.write *out* " ")
+	    (pprint-newline :linear)
+	    (write (frest binding))))
+	(when (seq (rrest binding))
+	  (.write *out* " ")
+	  (pprint-newline :linear)
+	  (recur (rrest binding)))))))
 
 (defn pprint-let [writer alis]
   (let [base-sym (first alis)]
-    (pprint-logical-block [writer writer] alis :prefix "(" :suffix ")"
+    (pprint-logical-block writer :prefix "(" :suffix ")"
       (if (and (rest alis) (vector? (frest alis)))
 	(do
-	  (cl-format writer "~w ~1I~@_" base-sym)
-	  (pprint-binding-form writer (frest alis))
-	  (cl-format writer " ~_~{~w~^ ~_~}" (rrest alis)))
-	(pprint-simple-code-list writer alis)))))
+	  (cl-format true "~w ~1I~@_" base-sym)
+	  (pprint-binding-form *out* (frest alis))
+	  (cl-format true " ~_~{~w~^ ~_~}" (rrest alis)))
+	(pprint-simple-code-list *out* alis)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The master definitions for formatting lists in code (that is, (fn args...) or

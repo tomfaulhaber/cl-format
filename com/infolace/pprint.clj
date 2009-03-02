@@ -99,13 +99,13 @@
 (defn make-pretty-writer [base-writer right-margin miser-width]
   (PrettyWriter. base-writer right-margin miser-width))
 
-(defmacro with-pretty-writer [[write-sym base-writer] & body]
-  `(let [new-writer# (not (pretty-writer? ~base-writer))
-	 ~write-sym (if new-writer#
+(defmacro with-pretty-writer [base-writer & body]
+  `(let [new-writer# (not (pretty-writer? ~base-writer))]
+     (binding [*out* (if new-writer#
 		      (make-pretty-writer ~base-writer *print-right-margin* *print-miser-width*)
 		      ~base-writer)]
-     ~@body
-     (if new-writer# (.flush ~write-sym))))
+       ~@body
+       (if new-writer# (.flush *out*)))))
 
 (defn write [object & kw-args]
   "Write an object subject to the current bindings of the printer control variables.
@@ -121,14 +121,13 @@ recursive calls). Returns the string result if :stream is nil or nil otherwise."
 				 true *out*
 				 optval)]
 	(if *print-pretty*
-	  (with-pretty-writer [pretty-writer base-writer]
+	  (with-pretty-writer base-writer
 	    ;; TODO better/faster dispatch mechanism!
 	    (loop [dispatch @*print-pprint-dispatch*]
 	      (let [[test func] (first dispatch)]
 		(cond
-		 (empty? dispatch) (binding [*out* pretty-writer]
-				     (pr object))
-		 (test object) (func pretty-writer object)
+		 (empty? dispatch) (pr object)
+		 (test object) (func *out* object)
 		 :else (recur (rest dispatch))))))
 	  (binding [*out* base-writer]
 	    (pr object)))
@@ -142,10 +141,10 @@ print the object to the currently bound value of *out*."
   (let [base-stream (if (pos? (count more))
 		 (first more)
 		 *out*)]
-    (with-pretty-writer [stream base-stream]
-      (write object :stream stream :pretty true)
-      (if (not (= 0 (.getColumn stream)))
-	(.write stream (int \newline))))))
+    (with-pretty-writer base-stream
+      (write object :pretty true)
+      (if (not (= 0 (.getColumn *out*)))
+	(.write *out* (int \newline))))))
 
 (defmacro pp 
   "A convenience macro that pretty prints the last thing output. This is
@@ -170,24 +169,19 @@ exactly equivalent to (pprint *1)."
 	    ;; TODO clean up choices string
 	    (str "Bad argument: " arg ". It must be one of " choices)))))
 
-;;; TODO: Drop arg-list from the definition??
 (defmacro pprint-logical-block 
-  "Execute the body as a pretty printing logical block with output to stream-sym which 
+  "Execute the body as a pretty printing logical block with output to *out* which 
 is a pretty printing writer wrapping base-stream (unless base-stream is already a pretty 
-printing writer in which case stream-sym just points to base-stream). 
+printing writer in which case *out* is just bound to base-stream). 
 
-The arg-list indicates the list to be printed in the logical block.
-
-After the arg list, the caller can optionally specify :prefix, :per-line-prefix, and
-:suffix.
-
-N.B. Unlike in Common Lisp, stream-sym has lexical extent, not dynamic extent."
-  [[stream-sym base-stream] arg-list & body]
+After the writer, the caller can optionally specify :prefix, :per-line-prefix, and
+:suffix."
+  [base-stream & body]
   (let [[options body] (parse-lb-options #{:prefix :per-line-prefix :suffix} body)]
-    `(with-pretty-writer [~stream-sym ~base-stream]
-       (.startBlock ~stream-sym ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
+    `(with-pretty-writer ~base-stream
+       (.startBlock *out* ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
        ~@body
-       (.endBlock ~stream-sym)
+       (.endBlock *out*)
        nil)))
 
 (defn pprint-newline
