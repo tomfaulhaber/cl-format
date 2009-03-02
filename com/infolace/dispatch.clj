@@ -157,7 +157,7 @@
 	  (write (first binding))
 	  (when (seq (rest binding))
 	    (.write *out* " ")
-	    (pprint-newline :linear)
+	    (pprint-newline :miser)
 	    (write (frest binding))))
 	(when (seq (rrest binding))
 	  (.write *out* " ")
@@ -174,6 +174,52 @@
 	  (cl-format true " ~_~{~w~^ ~_~}" (rrest alis)))
 	(pprint-simple-code-list *out* alis)))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Format something that looks like "if"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def pprint-if (formatter "~:<~1I~w~^ ~@_~w~@{ ~_~w~}~:>"))
+
+(defn pprint-cond [writer alis]
+  (pprint-logical-block writer :prefix "(" :suffix ")"
+    (pprint-indent :block 1)
+    (write (first alis))
+    (when (seq (rest alis))
+      (.write *out* " ")
+      (pprint-newline :linear)
+     (loop [alis (rest alis)]
+       (when (seq alis)
+	 (pprint-logical-block *out* alis
+	  (write (first alis))
+	  (when (seq (rest alis))
+	    (.write *out* " ")
+	    (pprint-newline :miser)
+	    (write (frest alis))))
+	 (when (seq (rrest alis))
+	   (.write *out* " ")
+	   (pprint-newline :linear)
+	   (recur (rrest alis))))))))
+
+(defn pprint-condp [writer alis]
+  (if (> (count alis) 3) 
+    (pprint-logical-block writer :prefix "(" :suffix ")"
+      (pprint-indent :block 1)
+      (apply cl-format true "~w ~@_~w ~@_~w ~_" alis)
+      (loop [alis (drop 3 alis)]
+	(when (seq alis)
+	  (pprint-logical-block *out* alis
+	    (write (first alis))
+	    (when (seq (rest alis))
+	      (.write *out* " ")
+	      (pprint-newline :miser)
+	      (write (frest alis))))
+	  (when (seq (rrest alis))
+	    (.write *out* " ")
+	    (pprint-newline :linear)
+	    (recur (rrest alis))))))
+    (pprint-simple-code-list writer alis)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The master definitions for formatting lists in code (that is, (fn args...) or
 ;;; special forms).
@@ -183,7 +229,9 @@
 
 (def code-table
      {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
-      'let pprint-let, 'loop pprint-let, 'binding pprint-let
+      'let pprint-let, 'loop pprint-let, 'binding pprint-let,
+      'if pprint-if, 'if-not pprint-if, 'when pprint-if,
+      'cond pprint-cond, 'condp pprint-condp
       })
 
 (defn pprint-code-list [writer alis]
@@ -244,6 +292,28 @@
 	    (if (= c (int \newline))
 	      (write-initial-lines this "\n")
 	      (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))))))
+
+(pprint 
+ '(defn pprint-defn [writer alis]
+    (if (seq (rest alis)) 
+      (let [[defn-sym defn-name & stuff] alis
+	    [doc-str stuff] (if (string? (first stuff))
+			      [(first stuff) (rest stuff)]
+			      [nil stuff])
+	    [attr-map stuff] (if (map? (first stuff))
+			       [(first stuff) (rest stuff)]
+			       [nil stuff])]
+	(pprint-logical-block writer :prefix "(" :suffix ")"
+			      (cl-format true "~w ~1I~@_~w" defn-sym defn-name)
+			      (if doc-str
+				(cl-format true " ~_~w" doc-str))
+			      (if attr-map
+				(cl-format true " ~_~w" attr-map))
+			      ;; Note: the multi-defn case will work OK for malformed defns too
+			      (cond
+			       (vector? (first stuff)) (single-defn stuff (or doc-str attr-map))
+			       :else (multi-defn stuff (or doc-str attr-map)))))
+      (pprint-simple-code-list writer alis))))
 )
 nil
 
