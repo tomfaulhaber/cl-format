@@ -78,6 +78,13 @@
   (binding [*print-pprint-dispatch* *simple-dispatch*
 	    *print-right-margin* 15] 
     (write '(fn (cons (car x) (cdr y))) :stream nil))
-  "(fn\n (cons\n  (car x)\n  (cdr y)))")
+  "(fn\n (cons\n  (car x)\n  (cdr y)))"
+
+  (binding [*print-right-margin* 52] 
+    (write 
+     '(add-to-buffer this (make-buffer-blob (str (char c)) nil))
+     :stream nil))
+  "(add-to-buffer\n  this\n  (make-buffer-blob (str (char c)) nil))"
+)
 
 
