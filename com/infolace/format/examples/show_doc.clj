@@ -23,7 +23,15 @@
   ([pattern] 
      (cl-format 
       true 
-      "~:{~A: ~{~a~^, ~}~2%~}" 
+      "~:{~A: ===============================================~
+       ~%~{~{~a: ~{~a~^, ~}~%~a~%~}~^~%~}~2%~}" 
       (map 
-       #(vector (ns-name %) (sort (map key (ns-publics %))))
+       #(vector (ns-name %) 
+		(map
+		 (fn [f] 
+		   (let [f-meta ^(find-var (symbol (str (ns-name %)) (str f)))] 
+		     [f (:arglists f-meta) (:doc f-meta)]))
+		 (filter 
+		  (fn [a] (instance? clojure.lang.IFn a)) 
+		  (sort (map key (ns-publics %))))))
        (ns-list pattern)))))
