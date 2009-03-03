@@ -138,6 +138,7 @@
   (.col-write this (:data token)))
 
 (defmethod write-token :nl [this token]
+;  (prlabel wt @(:done-nl (:logical-block token)))
   (if (and (not (= (:type token) :fill))
 	   @(:done-nl (:logical-block token)))
     (emit-nl this token)
@@ -217,7 +218,7 @@
 (defn- update-nl-state [lb]
   (dosync
    (ref-set (:intra-block-nl lb) false)
-   (ref-set (:done-nl lb) false)
+   (ref-set (:done-nl lb) true)
    (loop [lb (:parent lb)]
      (if lb
        (do (ref-set (:done-nl lb) true)
@@ -284,10 +285,9 @@
 	  result)))))
 
 (defn- write-line [this]
-;;   (prerr "@wl")
   (dosync
    (loop [buffer (getf :buffer)]
-;;      (prlabel wl1 buffer)
+;;     (prlabel wl1 (toks buffer))
      (setf :buffer (into [] buffer))
      (if (not (tokens-fit? this buffer))
        (let [new-buffer (write-token-string this buffer)]
