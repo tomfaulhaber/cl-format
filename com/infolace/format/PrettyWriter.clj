@@ -146,13 +146,16 @@
       (.col-write this tws)))
   (dosync (setf :trailing-white-space nil)))
 
-(defn- write-tokens [this tokens]
+(defn- write-tokens [this tokens force-trailing-whitespace]
   (doseq [token tokens]
     (if-not (= (:type-tag token) :nl)
 	    (if-let [tws (getf :trailing-white-space)]
 	      (.col-write this tws)))
     (write-token this token)
-    (setf :trailing-white-space (:trailing-white-space token))))
+    (setf :trailing-white-space (:trailing-white-space token)))
+  (when (and force-trailing-whitespace (getf :trailing-white-space))
+    (.col-write this (getf :trailing-white-space))
+    (setf :trailing-white-space nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; emit-nl? method defs for each type of new line. This makes
@@ -257,7 +260,7 @@
 (defn- write-token-string [this tokens]
   (let [[a b] (split-at-newline tokens)]
 ;;    (prlabel wts (toks a) (toks b))
-    (if a (write-tokens this a))
+    (if a (write-tokens this a false))
     (if b
       (let [[section remainder] (get-section b)
 	    newl (first b)]
@@ -276,7 +279,7 @@
 			 (if (= rem2 section)
 			   (do ; If that didn't produce any output, it has no nls
 					; so we'll force it
-			     (write-tokens this section)
+			     (write-tokens this section false)
 			     remainder)
 			   (into [] (concat rem2 remainder))))
 		       result)
@@ -309,7 +312,7 @@
   (write-line this)
   (if-let [buf (getf :buffer)]
     (do
-      (write-tokens this buf)
+      (write-tokens this buf true)
       (setf :buffer []))))
 
 ;;; If there are newlines in the string, print the lines up until the last newline, 
@@ -378,8 +381,9 @@
 (defn- -flush [this]
   (if (= (getf :mode) :buffering)
     (dosync 
-     (write-tokens this (getf :buffer))
-     (setf :buffer []))))
+     (write-tokens this (getf :buffer) true)
+     (setf :buffer []))
+    (write-white-space this)))
 
 (defn- -close [this]
   (-flush this))			;TODO: close underlying stream?
