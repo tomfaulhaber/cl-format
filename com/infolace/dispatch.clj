@@ -220,6 +220,23 @@
 	    (recur (rrest alis))))))
     (pprint-simple-code-list writer alis)))
 
+;;; The map of symbols that are defined in an enclosing #() anonymous function
+(def *symbol-map* {})
+
+(defn pprint-anon-func [writer alis]
+  (let [args (frest alis)
+	nlis (first (rrest alis))]
+    (if (vector? args)
+      (binding [*symbol-map* (if (= 1 (count args)) 
+			       {(first args) "%"}
+			       (into {} 
+				     (map 
+				      #(vector %1 (str \% %2)) 
+				      args 
+				      (range 1 (inc (count args))))))]
+	(cl-format writer "~<#(~;~@{~w~^ ~_~}~;)~:>" nlis))
+      (pprint-simple-code-list writer alis))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; The master definitions for formatting lists in code (that is, (fn args...) or
 ;;; special forms).
@@ -227,20 +244,37 @@
 
 (def pprint-simple-code-list (formatter "~:<~1I~@{~w~^ ~_~}~:>"))
 
-(def code-table
-     {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
-      'let pprint-let, 'loop pprint-let, 'binding pprint-let,
-      'if pprint-if, 'if-not pprint-if, 'when pprint-if,
-      'cond pprint-cond, 'condp pprint-condp
-      })
+;;; Take a map with symbols as keys and add versions with no namespace.
+;;; That is, if ns/sym->val is in the map, add sym->val to the result.
+(defn two-forms [amap]
+  (into {} 
+	(mapcat 
+	 identity 
+	 (for [x amap] 
+	   [x [(symbol (name (first x))) (frest x)]]))))
+
+(def *code-table*
+     (two-forms
+      {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
+       'clojure.core/let pprint-let, 'loop pprint-let, 'binding pprint-let,
+       'if pprint-if, 'if-not pprint-if, 'when pprint-if,
+       'cond pprint-cond, 'condp pprint-condp,
+       'fn* pprint-anon-func
+       }))
 
 (defn pprint-code-list [writer alis]
   (if-not (pprint-reader-macro writer alis) 
-	  (if-let [special-form (code-table (first alis))]
+	  (if-let [special-form (*code-table* (first alis))]
 	    (special-form writer alis)
 	    (pprint-simple-code-list writer alis))))
 (dosync (alter *code-dispatch* conj [list? pprint-code-list]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
+
+(defn pprint-code-symbol [writer sym] 
+  (if-let [arg-num (sym *symbol-map*)]
+    (print arg-num)
+    (pr sym)))
+(dosync (alter *code-dispatch* conj [symbol? pprint-code-symbol]))
 
 (dosync (ref-set *print-pprint-dispatch* @*code-dispatch*))
 
