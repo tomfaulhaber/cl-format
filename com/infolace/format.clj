@@ -273,7 +273,7 @@ offset is a factor of 10^3 to multiply by"
 	   pos (dec cnt)
 	   this (first parts)
 	   remainder (rest parts)]
-      (if (nil? remainder)
+      (if (empty? remainder)
 	(str (apply str (interpose ", " acc))
 	     (if (and (not (empty? this)) (not (empty? acc))) ", ")
 	     this
@@ -384,7 +384,7 @@ Note this should only be used for the last one in the sequence"
 	(loop [acc []
 	       pos (dec (count digits))
 	       digits digits]
-	  (if (nil? digits)
+	  (if (empty? digits)
 	    (print (apply str acc))
 	    (let [digit (first digits)]
 	      (recur (if (= 0 digit) 
@@ -447,7 +447,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; Handle the execution of "sub-clauses" in bracket constructions
 (defn- execute-sub-format [format args base-args]
-  (frest
+  (second
    (map-passing-context 
     (fn [element context]
       (if (abort? context)
@@ -718,7 +718,7 @@ Note this should only be used for the last one in the sequence"
   (let [[arg navigator] (next-arg arg-navigator)
 	clauses (:clauses params)
 	clause (if arg
-		 (frest clauses)
+		 (second clauses)
 		 (first clauses))]
     (if clause
       (execute-sub-format clause navigator (:base-args params))
@@ -811,7 +811,7 @@ Note this should only be used for the last one in the sequence"
 	navigator
 	(let [iter-result (execute-sub-format clause navigator (:base-args params))] 
 	  (if (= :up-arrow (first iter-result))
-	    (frest iter-result)
+	    (second iter-result)
 	    (recur 
 	     (inc count) iter-result (:pos navigator))))))))
 
@@ -844,7 +844,7 @@ Note this should only be used for the last one in the sequence"
   (loop [clauses clauses
 	 acc []
 	 navigator navigator]
-    (if (nil? clauses)
+    (if (empty? clauses)
       [acc navigator]
       (let [clause (first clauses)
 	    [iter-result result-str] (binding [*out* (java.io.StringWriter.)]
@@ -888,7 +888,7 @@ Note this should only be used for the last one in the sequence"
 	   strs strs
 	   pad-only (or (:colon params)
 			(and (= (count strs) 1) (not (:at params))))]
-      (if strs
+      (if (seq strs)
 	(do
 	  (print (str (if (not pad-only) (first strs))
 		      (if (or pad-only (rest strs) (:at params)) pad-str)
@@ -962,7 +962,7 @@ first character of the string even if it's a letter."
 	   (first
 	    (consume
 	     (fn [s]
-	       (if (nil? s)
+	       (if (empty? s)
 		 [nil nil]
 		 (let [m (re-matcher #"\W\w" s)
 		       match (re-find m)
@@ -1152,7 +1152,7 @@ first character of the string even if it's a letter."
      (let [navigator (if (:colon params) (relative-reposition navigator -1) navigator)
 	   strs (if (:at params) ["y" "ies"] ["" "s"])
 	   [arg navigator] (next-arg navigator)]
-       (print (if (= arg 1) (first strs) (frest strs)))
+       (print (if (= arg 1) (first strs) (second strs)))
        navigator)))
 
   (\C
@@ -1345,8 +1345,8 @@ first character of the string even if it's a letter."
 
 	true	  ; TODO: handle looking up the arglist stack for info
 	(if (if (:colon params) 
-	      (nil? (:rest (:base-args params)))
-	      (nil? (:rest navigator)))
+	      (empty? (:rest (:base-args params)))
+	      (empty? (:rest navigator)))
 	  [exit navigator] navigator))))) 
 
   ;; A stubbed out version of ~w so it at least prints stuff
@@ -1443,16 +1443,16 @@ first character of the string even if it's a letter."
       nil 
       "Too many parameters for directive \"~C\": ~D~:* ~[were~;was~:;were~] specified but only ~D~:* ~[are~;is~:;are~] allowed"
       (:directive def) (count params) (count (:params def)))
-     (frest (first params))))
+     (second (first params))))
 
   (doall
    (map #(let [val (first %1)]
 	   (if (not (or (nil? val) (contains? special-params val) 
-			(instance? (frest (frest %2)) val)))
+			(instance? (second (second %2)) val)))
 	     (format-error (str "Parameter " (name (first %2))
 				" has bad type in directive \"" (:directive def) "\": "
 				(class val))
-			   (frest %1))) )
+			   (second %1))) )
 	params (:params def)))
      
   (merge				; create the result map
@@ -1505,7 +1505,7 @@ first character of the string even if it's a letter."
 (defn- process-clause [bracket-info offset remainder]
   (consume 
    (fn [remainder]
-     (if (nil? remainder)
+     (if (empty? remainder)
        (format-error "No closing bracket found." offset)
        (let [this (first remainder)
 	     remainder (rest remainder)]
@@ -1527,7 +1527,7 @@ first character of the string even if it's a letter."
    remainder))
 
 (defn- collect-clauses [bracket-info offset remainder]
-  (frest
+  (second
    (consume
     (fn [[clause-map saw-else remainder]]
       (let [[clause [type colon-right else-params remainder]] 
@@ -1615,7 +1615,7 @@ performance when you're using the same format string repeatedly"
 column number"
   [format]
   (loop [format format]
-    (if (nil? format)
+    (if (empty? format)
       false
       (if (or (:column (:flags (:def (first format))))
 	      (some needs-columns (first (:clauses (:params (first format)))))
