@@ -2,6 +2,11 @@
 
 **Note:** Most development is now happening on the pretty-printer in the pp branch. The 
 master branch represents the more stable universe of things that I believe work.
+
+**Note 2:** Versions after tag 1.0.1 require the lazy version of
+Clojure which, as of this writing, has not been released but is only
+available from the subversion repository. If you are using an older
+version of Clojure, grab the jar file from tag 1.0.1.
  
 cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
 in [*Common Lisp the Language*, 2nd edition, Chapter 22](http://www.cs.cmu.edu/afs/cs.cmu.edu/project/ai-repository/ai/html/cltl/clm/node200.html#SECTION002633000000000000000).
