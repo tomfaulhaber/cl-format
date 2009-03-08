@@ -47,13 +47,13 @@
 (defn- next-arg [ navigator ]
   (let [ rst (:rest navigator) ]
     (if rst
-      [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
+      [(first rst) (struct arg-navigator (:seq navigator ) (next rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
 (defn- next-arg-or-nil [navigator]
   (let [rst (:rest navigator)]
     (if rst
-      [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
+      [(first rst) (struct arg-navigator (:seq navigator ) (next rst) (inc (:pos navigator)))]
       [nil navigator])))
 
 ;; Get an argument off the arg list and compile it if it's not already compiled
@@ -183,7 +183,7 @@ for improved performance"
 (defn- group-by [unit lis]
   (reverse
    (first
-    (consume (fn [x] [(reverse (take unit x)) (drop unit x)]) (reverse lis)))))
+    (consume (fn [x] [(seq (reverse (take unit x))) (seq (drop unit x))]) (reverse lis)))))
 
 (defn- format-integer [base params arg-navigator offsets]
   (let [[arg arg-navigator] (next-arg arg-navigator)]
@@ -194,7 +194,7 @@ for improved performance"
 	    group-str (if (:colon params)
 			(let [groups (map #(apply str %) (group-by (:commainterval params) raw-str))
 			      commas (replicate (count groups) (:commachar params))]
-			  (apply str (rest (interleave commas groups))))
+			  (apply str (next (interleave commas groups))))
 			raw-str)
 	    signed-str (cond
 			neg (str "-" group-str)
@@ -272,8 +272,8 @@ offset is a factor of 10^3 to multiply by"
     (loop [acc []
 	   pos (dec cnt)
 	   this (first parts)
-	   remainder (rest parts)]
-      (if (empty? remainder)
+	   remainder (next parts)]
+      (if (nil? remainder)
 	(str (apply str (interpose ", " acc))
 	     (if (and (not (empty? this)) (not (empty? acc))) ", ")
 	     this
@@ -285,7 +285,7 @@ offset is a factor of 10^3 to multiply by"
 	   (conj acc (str this " " (nth english-scale-numbers (+ pos offset)))))
 	 (dec pos)
 	 (first remainder)
-	 (rest remainder))))))
+	 (next remainder))))))
 
 (defn- format-cardinal-english [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)]
@@ -391,7 +391,7 @@ Note this should only be used for the last one in the sequence"
 		       acc 
 		       (conj acc (nth (nth table pos) (dec digit))))
 		     (dec pos)
-		     (rest digits))))))
+		     (next digits))))))
       (format-integer ;; for anything <= 0 or > 3999, we fall back on ~D
 	   10
 	   { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
@@ -786,10 +786,10 @@ Note this should only be used for the last one in the sequence"
 	(let [iter-result (execute-sub-format 
 			   clause 
 			   (init-navigator (first arg-list))
-			   (init-navigator (rest arg-list)))]
+			   (init-navigator (next arg-list)))]
 	  (if (= :colon-up-arrow (first iter-result))
 	    navigator
-	    (recur (inc count) (rest arg-list))))))))
+	    (recur (inc count) (next arg-list))))))))
 
 ;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
 ;; is consumed by all the iterations
@@ -852,7 +852,7 @@ Note this should only be used for the last one in the sequence"
 					(.toString *out*)])]
 	(if (= :up-arrow (first iter-result))
 	  [acc (second iter-result)]
-	  (recur (rest clauses) (conj acc result-str) iter-result))))))
+	  (recur (next clauses) (conj acc result-str) iter-result))))))
 
 ;; TODO support for ~:; constructions
 (defn- justify-clauses [params navigator offsets]
@@ -891,12 +891,12 @@ Note this should only be used for the last one in the sequence"
       (if (seq strs)
 	(do
 	  (print (str (if (not pad-only) (first strs))
-		      (if (or pad-only (rest strs) (:at params)) pad-str)
+		      (if (or pad-only (next strs) (:at params)) pad-str)
 		      (if (pos? extra-pad) (:padchar params))))
 	  (recur 
 	   (dec slots)
 	   (dec extra-pad)
-	   (if pad-only strs (rest strs))
+	   (if pad-only strs (next strs))
 	   false))))
     navigator))
 
@@ -1508,7 +1508,7 @@ first character of the string even if it's a letter."
      (if (empty? remainder)
        (format-error "No closing bracket found." offset)
        (let [this (first remainder)
-	     remainder (rest remainder)]
+	     remainder (next remainder)]
 	 (cond
 	  (right-bracket this)
 	  (process-bracket this remainder)
@@ -1583,7 +1583,7 @@ first character of the string even if it's a letter."
    (consume 
     (fn [remainder]
       (let [this (first remainder)
-	    remainder (rest remainder)
+	    remainder (next remainder)
 	    bracket (:bracket-info (:def this))]
 	(if (:right bracket)
 	  (process-bracket this remainder)
@@ -1621,7 +1621,7 @@ column number"
 	      (some needs-columns (first (:clauses (:params (first format)))))
 	      (some needs-columns (first (:else (:params (first format))))))
 	true
-	(recur (rest format))))))
+	(recur (next format))))))
 
 (defn- execute-format [stream format args]
   (let [real-stream (cond 
