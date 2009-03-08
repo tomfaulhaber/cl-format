@@ -44,7 +44,7 @@
     (if (and macro-char (= 2 (count alis)))
       (do
 	(.write writer macro-char)
-	(write (frest alis) :stream writer)
+	(write (second alis) :stream writer)
 	true))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,7 +57,6 @@
   (if-not (pprint-reader-macro writer alis)
     (pprint-simple-list writer alis)))
 (dosync (alter *simple-dispatch* conj [list? pprint-list]))
-(dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
 
 (def pprint-vector (formatter "~<[~;~@{~w~^ ~_~}~;]~:>"))
 (dosync (alter *simple-dispatch* conj [vector? pprint-vector]))
@@ -76,11 +75,7 @@
 (defn pprint-atom [writer ref]
   (pprint-logical-block writer :prefix "#<Atom " :suffix ">"
     (write @ref)))
-(dosync 
- (alter 
-  *simple-dispatch* conj
-  [#(instance? clojure.proxy.java.util.concurrent.atomic.AtomicReference$IRef %)
-   pprint-atom]))
+(dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Atom %) pprint-atom]))
 
 (defn pprint-agent [writer ref]
   (pprint-logical-block writer :prefix "#<Agent " :suffix ">"
@@ -97,11 +92,7 @@
 (dosync (alter *code-dispatch* conj [map? pprint-map]))
 (dosync (alter *code-dispatch* conj [set? pprint-set]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
-(dosync 
- (alter 
-  *code-dispatch* conj
-  [#(instance? clojure.proxy.java.util.concurrent.atomic.AtomicReference$IRef %)
-   pprint-atom]))
+(dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Atom %) pprint-atom]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -125,13 +116,13 @@
 ;;; TODO: figure out how to support capturing metadata in defns (we might need a 
 ;;; special reader)
 (defn pprint-defn [writer alis]
-  (if (seq (rest alis)) 
+  (if (next alis) 
     (let [[defn-sym defn-name & stuff] alis
 	  [doc-str stuff] (if (string? (first stuff))
-			    [(first stuff) (rest stuff)]
+			    [(first stuff) (next stuff)]
 			    [nil stuff])
 	  [attr-map stuff] (if (map? (first stuff))
-			     [(first stuff) (rest stuff)]
+			     [(first stuff) (next stuff)]
 			     [nil stuff])]
       (pprint-logical-block writer :prefix "(" :suffix ")"
 	(cl-format true "~w ~1I~@_~w" defn-sym defn-name)
@@ -155,23 +146,23 @@
       (when (seq binding)
 	(pprint-logical-block *out* binding
 	  (write (first binding))
-	  (when (seq (rest binding))
+	  (when (next binding)
 	    (.write *out* " ")
 	    (pprint-newline :miser)
-	    (write (frest binding))))
-	(when (seq (rrest binding))
+	    (write (second binding))))
+	(when (next (rest binding))
 	  (.write *out* " ")
 	  (pprint-newline :linear)
-	  (recur (rrest binding)))))))
+	  (recur (next (rest binding))))))))
 
 (defn pprint-let [writer alis]
   (let [base-sym (first alis)]
     (pprint-logical-block writer :prefix "(" :suffix ")"
-      (if (and (rest alis) (vector? (frest alis)))
+      (if (and (next alis) (vector? (second alis)))
 	(do
 	  (cl-format true "~w ~1I~@_" base-sym)
-	  (pprint-binding-form *out* (frest alis))
-	  (cl-format true " ~_~{~w~^ ~_~}" (rrest alis)))
+	  (pprint-binding-form *out* (second alis))
+	  (cl-format true " ~_~{~w~^ ~_~}" (next (rest alis))))
 	(pprint-simple-code-list *out* alis)))))
 
 
@@ -185,47 +176,47 @@
   (pprint-logical-block writer :prefix "(" :suffix ")"
     (pprint-indent :block 1)
     (write (first alis))
-    (when (seq (rest alis))
+    (when (next alis)
       (.write *out* " ")
       (pprint-newline :linear)
-     (loop [alis (rest alis)]
-       (when (seq alis)
+     (loop [alis (next alis)]
+       (when alis
 	 (pprint-logical-block *out* alis
 	  (write (first alis))
-	  (when (seq (rest alis))
+	  (when (next alis)
 	    (.write *out* " ")
 	    (pprint-newline :miser)
-	    (write (frest alis))))
-	 (when (seq (rrest alis))
+	    (write (second alis))))
+	 (when (next (rest alis))
 	   (.write *out* " ")
 	   (pprint-newline :linear)
-	   (recur (rrest alis))))))))
+	   (recur (next (rest alis)))))))))
 
 (defn pprint-condp [writer alis]
   (if (> (count alis) 3) 
     (pprint-logical-block writer :prefix "(" :suffix ")"
       (pprint-indent :block 1)
       (apply cl-format true "~w ~@_~w ~@_~w ~_" alis)
-      (loop [alis (drop 3 alis)]
-	(when (seq alis)
+      (loop [alis (seq (drop 3 alis))]
+	(when alis
 	  (pprint-logical-block *out* alis
 	    (write (first alis))
-	    (when (seq (rest alis))
+	    (when (next alis)
 	      (.write *out* " ")
 	      (pprint-newline :miser)
-	      (write (frest alis))))
-	  (when (seq (rrest alis))
+	      (write (second alis))))
+	  (when (next (rest alis))
 	    (.write *out* " ")
 	    (pprint-newline :linear)
-	    (recur (rrest alis))))))
+	    (recur (next (rest alis)))))))
     (pprint-simple-code-list writer alis)))
 
 ;;; The map of symbols that are defined in an enclosing #() anonymous function
 (def *symbol-map* {})
 
 (defn pprint-anon-func [writer alis]
-  (let [args (frest alis)
-	nlis (first (rrest alis))]
+  (let [args (second alis)
+	nlis (first (rest (rest alis)))]
     (if (vector? args)
       (binding [*symbol-map* (if (= 1 (count args)) 
 			       {(first args) "%"}
@@ -251,7 +242,7 @@
 	(mapcat 
 	 identity 
 	 (for [x amap] 
-	   [x [(symbol (name (first x))) (frest x)]]))))
+	   [x [(symbol (name (first x))) (second x)]]))))
 
 (def *code-table*
      (two-forms
@@ -268,7 +259,6 @@
 	    (special-form writer alis)
 	    (pprint-simple-code-list writer alis))))
 (dosync (alter *code-dispatch* conj [list? pprint-code-list]))
-(dosync (alter *code-dispatch* conj [#(instance? clojure.lang.LazyCons %) pprint-list]))
 
 (defn pprint-code-symbol [writer sym] 
   (if-let [arg-num (sym *symbol-map*)]
@@ -329,13 +319,13 @@
 
 (pprint 
  '(defn pprint-defn [writer alis]
-    (if (seq (rest alis)) 
+    (if (next alis) 
       (let [[defn-sym defn-name & stuff] alis
 	    [doc-str stuff] (if (string? (first stuff))
-			      [(first stuff) (rest stuff)]
+			      [(first stuff) (next stuff)]
 			      [nil stuff])
 	    [attr-map stuff] (if (map? (first stuff))
-			       [(first stuff) (rest stuff)]
+			       [(first stuff) (next stuff)]
 			       [nil stuff])]
 	(pprint-logical-block writer :prefix "(" :suffix ")"
 			      (cl-format true "~w ~1I~@_~w" defn-sym defn-name)

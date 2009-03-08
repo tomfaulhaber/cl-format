@@ -128,7 +128,7 @@ recursive calls). Returns the string result if :stream is nil or nil otherwise."
 		(cond
 		 (empty? dispatch) (pr object)
 		 (test object) (func *out* object)
-		 :else (recur (rest dispatch))))))
+		 :else (recur (next dispatch))))))
 	  (binding [*out* base-writer]
 	    (pr object)))
 	(if (nil? optval) 

@@ -206,16 +206,16 @@
 (defn- get-section [buffer]
   (let [nl (first buffer) 
 	lb (:logical-block nl)
-	section (take-while #(not (and (nl? %) (ancestor? (:logical-block %) lb)))
-			    (rest buffer))]
-    [section (drop (inc (count section)) buffer)])) 
+	section (seq (take-while #(not (and (nl? %) (ancestor? (:logical-block %) lb)))
+				 (next buffer)))]
+    [section (seq (drop (inc (count section)) buffer))])) 
 
 (defn- get-sub-section [buffer]
   (let [nl (first buffer) 
 	lb (:logical-block nl)
-	section (take-while #(let [nl-lb (:logical-block %)]
-			       (not (and (nl? %) (or (= nl-lb lb) (ancestor? nl-lb lb)))))
-			    (rest buffer))]
+	section (seq (take-while #(let [nl-lb (:logical-block %)]
+				    (not (and (nl? %) (or (= nl-lb lb) (ancestor? nl-lb lb)))))
+			    (next buffer)))]
     section)) 
 
 (defn- update-nl-state [lb]
@@ -240,8 +240,8 @@
     (update-nl-state lb)))
 
 (defn- split-at-newline [tokens]
-  (let [pre (take-while #(not (nl? %)) tokens)]
-    [pre (drop (count pre) tokens)]))
+  (let [pre (seq (take-while #(not (nl? %)) tokens))]
+    [pre (seq (drop (count pre) tokens))]))
 
 ;;; Methods for showing token strings for debugging
 
@@ -270,7 +270,7 @@
 		       (do
 ;; 			 (prlabel emit-nl (:type newl))
 			 (emit-nl this newl)
-			 (rest b))
+			 (next b))
 		       b)
 	      long-section (not (tokens-fit? this result))
 	      result (if long-section
@@ -330,7 +330,7 @@
 	     (write-buffered-output this))
 	   (.col-write this (first lines)))
 	 (.col-write this (int \newline))
-	 (doseq [l (rest (butlast lines))]
+	 (doseq [l (next (butlast lines))]
 	   (.col-write this l)
 	   (.col-write this (int \newline))
 	   (if prefix
