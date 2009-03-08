@@ -21,7 +21,7 @@
     (if (empty? lis)
       [acc context]
     (let [this (first lis)
-	  remainder (rest lis)
+	  remainder (next lis)
 	  [result new-context] (apply func [this context])]
       (recur new-context remainder (conj acc result))))))
 

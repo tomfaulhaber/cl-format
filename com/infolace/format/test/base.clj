@@ -405,7 +405,7 @@
 ;; documentation in Common Lisp, the Language, 2nd edition, Chapter 22.3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn expt [base pow] (reduce * (replicate pow base)))
+(defn expt [base pow] (reduce * (repeat pow base)))
 
 (let [x 5, y "elephant", n 3]
   (simple-tests cltl-intro-tests

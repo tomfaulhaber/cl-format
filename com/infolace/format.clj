@@ -28,7 +28,7 @@
 
 (defn- format-error [message offset] 
   (let [full-message (str message \newline *format-str* \newline 
-			   (apply str (replicate offset \space)) "^" \newline)]
+			   (apply str (repeat offset \space)) "^" \newline)]
     (throw (RuntimeException. full-message))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,13 +48,13 @@
 (defn- next-arg [ navigator ]
   (let [ rst (:rest navigator) ]
     (if rst
-      [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
+      [(first rst) (struct arg-navigator (:seq navigator ) (next rst) (inc (:pos navigator)))]
       (throw (new Exception  "Not enough arguments for format definition")))))
 
 (defn- next-arg-or-nil [navigator]
   (let [rst (:rest navigator)]
     (if rst
-      [(first rst) (struct arg-navigator (:seq navigator ) (rest rst) (inc (:pos navigator)))]
+      [(first rst) (struct arg-navigator (:seq navigator ) (next rst) (inc (:pos navigator)))]
       [nil navigator])))
 
 ;; Get an argument off the arg list and compile it if it's not already compiled
@@ -130,7 +130,7 @@
 				(:colinc params) )
 			  1)
 		       (:colinc params))))
-	 chars (apply str (replicate (- width base-width) (:padchar params)))]
+	 chars (apply str (repeat (- width base-width) (:padchar params)))]
     (if (:at params)
       (print (str chars base-output))
       (print (str base-output chars)))
@@ -184,7 +184,7 @@ for improved performance"
 (defn- group-by [unit lis]
   (reverse
    (first
-    (consume (fn [x] [(reverse (take unit x)) (drop unit x)]) (reverse lis)))))
+    (consume (fn [x] [(seq (reverse (take unit x))) (seq (drop unit x))]) (reverse lis)))))
 
 (defn- format-integer [base params arg-navigator offsets]
   (let [[arg arg-navigator] (next-arg arg-navigator)]
@@ -194,15 +194,15 @@ for improved performance"
 	    raw-str (opt-base-str base pos-arg)
 	    group-str (if (:colon params)
 			(let [groups (map #(apply str %) (group-by (:commainterval params) raw-str))
-			      commas (replicate (count groups) (:commachar params))]
-			  (apply str (rest (interleave commas groups))))
+			      commas (repeat (count groups) (:commachar params))]
+			  (apply str (next (interleave commas groups))))
 			raw-str)
 	    signed-str (cond
 			neg (str "-" group-str)
 			(:at params) (str "+" group-str)
 			true group-str)
 	    padded-str (if (< (.length signed-str) (:mincol params))
-			 (str (apply str (replicate (- (:mincol params) (.length signed-str)) 
+			 (str (apply str (repeat (- (:mincol params) (.length signed-str)) 
 						    (:padchar params)))
 			      signed-str)
 			 signed-str)]
@@ -273,7 +273,7 @@ offset is a factor of 10^3 to multiply by"
     (loop [acc []
 	   pos (dec cnt)
 	   this (first parts)
-	   remainder (rest parts)]
+	   remainder (next parts)]
       (if (nil? remainder)
 	(str (apply str (interpose ", " acc))
 	     (if (and (not (empty? this)) (not (empty? acc))) ", ")
@@ -286,7 +286,7 @@ offset is a factor of 10^3 to multiply by"
 	   (conj acc (str this " " (nth english-scale-numbers (+ pos offset)))))
 	 (dec pos)
 	 (first remainder)
-	 (rest remainder))))))
+	 (next remainder))))))
 
 (defn- format-cardinal-english [params navigator offsets]
   (let [[arg navigator] (next-arg navigator)]
@@ -385,14 +385,14 @@ Note this should only be used for the last one in the sequence"
 	(loop [acc []
 	       pos (dec (count digits))
 	       digits digits]
-	  (if (nil? digits)
+	  (if (empty? digits)
 	    (print (apply str acc))
 	    (let [digit (first digits)]
 	      (recur (if (= 0 digit) 
 		       acc 
 		       (conj acc (nth (nth table pos) (dec digit))))
 		     (dec pos)
-		     (rest digits))))))
+		     (next digits))))))
       (format-integer ;; for anything <= 0 or > 3999, we fall back on ~D
 	   10
 	   { :mincol 0, :padchar \space, :commachar \, :commainterval 3, :colon true}
@@ -448,7 +448,7 @@ Note this should only be used for the last one in the sequence"
 
 ;; Handle the execution of "sub-clauses" in bracket constructions
 (defn- execute-sub-format [format args base-args]
-  (frest
+  (second
    (map-passing-context 
     (fn [element context]
       (if (abort? context)
@@ -518,11 +518,11 @@ Note this should only be used for the last one in the sequence"
     [m e false]))
 
 (defn- expand-fixed [m e d]
-  (let [m1 (if (neg? e) (str (apply str (replicate (dec (- e)) \0)) m) m)
+  (let [m1 (if (neg? e) (str (apply str (repeat (dec (- e)) \0)) m) m)
 	len (count m1)
 	target-len (if d (+ e d 1) (inc e))]
     (if (< len target-len) 
-      (str m1 (apply str (replicate (- target-len len) \0))) 
+      (str m1 (apply str (repeat (- target-len len) \0))) 
       m1)))
 
 (defn- insert-decimal [m e]
@@ -564,9 +564,9 @@ Note this should only be used for the last one in the sequence"
 		       (inc signed-len) 
 		       signed-len)]
 	(if (and (> full-len w) (:overflowchar params))
-	  (print (apply str (replicate w (:overflowchar params))))
+	  (print (apply str (repeat w (:overflowchar params))))
 	  (print (str
-		  (apply str (replicate (- w full-len) (:padchar params)))
+		  (apply str (repeat (- w full-len) (:padchar params)))
 		  (if add-sign "+") 
 		  (if prepend-zero "0")
 		  fixed-repr
@@ -596,18 +596,18 @@ Note this should only be used for the last one in the sequence"
 	    scaled-exp-str (str (Math/abs scaled-exp))
 	    scaled-exp-str (str expchar (if (neg? scaled-exp) \- \+) 
 				(if e (apply str 
-					     (replicate 
+					     (repeat 
 					      (- e 
 						 (count scaled-exp-str)) 
 					      \0))) 
 				scaled-exp-str)
 	    exp-width (count scaled-exp-str)
 	    base-mantissa-width (count mantissa)
-	    scaled-mantissa (str (apply str (replicate (- k) \0))
+	    scaled-mantissa (str (apply str (repeat (- k) \0))
 				 mantissa
 				 (if d 
 				   (apply str 
-					  (replicate 
+					  (repeat 
 					   (- d (dec base-mantissa-width)
 					      (if (neg? k) (- k) 0)) \0))))
 	    w-mantissa (if w (- w exp-width))
@@ -630,10 +630,10 @@ Note this should only be used for the last one in the sequence"
 		  append-zero (and append-zero (< full-len w))]
 	      (if (and (or (> full-len w) (and e (> (- exp-width 2) e)))
 		       (:overflowchar params))
-		(print (apply str (replicate w (:overflowchar params))))
+		(print (apply str (repeat w (:overflowchar params))))
 		(print (str
 			(apply str 
-			       (replicate 
+			       (repeat 
 				(- w full-len (if append-zero 1 0) )
 				(:padchar params)))
 			(if add-sign (if (neg? arg) \- \+)) 
@@ -671,7 +671,7 @@ Note this should only be used for the last one in the sequence"
 				    :overflowchar (:overflowchar params),
 				    :padchar (:padchar params), :at (:at params)} 
 				   navigator offsets)]
-	(print (apply str (replicate ee \space)))
+	(print (apply str (repeat ee \space)))
 	navigator)
       (exponential-float params navigator offsets))))
 
@@ -686,11 +686,11 @@ Note this should only be used for the last one in the sequence"
 	add-sign (and (:at params) (not (neg? arg)))
 	[rounded-mantissa scaled-exp _] (round-str mantissa exp d nil)
 	fixed-repr (get-fixed rounded-mantissa scaled-exp d)
-	full-repr (str (apply str (replicate (- n (.indexOf fixed-repr (int \.))) \0)) fixed-repr)
+	full-repr (str (apply str (repeat (- n (.indexOf fixed-repr (int \.))) \0)) fixed-repr)
 	full-len (+ (count full-repr) (if add-sign 1 0))]
     (print (str
 	    (if (and (:colon params) add-sign) (if (neg? arg) \- \+))
-	    (apply str (replicate (- w full-len) (:padchar params)))
+	    (apply str (repeat (- w full-len) (:padchar params)))
 	    (if (and (not (:colon params)) add-sign) (if (neg? arg) \- \+))
 	    full-repr))
     navigator))
@@ -719,7 +719,7 @@ Note this should only be used for the last one in the sequence"
   (let [[arg navigator] (next-arg arg-navigator)
 	clauses (:clauses params)
 	clause (if arg
-		 (frest clauses)
+		 (second clauses)
 		 (first clauses))]
     (if clause
       (execute-sub-format clause navigator (:base-args params))
@@ -787,10 +787,10 @@ Note this should only be used for the last one in the sequence"
 	(let [iter-result (execute-sub-format 
 			   clause 
 			   (init-navigator (first arg-list))
-			   (init-navigator (rest arg-list)))]
+			   (init-navigator (next arg-list)))]
 	  (if (= :colon-up-arrow (first iter-result))
 	    navigator
-	    (recur (inc count) (rest arg-list))))))))
+	    (recur (inc count) (next arg-list))))))))
 
 ;; ~@{...~} with the at sign uses the main argument list as the arguments to the iterations
 ;; is consumed by all the iterations
@@ -812,7 +812,7 @@ Note this should only be used for the last one in the sequence"
 	navigator
 	(let [iter-result (execute-sub-format clause navigator (:base-args params))] 
 	  (if (= :up-arrow (first iter-result))
-	    (frest iter-result)
+	    (second iter-result)
 	    (recur 
 	     (inc count) iter-result (:pos navigator))))))))
 
@@ -866,7 +866,7 @@ Note this should only be used for the last one in the sequence"
   (loop [clauses clauses
 	 acc []
 	 navigator navigator]
-    (if (nil? clauses)
+    (if (empty? clauses)
       [acc navigator]
       (let [clause (first clauses)
 	    [iter-result result-str] (binding [*out* (java.io.StringWriter.)]
@@ -874,7 +874,7 @@ Note this should only be used for the last one in the sequence"
 					(.toString *out*)])]
 	(if (= :up-arrow (first iter-result))
 	  [acc (second iter-result)]
-	  (recur (rest clauses) (conj acc result-str) iter-result))))))
+	  (recur (next clauses) (conj acc result-str) iter-result))))))
 
 ;; TODO support for ~:; constructions
 (defn- justify-clauses [params navigator offsets]
@@ -902,7 +902,7 @@ Note this should only be used for the last one in the sequence"
 	total-pad (- result-columns chars)
 	pad (max minpad (quot total-pad slots))
 	extra-pad (- total-pad (* pad slots))
-	pad-str (apply str (replicate pad (:padchar params)))]
+	pad-str (apply str (repeat pad (:padchar params)))]
     (if (and eol-str (> (+ (.getColumn *out*) min-remaining result-columns) max-columns))
       (print eol-str))
     (loop [slots slots
@@ -910,15 +910,15 @@ Note this should only be used for the last one in the sequence"
 	   strs strs
 	   pad-only (or (:colon params)
 			(and (= (count strs) 1) (not (:at params))))]
-      (if strs
+      (if (seq strs)
 	(do
 	  (print (str (if (not pad-only) (first strs))
-		      (if (or pad-only (rest strs) (:at params)) pad-str)
+		      (if (or pad-only (next strs) (:at params)) pad-str)
 		      (if (pos? extra-pad) (:padchar params))))
 	  (recur 
 	   (dec slots)
 	   (dec extra-pad)
-	   (if pad-only strs (rest strs))
+	   (if pad-only strs (next strs))
 	   false))))
     navigator))
 
@@ -984,7 +984,7 @@ Note this should only be used for the last one in the sequence"
 	   (first
 	    (consume
 	     (fn [s]
-	       (if (nil? s)
+	       (if (empty? s)
 		 [nil nil]
 		 (let [m (re-matcher #"\W\w" s)
 		       match (re-find m)
@@ -1088,7 +1088,7 @@ Note this should only be used for the last one in the sequence"
 		     (< current colnum) (- colnum current)
 		     (= colinc 0) 0
 		     :else (- colinc (rem (- current colnum) colinc)))]
-    (print (apply str (replicate space-count \space))))
+    (print (apply str (repeat space-count \space))))
   navigator)
 
 (defn- relative-tabulation [params navigator offsets]
@@ -1097,7 +1097,7 @@ Note this should only be used for the last one in the sequence"
 	start-col (+ colrel (.getColumn *out*))
 	offset (if (pos? colinc) (rem start-col colinc) 0)
 	space-count (+ colrel (if (= 0 offset) 0 (- colinc offset)))]
-    (print (apply str (replicate space-count \space))))
+    (print (apply str (repeat space-count \space))))
   navigator)
 
 
@@ -1213,7 +1213,7 @@ Note this should only be used for the last one in the sequence"
      (let [navigator (if (:colon params) (relative-reposition navigator -1) navigator)
 	   strs (if (:at params) ["y" "ies"] ["" "s"])
 	   [arg navigator] (next-arg navigator)]
-       (print (if (= arg 1) (first strs) (frest strs)))
+       (print (if (= arg 1) (first strs) (second strs)))
        navigator)))
 
   (\C
@@ -1280,7 +1280,7 @@ Note this should only be used for the last one in the sequence"
    #{ } {}
    (fn [params arg-navigator offsets]
      (let [n (:n params)]
-       (print (apply str (replicate n \~)))
+       (print (apply str (repeat n \~)))
        arg-navigator)))
 
   (\newline ;; Whitespace supression is handled in the compilation loop
@@ -1406,8 +1406,8 @@ Note this should only be used for the last one in the sequence"
 
 	true	  ; TODO: handle looking up the arglist stack for info
 	(if (if (:colon params) 
-	      (nil? (:rest (:base-args params)))
-	      (nil? (:rest navigator)))
+	      (empty? (:rest (:base-args params)))
+	      (empty? (:rest navigator)))
 	  [exit navigator] navigator))))) 
 
   (\W 
@@ -1512,18 +1512,17 @@ of parameters as well."
     (format-error 
      (cl-format 
       nil 
-      "Too many parameters for directive \"~C\": ~D~:* ~[were~;was~:;were~] specified but only ~D~:* ~[are~;is~:;are~] allowed" ;
-							 (:directive def) (count params) (count (:params def)))
-				      (frest (first params))))
-
+      "Too many parameters for directive \"~C\": ~D~:* ~[were~;was~:;were~] specified but only ~D~:* ~[are~;is~:;are~] allowed"
+      (:directive def) (count params) (count (:params def)))
+     (second (first params))))
   (doall
    (map #(let [val (first %1)]
 	   (if (not (or (nil? val) (contains? special-params val) 
-			(instance? (frest (frest %2)) val)))
+			(instance? (second (second %2)) val)))
 	     (format-error (str "Parameter " (name (first %2))
 				" has bad type in directive \"" (:directive def) "\": "
 				(class val))
-			   (frest %1))) )
+			   (second %1))) )
 	params (:params def)))
      
   (merge				; create the result map
@@ -1576,10 +1575,10 @@ of parameters as well."
 (defn- process-clause [bracket-info offset remainder]
   (consume 
    (fn [remainder]
-     (if (nil? remainder)
+     (if (empty? remainder)
        (format-error "No closing bracket found." offset)
        (let [this (first remainder)
-	     remainder (rest remainder)]
+	     remainder (next remainder)]
 	 (cond
 	  (right-bracket this)
 	  (process-bracket this remainder)
@@ -1598,7 +1597,7 @@ of parameters as well."
    remainder))
 
 (defn- collect-clauses [bracket-info offset remainder]
-  (frest
+  (second
    (consume
     (fn [[clause-map saw-else remainder]]
       (let [[clause [type right-params else-params remainder]] 
@@ -1654,7 +1653,7 @@ of parameters as well."
    (consume 
     (fn [remainder]
       (let [this (first remainder)
-	    remainder (rest remainder)
+	    remainder (next remainder)
 	    bracket (:bracket-info (:def this))]
 	(if (:right bracket)
 	  (process-bracket this remainder)
@@ -1686,13 +1685,13 @@ performance when you're using the same format string repeatedly"
 column number or pretty printing"
   [format]
   (loop [format format]
-    (if (nil? format)
+    (if (empty? format)
       false
       (if (or (:pretty (:flags (:def (first format))))
 	      (some needs-pretty (first (:clauses (:params (first format)))))
 	      (some needs-pretty (first (:else (:params (first format))))))
 	true
-	(recur (rest format))))))
+	(recur (next format))))))
 
 (defn- execute-format [stream format args]
   (let [real-stream (cond 
