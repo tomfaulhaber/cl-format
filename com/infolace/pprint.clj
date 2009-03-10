@@ -6,9 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns com.infolace.pprint
-  (:use com.infolace.format.utilities)
-  (:import [com.infolace.format PrettyWriter]))
+(in-ns 'com.infolace.format)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Variables that control the pretty printer
@@ -57,27 +55,27 @@
 ;; Support for the write function
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def write-option-table
-        {;:array            *print-array*
-         ;:base             *print-base*,
-         ;:case             *print-case*,
-	 :circle           'com.infolace.pprint/*print-circle*,
-         ;:escape           *print-escape*,
-         ;:gensym           *print-gensym*,
-	 :length           'clojure.core/*print-length*,
-	 :level            'clojure.core/*print-level*,
-	 :lines            'com.infolace.pprint/*print-lines*,
-	 :miser-width      'com.infolace.pprint/*print-miser-width*,
-	 :pprint-dispatch  'com.infolace.pprint/*print-pprint-dispatch*,
-	 :pretty           'com.infolace.pprint/*print-pretty*,
-         ;:radix            *print-radix*,
-	 :readably         'clojure.core/*print-readably*,
-	 :right-margin     'com.infolace.pprint/*print-right-margin*})
+(def #^{:private true} write-option-table
+     {;:array            *print-array*
+      ;;:base             *print-base*,
+      ;;:case             *print-case*,
+      :circle           'com.infolace.format/*print-circle*,
+      ;;:escape           *print-escape*,
+      ;;:gensym           *print-gensym*,
+      :length           'clojure.core/*print-length*,
+      :level            'clojure.core/*print-level*,
+      :lines            'com.infolace.format/*print-lines*,
+      :miser-width      'com.infolace.format/*print-miser-width*,
+      :pprint-dispatch  'com.infolace.format/*print-pprint-dispatch*,
+      :pretty           'com.infolace.format/*print-pretty*,
+      ;;:radix            *print-radix*,
+      :readably         'clojure.core/*print-readably*,
+      :right-margin     'com.infolace.format/*print-right-margin*})
 
 
 ;; TODO: build a macro that only rebinds changed things (base it on the
 ;; implementation of "binding")
-(defmacro binding-map [symbol-map options & body]
+(defmacro #^{:private true} binding-map [symbol-map options & body]
   (let [optsym (gensym "options-")]
     `(let [~optsym ~options]
        (binding [~@(mapcat 
@@ -99,7 +97,7 @@
 (defn make-pretty-writer [base-writer right-margin miser-width]
   (PrettyWriter. base-writer right-margin miser-width))
 
-(defmacro with-pretty-writer [base-writer & body]
+(defmacro #^{:private true} with-pretty-writer [base-writer & body]
   `(let [new-writer# (not (pretty-writer? ~base-writer))]
      (binding [*out* (if new-writer#
 		      (make-pretty-writer ~base-writer *print-right-margin* *print-miser-width*)

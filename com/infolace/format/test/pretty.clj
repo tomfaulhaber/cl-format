@@ -8,7 +8,7 @@
 
 (ns com.infolace.format.test.pretty
   (:refer-clojure :exclude [format])
-  (:use unit-test com.infolace.format com.infolace.pprint com.infolace.dispatch))
+  (:use unit-test com.infolace.format))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

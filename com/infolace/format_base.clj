@@ -6,10 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns com.infolace.format
-  (:use com.infolace.format.utilities
-	com.infolace.pprint)
-  (:import [com.infolace.format PrettyWriter]))
+(in-ns 'com.infolace.format)
 
 ;;; Forward references
 (declare compile-format)
@@ -1125,14 +1122,14 @@ Note this should only be used for the last one in the sequence"
        (:base-args params)))
     navigator))
 
-(defn set-indent [params navigator offsets]
+(defn- set-indent [params navigator offsets]
   (let [relative-to (if (:colon params) :current :block)]
     (pprint-indent relative-to (:n params))
     navigator))
 
 ;;; TODO: support ~:T section options for ~T
 
-(defn conditional-newline [params navigator offsets]
+(defn- conditional-newline [params navigator offsets]
   (let [kind (if (:colon params) 
 	       (if (:at params) :mandatory :fill)
 	       (if (:at params) :miser :linear))]

@@ -6,10 +6,7 @@
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
-(ns com.infolace.dispatch
-  (:use com.infolace.format.utilities
-	com.infolace.format
-	com.infolace.pprint))
+(in-ns 'com.infolace.format)
 
 ;;; TODO: optimize/compile format strings in dispatch funcs
 
@@ -291,31 +288,28 @@
  '(defn- -write 
     ([this x]
        ;;     (prlabel write x (getf :mode))
-       (condp 
-	=   ;TODO put these back up when the parser understands condp 
-	(class x)
-
-	String 
-	(let [s0 (write-initial-lines this x)
-	      s (.replaceFirst s0 "\\s+$" "")
-	      white-space (.substring s0 (count s))
-	      mode (getf :mode)]
-	  (if (= mode :writing)
-	    (dosync
-	     (write-white-space this)
-	     (.col-write this s)
-	     (setf :trailing-white-space white-space))
-	    (add-to-buffer this (make-buffer-blob s white-space))))
-
-	Integer
-	(let [c #^Character x]
-	  (if (= (getf :mode) :writing)
-	    (do 
+       (condp = (class x)
+	 String 
+	 (let [s0 (write-initial-lines this x)
+	       s (.replaceFirst s0 "\\s+$" "")
+	       white-space (.substring s0 (count s))
+	       mode (getf :mode)]
+	   (if (= mode :writing)
+	     (dosync
 	      (write-white-space this)
-	      (.col-write this x))
-	    (if (= c (int \newline))
-	      (write-initial-lines this "\n")
-	      (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))))))
+	      (.col-write this s)
+	      (setf :trailing-white-space white-space))
+	     (add-to-buffer this (make-buffer-blob s white-space))))
+
+	 Integer
+	 (let [c #^Character x]
+	   (if (= (getf :mode) :writing)
+	     (do 
+	       (write-white-space this)
+	       (.col-write this x))
+	     (if (= c (int \newline))
+	       (write-initial-lines this "\n")
+	       (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))))))
 
 (pprint 
  '(defn pprint-defn [writer alis]
