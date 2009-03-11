@@ -54,6 +54,7 @@
   (if-not (pprint-reader-macro writer alis)
     (pprint-simple-list writer alis)))
 (dosync (alter *simple-dispatch* conj [list? pprint-list]))
+(dosync (alter *simple-dispatch* conj [#(instance? clojure.lang.Cons %) pprint-list]))
 
 (def pprint-vector (formatter "~<[~;~@{~w~^ ~_~}~;]~:>"))
 (dosync (alter *simple-dispatch* conj [vector? pprint-vector]))
@@ -241,14 +242,24 @@
 	 (for [x amap] 
 	   [x [(symbol (name (first x))) (second x)]]))))
 
+(defn add-core-ns [amap]
+  (let [core "clojure.core"]
+    (into {}
+	  (map #(let [[s f] %] 
+		  (if (not (or (namespace s) (special-symbol? s)))
+		    [(symbol core (name s)) f]
+		    %))
+	       amap))))
+
 (def *code-table*
      (two-forms
-      {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
-       'clojure.core/let pprint-let, 'loop pprint-let, 'binding pprint-let,
-       'if pprint-if, 'if-not pprint-if, 'when pprint-if,
-       'cond pprint-cond, 'condp pprint-condp,
-       'fn* pprint-anon-func
-       }))
+      (add-core-ns
+       {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
+	'clojure.core/let pprint-let, 'loop pprint-let, 'binding pprint-let,
+	'if pprint-if, 'if-not pprint-if, 'when pprint-if,
+	'cond pprint-cond, 'condp pprint-condp,
+	'fn* pprint-anon-func
+	})))
 
 (defn pprint-code-list [writer alis]
   (if-not (pprint-reader-macro writer alis) 
@@ -256,11 +267,14 @@
 	    (special-form writer alis)
 	    (pprint-simple-code-list writer alis))))
 (dosync (alter *code-dispatch* conj [list? pprint-code-list]))
+(dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Cons %) pprint-code-list]))
 
 (defn pprint-code-symbol [writer sym] 
   (if-let [arg-num (sym *symbol-map*)]
     (print arg-num)
-    (pr sym)))
+    (if *print-suppress-namespaces* 
+      (print (name sym))
+      (pr sym))))
 (dosync (alter *code-dispatch* conj [symbol? pprint-code-symbol]))
 
 (dosync (ref-set *print-pprint-dispatch* @*code-dispatch*))
@@ -287,7 +301,6 @@
 (pprint
  '(defn- -write 
     ([this x]
-       ;;     (prlabel write x (getf :mode))
        (condp = (class x)
 	 String 
 	 (let [s0 (write-initial-lines this x)

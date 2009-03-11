@@ -33,7 +33,7 @@
 
 (def
  #^{ :doc "The column at which to enter miser style (N.B. This is not yet used)"}
- *print-miser-width* nil)
+ *print-miser-width* 40)
 
 ;;; TODO implement output limiting
 (def
@@ -50,6 +50,10 @@
  #^{ :doc "Mark repeated structures rather than repeat them (N.B. This is not yet used)"}
  *print-shared* nil)
 
+(def
+ #^{ :doc "Don't print namespaces with symbols. This is particularly useful when 
+pretty printing the results of macro expansions"}
+ *print-suppress-namespaces* nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Support for the write function
@@ -115,18 +119,20 @@ recursive calls). Returns the string result if :stream is nil or nil otherwise."
 		     (:stream options)
 		     true) 
 	    base-writer (condp = optval
-				 nil (java.io.StringWriter.)
-				 true *out*
-				 optval)]
+			  nil (java.io.StringWriter.)
+			  true *out*
+			  optval)]
 	(if *print-pretty*
 	  (with-pretty-writer base-writer
 	    ;; TODO better/faster dispatch mechanism!
 	    (loop [dispatch @*print-pprint-dispatch*]
 	      (let [[test func] (first dispatch)]
 		(cond
-		 (empty? dispatch) (pr object)
-		 (test object) (func *out* object)
-		 :else (recur (next dispatch))))))
+		  (empty? dispatch) (if (and *print-suppress-namespaces* (symbol? object))
+				      (print (name object))
+				      (pr object))
+		  (test object) (func *out* object)
+		  :else (recur (next dispatch))))))
 	  (binding [*out* base-writer]
 	    (pr object)))
 	(if (nil? optval) 
