@@ -64,12 +64,13 @@
    (> result 400)
    (cl-format true \"That number is too big\")
    (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))"
-  (write '(defn foo [x y] 
-	    (let [result (* x y)] 
-	      (if (> result 400) 
-		(cl-format true "That number is too big")
-		(cl-format true "The  result of ~d x ~d is ~d" x y result))))
-	 :stream nil)
+  (with-pprint-dispatch *code-dispatch*
+    (write '(defn foo [x y] 
+	      (let [result (* x y)] 
+		(if (> result 400) 
+		  (cl-format true "That number is too big")
+		  (cl-format true "The  result of ~d x ~d is ~d" x y result))))
+	   :stream nil))
   "(defn foo [x y]
   (let [result (* x y)]
     (if (> result 400)
@@ -80,11 +81,12 @@
     (write '(fn (cons (car x) (cdr y))) :stream nil))
   "(fn\n (cons\n  (car x)\n  (cdr y)))"
 
-  (binding [*print-right-margin* 52] 
-    (write 
-     '(add-to-buffer this (make-buffer-blob (str (char c)) nil))
-     :stream nil))
+  (with-pprint-dispatch *code-dispatch*
+    (binding [*print-right-margin* 52] 
+      (write 
+       '(add-to-buffer this (make-buffer-blob (str (char c)) nil))
+       :stream nil)))
   "(add-to-buffer\n  this\n  (make-buffer-blob (str (char c)) nil))"
-)
+  )
 
 

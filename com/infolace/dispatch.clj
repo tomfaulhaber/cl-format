@@ -279,74 +279,78 @@
       (pr sym))))
 (dosync (alter *code-dispatch* conj [symbol? pprint-code-symbol]))
 
-(dosync (ref-set *print-pprint-dispatch* @*code-dispatch*))
+(set-pprint-dispatch *simple-dispatch*)
 
 
 ;;; For testing
 (comment
 
-(pprint 
- '(defn cl-format 
-    "An implementation of a Common Lisp compatible format function"
-    [stream format-in & args]
-    (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	  navigator (init-navigator args)]
-      (execute-format stream compiled-format navigator))))
+(with-pprint-dispatch *code-dispatch* 
+  (pprint 
+   '(defn cl-format 
+      "An implementation of a Common Lisp compatible format function"
+      [stream format-in & args]
+      (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
+	    navigator (init-navigator args)]
+	(execute-format stream compiled-format navigator)))))
 
-(pprint 
- '(defn cl-format 
-    [stream format-in & args]
-    (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
-	  navigator (init-navigator args)]
-      (execute-format stream compiled-format navigator))))
+(with-pprint-dispatch *code-dispatch* 
+  (pprint 
+   '(defn cl-format 
+      [stream format-in & args]
+      (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)
+	    navigator (init-navigator args)]
+	(execute-format stream compiled-format navigator)))))
 
-(pprint
- '(defn- -write 
-    ([this x]
-       (condp = (class x)
-	 String 
-	 (let [s0 (write-initial-lines this x)
-	       s (.replaceFirst s0 "\\s+$" "")
-	       white-space (.substring s0 (count s))
-	       mode (getf :mode)]
-	   (if (= mode :writing)
-	     (dosync
-	      (write-white-space this)
-	      (.col-write this s)
-	      (setf :trailing-white-space white-space))
-	     (add-to-buffer this (make-buffer-blob s white-space))))
+(with-pprint-dispatch *code-dispatch* 
+  (pprint
+   '(defn- -write 
+      ([this x]
+	 (condp = (class x)
+	   String 
+	   (let [s0 (write-initial-lines this x)
+		 s (.replaceFirst s0 "\\s+$" "")
+		 white-space (.substring s0 (count s))
+		 mode (getf :mode)]
+	     (if (= mode :writing)
+	       (dosync
+		(write-white-space this)
+		(.col-write this s)
+		(setf :trailing-white-space white-space))
+	       (add-to-buffer this (make-buffer-blob s white-space))))
 
-	 Integer
-	 (let [c #^Character x]
-	   (if (= (getf :mode) :writing)
-	     (do 
-	       (write-white-space this)
-	       (.col-write this x))
-	     (if (= c (int \newline))
-	       (write-initial-lines this "\n")
-	       (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))))))
+	   Integer
+	   (let [c #^Character x]
+	     (if (= (getf :mode) :writing)
+	       (do 
+		 (write-white-space this)
+		 (.col-write this x))
+	       (if (= c (int \newline))
+		 (write-initial-lines this "\n")
+		 (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))))
 
-(pprint 
- '(defn pprint-defn [writer alis]
-    (if (next alis) 
-      (let [[defn-sym defn-name & stuff] alis
-	    [doc-str stuff] (if (string? (first stuff))
-			      [(first stuff) (next stuff)]
-			      [nil stuff])
-	    [attr-map stuff] (if (map? (first stuff))
-			       [(first stuff) (next stuff)]
-			       [nil stuff])]
-	(pprint-logical-block writer :prefix "(" :suffix ")"
-			      (cl-format true "~w ~1I~@_~w" defn-sym defn-name)
-			      (if doc-str
-				(cl-format true " ~_~w" doc-str))
-			      (if attr-map
-				(cl-format true " ~_~w" attr-map))
-			      ;; Note: the multi-defn case will work OK for malformed defns too
-			      (cond
-			       (vector? (first stuff)) (single-defn stuff (or doc-str attr-map))
-			       :else (multi-defn stuff (or doc-str attr-map)))))
-      (pprint-simple-code-list writer alis))))
+(with-pprint-dispatch *code-dispatch* 
+  (pprint 
+   '(defn pprint-defn [writer alis]
+      (if (next alis) 
+	(let [[defn-sym defn-name & stuff] alis
+	      [doc-str stuff] (if (string? (first stuff))
+				[(first stuff) (next stuff)]
+				[nil stuff])
+	      [attr-map stuff] (if (map? (first stuff))
+				 [(first stuff) (next stuff)]
+				 [nil stuff])]
+	  (pprint-logical-block writer :prefix "(" :suffix ")"
+				(cl-format true "~w ~1I~@_~w" defn-sym defn-name)
+				(if doc-str
+				  (cl-format true " ~_~w" doc-str))
+				(if attr-map
+				  (cl-format true " ~_~w" attr-map))
+				;; Note: the multi-defn case will work OK for malformed defns too
+				(cond
+				  (vector? (first stuff)) (single-defn stuff (or doc-str attr-map))
+				  :else (multi-defn stuff (or doc-str attr-map)))))
+	(pprint-simple-code-list writer alis)))))
 )
 nil
 
