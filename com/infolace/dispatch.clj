@@ -255,7 +255,7 @@
      (two-forms
       (add-core-ns
        {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
-	'clojure.core/let pprint-let, 'loop pprint-let, 'binding pprint-let,
+	'let pprint-let, 'loop pprint-let, 'binding pprint-let,
 	'if pprint-if, 'if-not pprint-if, 'when pprint-if,
 	'cond pprint-cond, 'condp pprint-condp,
 	'fn* pprint-anon-func
