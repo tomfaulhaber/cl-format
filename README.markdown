@@ -13,9 +13,10 @@ printer and a Common Lisp-compatible format function.
 
 The pretty printer is easy to use:
 
-    user=> (use 'com.infolace.format)             
+    user=> (println (for [x (range 10)] (range x)))
+    (() (0) (0 1) (0 1 2) (0 1 2 3) (0 1 2 3 4) (0 1 2 3 4 5) (0 1 2 3 4 5 6) (0 1 2 3 4 5 6 7) (0 1 2 3 4 5 6 7 8))
     nil
-    user=> (set-pprint-dispatch *simple-dispatch*)
+    user=> (use 'com.infolace.format)             
     nil
     user=> (pprint (for [x (range 10)] (range x)))         
     (()
@@ -31,11 +32,11 @@ The pretty printer is easy to use:
     nil
     user=>
 
-The pretty printer supports two modes: *code* (the default) which has
-special formatting for special forms and core macros and *simple*
-which formats the various Clojure data structures as appropriate for
-raw data. In the future, the pretty printer will be highly
-customizable, but right now it is pretty simple.
+The pretty printer supports two modes: *code* which has special
+formatting for special forms and core macros and *simple* (the
+default) which formats the various Clojure data structures as
+appropriate for raw data. In the future, the pretty printer will be
+highly customizable, but right now it is pretty simple.
 
 The Common Lisp-compatible format function is a 100% comptible
 implementation of format from Common Lisp (the one incompatibility is
@@ -44,7 +45,7 @@ something different).
 
 All the functions and variables described here are in the
 com.infolace.format namespace. Using them is as simple as adding
-cl-format to your classpath and adding a (:use com.infolace.format) to
+cl-format.jar to your classpath and adding a (:use com.infolace.format) to
 your namespace declarations.
 
 ### Pretty Printing ###
@@ -76,7 +77,51 @@ comfortably. Just type:
 and you'll get a pretty printed version of the last thing output (the
 magic variable *1).
 
-#### Dispatch tables ####
+#### Dispatch tables and code formatting ####
+
+The behavior of the pretty printer can be finely controlled through
+the use of *dispatch tables* that contain descriptions for how
+different structures should be formatted. The exact design of the
+dispatch table is still evolving and is, therefore, not yet
+documented.
+
+The pretty printer comes with two pre-defined dispatch tables to cover
+the most common situations:
+
+\*simple-dispatch\* - supports basic representation of data in various
+Clojure structures: seqs, maps, vectors, etc. in a fairly statndard
+way. When structures need to be broken across lines, following lines
+are indented to line up with the first element. \*simple-dispatch\* is
+the default and is good from showing the output of most operations.
+
+\*code-dispatch\* - has special representation for various structures
+found in code: defn, condp, binding vectors, anonymous functions,
+etc. This dispatch indents following lines of a list one more space as
+appropriate for a function/argument type of list.
+
+An example formatted with code dispatch:
+
+    user=> (def code '(defn cl-format 
+    "An implementation of a Common Lisp compatible format function"
+    [stream format-in & args] (let [compiled-format (if (string? format-in) 
+    (compile-format format-in) format-in) navigator (init-navigator args)] 
+    (execute-format stream compiled-format navigator))))
+    #'user/code
+    user=> (with-pprint-dispatch *code-dispatch* (pprint code))
+    (defn cl-format
+      "An implementation of a Common Lisp compatible format function"
+      [stream format-in & args]
+      (let [compiled-format (if (string? format-in)
+                              (compile-format format-in)
+                              format-in)
+            navigator (init-navigator args)]
+        (execute-format stream compiled-format navigator)))
+    nil
+    user=> 
+
+There are two ways to set the current dispatch: set it to a specific
+table permanantly with set-pprint-dispatch or bind it with
+with-pprint-dispatch (as shown in the example above).
 
 #### Control variables ####
 
@@ -357,7 +402,7 @@ formatted hexdump of the requested stream.
 * multiply - a function to show a formatted multipication table in a
 very "first-order" way.
 * props - the show-props example shown above.
-* show_doc - some utilities for showing what names are in various name spaces.
+* show_doc - some utilities for showing documentation from various name spaces.
 
 ### Differences from the Common Lisp format function ###
 
@@ -370,7 +415,7 @@ The ~A and ~S directives accept the colon prefix, but ignore it since
 () and nil are not equivalent in Clojure.
 
 Clojure has 3 different reader syntaxes for characters. The ~@c
-directive to cl-format has an argument extension to let youu choose:
+directive to cl-format has an argument extension to let you choose:
 
 * ~@c (with no argument) prints "\c" (backslash followed by the
 printed representation of the character or \newline, \space, \tab,
