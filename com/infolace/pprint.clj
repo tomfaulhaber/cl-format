@@ -155,6 +155,12 @@ print the object to the currently bound value of *out*."
 exactly equivalent to (pprint *1)."
   [] `(pprint *1))
 
+(defn set-pprint-dispatch [table] 
+  "Set the pretty print dispatch table to TABLE. Currently the supported values are
+*simple-dispatch* or *code-dispatch*. In the future, this will support custom tables."
+  (dosync (ref-set *print-pprint-dispatch* @table))
+  nil)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Support for the functional interface to the pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
