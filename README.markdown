@@ -4,7 +4,7 @@
 which, as of this writing, is only available directly from the
 subversion repository. If you are running on an older version of
 Clojure, grab the v1.0.1 tag from the git repository. However, the
-older verion doesn't support pretty printing.
+older version doesn't support pretty printing.
 
 ### Overview ###
 
@@ -13,23 +13,23 @@ printer and a Common Lisp-compatible format function.
 
 The pretty printer is easy to use:
 
- user=> (use 'com.infolace.format)             
- nil
- user=> (set-pprint-dispatch *simple-dispatch*)
- nil
- user=> (pprint (for [x (range 10)] (range x)))         
- (()
-  (0)
-  (0 1)
-  (0 1 2)
-  (0 1 2 3)
-  (0 1 2 3 4)
-  (0 1 2 3 4 5)
-  (0 1 2 3 4 5 6)
-  (0 1 2 3 4 5 6 7)
-  (0 1 2 3 4 5 6 7 8))
- nil
- user=>
+    user=> (use 'com.infolace.format)             
+    nil
+    user=> (set-pprint-dispatch *simple-dispatch*)
+    nil
+    user=> (pprint (for [x (range 10)] (range x)))         
+    (()
+     (0)
+     (0 1)
+     (0 1 2)
+     (0 1 2 3)
+     (0 1 2 3 4)
+     (0 1 2 3 4 5)
+     (0 1 2 3 4 5 6)
+     (0 1 2 3 4 5 6 7)
+     (0 1 2 3 4 5 6 7 8))
+    nil
+    user=>
 
 The pretty printer supports two modes: *code* (the default) which has
 special formatting for special forms and core macros and *simple*
@@ -56,12 +56,12 @@ settings of several special variables.
 Generally, the defaults are fine for pretty printing and you can
 simply use:
 
- (pprint obj)
+    (pprint obj)
 
 to print your object. If you wish to write to
 another stream besides *out*, you can use:
 
- (write obj :pretty true :stream foo)
+    (write obj :pretty true :stream foo)
 
 where foo is the stream to which you wish to write. (The write
 function has a lot more options which are not yet documented. Stay
@@ -71,7 +71,7 @@ When at the REPL, the pp macro pretty prints the last output
 value. This is useful when you get something too complex to read
 comfortably. Just type:
 
- user> (pp)
+    user=> (pp)
 
 and you'll get a pretty printed version of the last thing output (the
 magic variable *1).
