@@ -161,6 +161,11 @@ exactly equivalent to (pprint *1)."
   (dosync (ref-set *print-pprint-dispatch* @table))
   nil)
 
+(defmacro with-pprint-dispatch [table & body]
+  "Execute body with the pretty print dispatch table bound to table."
+  `(binding [*print-pprint-dispatch* ~table]
+     ~@body))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Support for the functional interface to the pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
