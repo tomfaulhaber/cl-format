@@ -1,24 +1,88 @@
-## Common Lisp Format for Clojure ##
+## Pretty Printing and Format for Clojure ##
 
-### Pretty Printing ###
-
-**This is the pretty printing branch of cl-format**
-
-Pretty printing is under active development for cl-format. It doesn't do too much 
-yet, but just wait, it'll be here before you know it.
-
-There's no doc yet. The general idea and core algorithms are those of the XP pretty 
-printer included in Common Lisp, though the interface will be more Clojurey.
-
-It will be extensible and customizable in ways similar to the dispatch table
-mechanism in CL, but I haven't thought too hard about how that will work yet.
-
-All pretty printing versions require the lazy version of Clojure
+**Note:** The current version of cl-format requires the lazy version of Clojure
 which, as of this writing, is only available directly from the
-subversion repository.
+subversion repository. If you are running on an older version of
+Clojure, grab the v1.0.1 tag from the git repository. However, the
+older verion doesn't support pretty printing.
 
 ### Overview ###
 
+This library adds two new features to Clojure: a generalized pretty
+printer and a Common Lisp-compatible format function.
+
+The pretty printer is easy to use:
+
+ user=> (use 'com.infolace.format)             
+ nil
+ user=> (set-pprint-dispatch *simple-dispatch*)
+ nil
+ user=> (pprint (for [x (range 10)] (range x)))         
+ (()
+  (0)
+  (0 1)
+  (0 1 2)
+  (0 1 2 3)
+  (0 1 2 3 4)
+  (0 1 2 3 4 5)
+  (0 1 2 3 4 5 6)
+  (0 1 2 3 4 5 6 7)
+  (0 1 2 3 4 5 6 7 8))
+ nil
+ user=>
+
+The pretty printer supports two modes: *code* (the default) which has
+special formatting for special forms and core macros and *simple*
+which formats the various Clojure data structures as appropriate for
+raw data. In the future, the pretty printer will be highly
+customizable, but right now it is pretty simple.
+
+The Common Lisp-compatible format function is a 100% comptible
+implementation of format from Common Lisp (the one incompatibility is
+that it's called cl-format in Clojure because format existed and meant
+something different).
+
+All the functions and variables described here are in the
+com.infolace.format namespace. Using them is as simple as adding
+cl-format to your classpath and adding a (:use com.infolace.format) to
+your namespace declarations.
+
+### Pretty Printing ###
+
+Pretty printing is primarily implemented with the function
+pprint. pprint takes a single argument and formats it according to the
+settings of several special variables.
+
+Generally, the defaults are fine for pretty printing and you can
+simply use:
+
+ (pprint obj)
+
+to print your object. If you wish to write to
+another stream besides *out*, you can use:
+
+ (write obj :pretty true :stream foo)
+
+where foo is the stream to which you wish to write. (The write
+function has a lot more options which are not yet documented. Stay
+tuned.)
+
+When at the REPL, the pp macro pretty prints the last output
+value. This is useful when you get something too complex to read
+comfortably. Just type:
+
+ user> (pp)
+
+and you'll get a pretty printed version of the last thing output (the
+magic variable *1).
+
+#### Dispatch tables ####
+
+#### Control variables ####
+
+#### Current limitations and future plans ####
+
+### Common Lisp-compatible Format function ###
 cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
 in [*Common Lisp the Language*, 2nd edition, Chapter 22](http://www.cs.cmu.edu/afs/cs.cmu.edu/project/ai-repository/ai/html/cltl/clm/node200.html#SECTION002633000000000000000).
 
