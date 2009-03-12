@@ -18,7 +18,7 @@
 	(constantly true))
       (sort-by ns-name (all-ns)))))
 
-(defn ns-contents 
+(defn show-doc 
   ([] (ns-contents nil)) 
   ([pattern] 
      (cl-format 
