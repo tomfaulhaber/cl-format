@@ -63,6 +63,9 @@ cl-format is hosted at github at
 You can just grab the jar file here:
 [http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar)
 
+Future development is guided by those using it, so send feedback about
+what's working and not working for you and what you'd like to see in cl-format.
+
 ### Pretty Printing ###
 
 Pretty printing is primarily implemented with the function
@@ -145,19 +148,23 @@ that control general parameters of how the pretty printer makes
 decisions. The current list is as follows:
 
 **\*print-pretty\***: Default: **true**  
+
 Bind to true if you want write to use pretty printing. (pprint and pp automatically 
 bind this to true.)
 
-***\*print-right-margin\***: Default: **72**
+**\*print-right-margin\***: Default: **72**
+
 Pretty printing will try to avoid anything going beyond this column.
 
 **\*print-miser-width\***: Default: **40**
+
 The column at which to enter miser style. Depending on the dispatch table, 
 miser style add newlines in more places to try to keep lines short allowing for further 
 levels of nesting. For example, in the code dispatch table, the pretty printer will 
 insert a newline between the "if" and its condition when in miser style.
 
 **\*print-suppress-namespaces\***: Default: **false**
+
 Don't print namespaces with symbols. This is particularly useful when 
 pretty printing the results of macro expansions
 
@@ -178,6 +185,10 @@ and tabular pretty printing).
 * Performance! (Not much thought has been made to making this go fast,
 but there are a bunch of pretty obvious speedups to be had.)
 * Handle Java objects intelligently
+
+Please let me know about anything that's not working right, anything that
+should work differently, or the feature you think should be at the top
+of my list. 
 
 ### Common Lisp-compatible Format function ###
 cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
