@@ -60,6 +60,8 @@ distribution. This means it can go anywhere Clojure can go.
 cl-format is hosted at github at 
 [http://github.com/tomfaulhaber/cl-format](http://github.com/tomfaulhaber/cl-format/).
 
+You can just grab the jar file here:
+[http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar)
 
 ### Pretty Printing ###
 
@@ -268,7 +270,7 @@ Next up:
 
 The easiest way to install cl-format is just to grab the the jar from
 github: 
-[http://github.com/tomfaulhaber/cl-format/raw/master/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/master/cl-format.jar). This
+[http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar). This
 is not always the exact latest, but it does get updated when there are
 significant changes. 
 
