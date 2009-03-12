@@ -48,6 +48,19 @@ com.infolace.format namespace. Using them is as simple as adding
 cl-format.jar to your classpath and adding a (:use com.infolace.format) to
 your namespace declarations.
 
+cl-format is being developed by Tom Faulhaber (to mail me you can use
+my first name at my domain which is infolace.com).
+
+cl-format has been developed completely from scratch and is licensed under the 
+[Eclipse Public License 1.0](http://opensource.org/licenses/eclipse-1.0.php)
+(like Clojure itself)
+which can be found in the file epl-v10.html at the root of this
+distribution. This means it can go anywhere Clojure can go.
+
+cl-format is hosted at github at 
+[http://github.com/tomfaulhaber/cl-format](http://github.com/tomfaulhaber/cl-format/).
+
+
 ### Pretty Printing ###
 
 Pretty printing is primarily implemented with the function
@@ -125,7 +138,44 @@ with-pprint-dispatch (as shown in the example above).
 
 #### Control variables ####
 
+The operation of pretty printing is also controlled by a set of variables
+that control general parameters of how the pretty printer makes
+decisions. The current list is as follows:
+
+**\*print-pretty\***: Default: **true**  
+Bind to true if you want write to use pretty printing. (pprint and pp automatically 
+bind this to true.)
+
+***\*print-right-margin\***: Default: **72**
+Pretty printing will try to avoid anything going beyond this column.
+
+**\*print-miser-width\***: Default: **40**
+The column at which to enter miser style. Depending on the dispatch table, 
+miser style add newlines in more places to try to keep lines short allowing for further 
+levels of nesting. For example, in the code dispatch table, the pretty printer will 
+insert a newline between the "if" and its condition when in miser style.
+
+**\*print-suppress-namespaces\***: Default: **false**
+Don't print namespaces with symbols. This is particularly useful when 
+pretty printing the results of macro expansions
+
 #### Current limitations and future plans ####
+
+This is an early version release of the pretty printer and there is
+plenty that is yet to come.
+
+Here are some examples:
+
+* Support all the types and forms in Clojure (most of the way there now).
+* Customized pretty printing functions and dispatch tables. (They are
+there under the hood, but the implementation is still evolving.)
+* Support for limiting pretty printing based on length and depth.
+* Support for circular and shared substructure detection.
+* Finishing the integration with the format function (support for ~/
+and tabular pretty printing).
+* Performance! (Not much thought has been made to making this go fast,
+but there are a bunch of pretty obvious speedups to be had.)
+* Handle Java objects intelligently
 
 ### Common Lisp-compatible Format function ###
 cl-format is an implementation of the incredibly baroque Common Lisp format function as specified 
@@ -145,18 +195,6 @@ being concepts that make no sense or are differently interpreted in Clojure.
 its relatives.
 * Be fast. This includes the ability to precompile formats that are going to be used reptitively.
 * Include useful error handling and comprehensive documentation.
-
-cl-format is being developed by Tom Faulhaber (to mail me you can use
-my first name at my domain which is infolace.com).
-
-cl-format is licensed under the 
-[Eclipse Public License 1.0](http://opensource.org/licenses/eclipse-1.0.php)
-(like Clojure itself)
-which can be found in the file epl-v10.html at the root of this
-distribution.
-
-cl-format is hosted at github at 
-[http://github.com/tomfaulhaber/cl-format](http://github.com/tomfaulhaber/cl-format/).
 
 ### Why would I use cl-format? ###
 
@@ -186,7 +224,7 @@ The corresponding output using Clojure's Java-based *format* function
 would involve a nasty loop/recur with some code to figure out about
 the commas. Yuck!
 
-### Current Status ###
+### Current Status of cl-format ###
 
 cl-format is 100% compatible with the Common Lisp standard as
 specified in CLtLv2.
@@ -203,11 +241,8 @@ cl-format you found it in and I'll try to get it fixed.
 I also intend to have good built-in documentation for the directives,
 but I haven't built that yet.
 
-Pretty printing is currently under development and not fully working.
-
-In particular, 
-the following directives are
-not supported: ~:T and ~@:T (but all other forms of ~T work) 
+The following directives are
+not yet supported: ~:T and ~@:T (but all other forms of ~T work) 
 and extensions with ~/. 
 
 The pretty printer interface is similar, but not identical to the 
