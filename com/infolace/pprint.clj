@@ -32,7 +32,9 @@
  *print-right-margin* 72)
 
 (def
- #^{ :doc "The column at which to enter miser style (N.B. This is not yet used)"}
+ #^{ :doc "The column at which to enter miser style. Depending on the dispatch table, 
+miser style add newlines in more places to try to keep lines short allowing for further 
+levels of nesting."}
  *print-miser-width* 40)
 
 ;;; TODO implement output limiting
@@ -109,10 +111,11 @@ pretty printing the results of macro expansions"}
        ~@body
        (if new-writer# (.flush *out*)))))
 
-(defn write [object & kw-args]
+(defn write 
   "Write an object subject to the current bindings of the printer control variables.
 Use the options argument to override individual variables for this call (and any 
 recursive calls). Returns the string result if :stream is nil or nil otherwise."
+  [object & kw-args]
   (let [options (merge {:stream true} (apply hash-map kw-args))]
     (binding-map write-option-table options 
       (let [optval (if (contains? options :stream) 
@@ -155,14 +158,16 @@ print the object to the currently bound value of *out*."
 exactly equivalent to (pprint *1)."
   [] `(pprint *1))
 
-(defn set-pprint-dispatch [table] 
+(defn set-pprint-dispatch  
   "Set the pretty print dispatch table to TABLE. Currently the supported values are
 *simple-dispatch* or *code-dispatch*. In the future, this will support custom tables."
+  [table]
   (dosync (ref-set *print-pprint-dispatch* @table))
   nil)
 
-(defmacro with-pprint-dispatch [table & body]
+(defmacro with-pprint-dispatch 
   "Execute body with the pretty print dispatch table bound to table."
+  [table & body]
   `(binding [*print-pprint-dispatch* ~table]
      ~@body))
 
