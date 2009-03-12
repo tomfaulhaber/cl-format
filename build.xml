@@ -8,6 +8,7 @@
 	<property name="clojure-jar" location="../clojure/clojure.jar"/>
   <!-- The JAR file to create. -->
   <property name="jarfile" value="cl-format.jar"/>
+  <property name="releasedir" value="release/"/>
 
   <target name="init">
     <mkdir dir="${build}"/>
@@ -41,23 +42,24 @@
   </target>
 
 	<target name="release" depends="jar" 
-					description="Checks in the current jar file and tags the resulting checkin with a version number">
+					description="Checks in the current jar file and tags the resulting checkin with a version number (use with -Dtagname=vX.Y.Z)">
+		<move file="${jarfile}" todir="${releasedir}"/>
 		<exec executable="git">
 			<arg value="add"/>
 			<arg value="-f"/>
-			<arg value="${jarfile}"/>
+			<arg value="${releasedir}${jarfile}"/>
 		</exec>
 
 		<exec executable="git">
 			<arg value="commit"/>
 			<arg value="-m"/>
-			<arg value="Ready to tag ${tagname}"/>
+			<arg value="Release ${tagname}"/>
 		</exec>
 
 		<exec executable="git">
 			<arg value="tag"/>
 			<arg value="-m"/>
-			<arg value="Tagged from ant task"/>
+			<arg value="Making a release tag"/>
 			<arg value="${tagname}"/>
 		</exec>
 
