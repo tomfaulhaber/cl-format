@@ -1074,6 +1074,8 @@ Note this should only be used for the last one in the sequence"
 
 ;; TODO: make an automatic newline for non-ColumnWriters
 (defn fresh-line []
+  "Make a newline if the Writer is not already at the beginning of the line.
+(N.B. Only works on ColumnWriters right now.)"
   (if (not (= 0 (.getColumn *out*)))
     (prn)))
 
