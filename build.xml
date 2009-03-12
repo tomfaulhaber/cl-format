@@ -25,7 +25,9 @@
     <jar jarfile="${jarfile}">
       <fileset dir="." includes="epl-v10.html"/>
       <fileset dir="." includes="com/infolace/format.clj"/>
+      <fileset dir="." includes="com/infolace/format_base.clj"/>
       <fileset dir="." includes="com/infolace/pprint.clj"/>
+      <fileset dir="." includes="com/infolace/dispatch.clj"/>
       <fileset dir="." includes="com/infolace/format/utilities.clj"/>
       <fileset dir="classes" includes="**/*.class"/>
     </jar>
