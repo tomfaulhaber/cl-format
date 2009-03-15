@@ -6,10 +6,11 @@
 
   <property name="build" location="classes"/>
 	<property name="clojure-jar" location="../clojure/clojure.jar"/>
+	<property name="unit-jar" location="../unit_test/unit-test.jar"/>
   <!-- The JAR file to create. -->
   <property name="jarfile" value="cl-format.jar"/>
   <property name="releasedir" value="release/"/>
-
+	
   <target name="init">
     <mkdir dir="${build}"/>
   </target>
@@ -65,5 +66,19 @@
 			<arg value="${tagname}"/>
 		</exec>
 
+	</target>
+
+	<target name="run-tests" depends="jar"
+					description="Run all the unit tests">
+		<java classname="clojure.main" classpath="${clojure-jar}:${unit-jar}:${jarfile}:." 
+					fork="true" failonerror="true">
+      <arg value="../unit_test/run_tests.clj"/>
+      <arg value="com.infolace.format.test.base"/>
+		</java>
+		<java classname="clojure.main" classpath="${clojure-jar}:${unit-jar}:${jarfile}:." 
+					fork="true" failonerror="true">
+      <arg value="../unit_test/run_tests.clj"/>
+      <arg value="com.infolace.format.test.pretty"/>
+		</java>
 	</target>
 </project>
