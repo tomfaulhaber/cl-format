@@ -70,14 +70,12 @@
 
 	<target name="run-tests" depends="jar"
 					description="Run all the unit tests">
-		<java classname="clojure.main" classpath="${clojure-jar}:${unit-jar}:${jarfile}:." 
+		<java classname="unit_test.run_tests" classpath="${clojure-jar}:${unit-jar}:${jarfile}:." 
 					fork="true" failonerror="true">
-      <arg value="../unit_test/run_tests.clj"/>
       <arg value="com.infolace.format.test.base"/>
 		</java>
-		<java classname="clojure.main" classpath="${clojure-jar}:${unit-jar}:${jarfile}:." 
+		<java classname="unit_test.run_tests" classpath="${clojure-jar}:${unit-jar}:${jarfile}:." 
 					fork="true" failonerror="true">
-      <arg value="../unit_test/run_tests.clj"/>
       <arg value="com.infolace.format.test.pretty"/>
 		</java>
 	</target>
