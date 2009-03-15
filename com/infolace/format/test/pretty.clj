@@ -18,7 +18,8 @@
 
 (simple-tests xp-fill-test
   (binding [*print-pprint-dispatch* *simple-dispatch*
-	    *print-right-margin* 38]
+	    *print-right-margin* 38
+	    *print-miser-width* nil]
     (cl-format nil "(let ~:<~@{~:<~w ~_~w~:>~^ ~:_~}~:>~_ ...)~%"
 	       '((x 4) (*print-length* nil) (z 2) (list nil))))
   "(let ((x 4) (*print-length* nil)\n      (z 2) (list nil))\n ...)\n"
