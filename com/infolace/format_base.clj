@@ -37,7 +37,7 @@
 (defstruct #^{:private true}
   arg-navigator :seq :rest :pos )
 
-(defn- init-navigator [s]
+(defn init-navigator [s]
   "Create a new arg-navigator from the sequence with the position set to 0"
   (struct arg-navigator s s 0))
 
@@ -1692,7 +1692,7 @@ column number or pretty printing"
 	true
 	(recur (next format))))))
 
-(defn- execute-format [stream format args]
+(defn execute-format [stream format args]
   (let [real-stream (cond 
 		     (not stream) (java.io.StringWriter.)
 		     (true? stream) *out*
@@ -1720,14 +1720,15 @@ column number or pretty printing"
       (if (not stream) (.toString real-stream)))))
 
 
-(defn formatter 
+(defmacro formatter
   "Makes a function which can directly run format-in. The function is
 fn [stream & args] ... and returns nil unless the stream is nil (meaning 
 output to a string) in which case it returns the resulting string.
 
 format-in can be either a control string or a previously compiled format."
   [format-in]
-  (let [compiled-format (if (string? format-in) (compile-format format-in) format-in)]
-    (fn [stream & args] 
-      (let [navigator (init-navigator args)] 
-	(execute-format stream compiled-format navigator)))))
+  `(let [compiled-format# (if (string? ~format-in) (compile-format ~format-in) ~format-in)
+	 func# (fn [stream# & args#]
+		 (let [navigator# (init-navigator args#)]
+		   (execute-format stream# compiled-format# navigator#)))]
+     func#))
