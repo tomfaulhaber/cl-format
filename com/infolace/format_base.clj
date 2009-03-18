@@ -39,7 +39,8 @@
 
 (defn init-navigator [s]
   "Create a new arg-navigator from the sequence with the position set to 0"
-  (struct arg-navigator s s 0))
+  (let [s (seq s)]
+    (struct arg-navigator s s 0)))
 
 ;; TODO call format-error with offset
 (defn- next-arg [ navigator ]
