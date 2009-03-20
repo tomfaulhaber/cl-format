@@ -12,5 +12,5 @@
 (defn multiplication-table [limit]
   (let [nums (range 1 (inc limit))]
     (cl-format true "~{~{~4d~}~%~}" 
-	     (map #(map % nums) 
-		  (map #(partial * %) nums)))))
+             (map #(map % nums) 
+                  (map #(partial * %) nums)))))

@@ -12,14 +12,14 @@
 
 (defn pprint-file [f]
   (with-open [r (java.io.PushbackReader. 
-		 (java.io.FileReader. f))]
+                 (java.io.FileReader. f))]
     (binding [*print-pprint-dispatch* *code-dispatch*
-	      *print-suppress-namespaces* true] 
+              *print-suppress-namespaces* true] 
       (loop [form (read r false :eof-special-token)]
-	(when (not= form :eof-special-token) 
-	  (if (not (= (first form) 'defmacro)) ; skip the macros (and backquotes) for now
-	    (pprint form))
-	  (recur (read r false :eof-special-token)))))))
+        (when (not= form :eof-special-token) 
+          (if (not (= (first form) 'defmacro)) ; skip the macros (and backquotes) for now
+            (pprint form))
+          (recur (read r false :eof-special-token)))))))
 
 (defn do-timing [iters]
   (time
@@ -32,15 +32,15 @@
   (pprint (with-in-str "(defmacro formatter
   [format-in]
   `(let [compiled-format# (if (string? ~format-in) (compile-format ~format-in) ~format-in)
-	 func# (fn [stream# & args#]
-		 (let [navigator# (init-navigator args#)]
-		   (execute-format stream# compiled-format# navigator#)))]
+         func# (fn [stream# & args#]
+                 (let [navigator# (init-navigator args#)]
+                   (execute-format stream# compiled-format# navigator#)))]
      func#))
 " (read))))
 
 (defn explode [] 
   (binding [*print-pprint-dispatch* *code-dispatch*
-	      *print-suppress-namespaces* true]
+              *print-suppress-namespaces* true]
 ;;    (pprint (with-in-str "`([([(init-navigator)])])" 
     (pprint (with-in-str "`[[[[[init-navigator]]]]]" 
-	      (read)))))
+              (read)))))

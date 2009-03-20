@@ -15,13 +15,13 @@
 (defn zip-array [base-offset arr]
   (let [grouped (partition 16 arr)]
     (first (map-passing-context
-	    (fn [line offset]
-	      [[offset 
-		(map #(if (neg? %) (+ % 256) %) line)
-		(- 16 (count line))
-		(map #(if (<= 32 % 126) (char %) \.) line)]
-	       (+ 16 offset)])
-	    base-offset grouped))))
+            (fn [line offset]
+              [[offset 
+                (map #(if (neg? %) (+ % 256) %) line)
+                (- 16 (count line))
+                (map #(if (<= 32 % 126) (char %) \.) line)]
+               (+ 16 offset)])
+            base-offset grouped))))
 
 
 (defn hexdump 
@@ -30,15 +30,15 @@
   ([in-stream out-stream offset] 
      (let [buf (make-array Byte/TYPE *buffer-length*)]
        (loop [offset offset
-	      count (.read in-stream buf)]
-	 (if (neg? count)
-	   nil
-	   (let [bytes (take count buf)
-		 zipped (zip-array offset bytes)]
-	     (cl-format out-stream 
-			"~:{~8,'0X: ~2{~8@{~#[   ~:;~2,'0X ~]~}  ~}~v@{   ~}~2{~8@{~A~} ~}~%~}" 
-			zipped) 
-	     (recur (+ offset *buffer-length*) (.read in-stream buf))))))))
+              count (.read in-stream buf)]
+         (if (neg? count)
+           nil
+           (let [bytes (take count buf)
+                 zipped (zip-array offset bytes)]
+             (cl-format out-stream 
+                        "~:{~8,'0X: ~2{~8@{~#[   ~:;~2,'0X ~]~}  ~}~v@{   ~}~2{~8@{~A~} ~}~%~}" 
+                        zipped) 
+             (recur (+ offset *buffer-length*) (.read in-stream buf))))))))
 
 (defn hexdump-file 
   ([file-name] (hexdump-file file-name true))

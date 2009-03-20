@@ -8,9 +8,9 @@
 
 (ns com.infolace.format.test.pretty-writer-test
   (:use unit-test 
-	com.infolace.pprint
-	com.infolace.format 
-	com.infolace.format.utilities)
+        com.infolace.pprint
+        com.infolace.format 
+        com.infolace.format.utilities)
   (:import [com.infolace.format PrettyWriter]))
 
 (defn test1 [] 
@@ -28,14 +28,14 @@
     (do
       (.startBlock writer "(" nil ")")
       (if (seq lis) 
-	(loop [r lis]
-;	  (prlabel ppli r)
-	  (pp-list-internal writer (first r))
-	  (if-let [r (rest r)] 
-	    (do
-	      (.write writer " ")
-	      (.newline writer :linear)
-	      (recur r)))))
+        (loop [r lis]
+;          (prlabel ppli r)
+          (pp-list-internal writer (first r))
+          (if-let [r (rest r)] 
+            (do
+              (.write writer " ")
+              (.newline writer :linear)
+              (recur r)))))
        (.endBlock writer))
     (.write writer (print-str lis))))
 
@@ -69,13 +69,13 @@
   (write-margin 
    '(defmethod write-token :start-block [this token]
       (let [lb (:logical-block token)]
-	(dosync
-	 (prlabel write-start-block (:prefix (:logical-block token)))
-	 (if-let [prefix (:prefix lb)] 
-	   (.col-write this prefix))
-	 (let [col (.getColumn this)]
-	   (ref-set (:start-col lb) col)
-	   (ref-set (:indent lb) col)))))
+        (dosync
+         (prlabel write-start-block (:prefix (:logical-block token)))
+         (if-let [prefix (:prefix lb)] 
+           (.col-write this prefix))
+         (let [col (.getColumn this)]
+           (ref-set (:start-col lb) col)
+           (ref-set (:indent lb) col)))))
    x))
 (defn test11 [& x] 
   (write-margin 

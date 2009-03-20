@@ -16,29 +16,29 @@
 
 (defn map-passing-context [func initial-context lis]
   (loop [context initial-context
-	 lis lis
-	 acc []]
+         lis lis
+         acc []]
     (if (empty? lis)
       [acc context]
     (let [this (first lis)
-	  remainder (next lis)
-	  [result new-context] (apply func [this context])]
+          remainder (next lis)
+          [result new-context] (apply func [this context])]
       (recur new-context remainder (conj acc result))))))
 
 (defn consume [func initial-context]
   (loop [context initial-context
-	 acc []]
+         acc []]
     (let [[result new-context] (apply func [context])]
       (if (not result)
-	[acc new-context]
+        [acc new-context]
       (recur new-context (conj acc result))))))
 
 (defn consume-while [func initial-context]
   (loop [context initial-context
-	 acc []]
+         acc []]
     (let [[result continue new-context] (apply func [context])]
       (if (not continue)
-	[acc context]
+        [acc context]
       (recur new-context (conj acc result))))))
 
 (defn unzip-map [m]
@@ -57,10 +57,10 @@
   (let [len (count s)]
     (if (and (pos? len) (= (nth s (dec (count s))) c))
       (loop [n (dec len)]
-	(cond 
-	 (neg? n) ""
-	 (not (= (nth s n) c)) (subs s 0 (inc n))
-	 true (recur (dec n))))
+        (cond 
+         (neg? n) ""
+         (not (= (nth s n) c)) (subs s 0 (inc n))
+         true (recur (dec n))))
       s)))
 
 (defn ltrim [s c]
@@ -68,9 +68,9 @@
   (let [len (count s)]
     (if (and (pos? len) (= (nth s 0) c))
       (loop [n 0]
-	(if (or (= n len) (not (= (nth s n) c)))
-	  (subs s n)
-	  (recur (inc n))))
+        (if (or (= n len) (not (= (nth s n) c)))
+          (subs s n)
+          (recur (inc n))))
       s)))
 
 (defn prefix-count [aseq val]
@@ -91,5 +91,5 @@ beginning of aseq"
 (defmacro prlabel [prefix arg & more-args]
   "Print args to *err* in name = value format"
   (cons 'prerr (cons (list 'quote prefix) (mapcat #(list (list 'quote %) "=" %) 
-						  (cons arg more-args)))))
+                                                  (cons arg more-args)))))
 

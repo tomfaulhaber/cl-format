@@ -160,10 +160,10 @@
 
 (simple-tests t-tests
   (cl-format nil "~@{~&~A~8,4T~:*~A~}" 
-	     'a 'aa 'aaa 'aaaa 'aaaaa 'aaaaaa 'aaaaaaa 'aaaaaaaa 'aaaaaaaaa 'aaaaaaaaaa)
+             'a 'aa 'aaa 'aaaa 'aaaaa 'aaaaaa 'aaaaaaa 'aaaaaaaa 'aaaaaaaaa 'aaaaaaaaaa)
   "a       a\naa      aa\naaa     aaa\naaaa    aaaa\naaaaa   aaaaa\naaaaaa  aaaaaa\naaaaaaa aaaaaaa\naaaaaaaa    aaaaaaaa\naaaaaaaaa   aaaaaaaaa\naaaaaaaaaa  aaaaaaaaaa"
   (cl-format nil "~@{~&~A~,4T~:*~A~}" 
-	     'a 'aa 'aaa 'aaaa 'aaaaa 'aaaaaa 'aaaaaaa 'aaaaaaaa 'aaaaaaaaa 'aaaaaaaaaa)
+             'a 'aa 'aaa 'aaaa 'aaaaa 'aaaaaa 'aaaaaaa 'aaaaaaaa 'aaaaaaaaa 'aaaaaaaaaa)
   "a    a\naa   aa\naaa  aaa\naaaa aaaa\naaaaa    aaaaa\naaaaaa   aaaaaa\naaaaaaa  aaaaaaa\naaaaaaaa aaaaaaaa\naaaaaaaaa    aaaaaaaaa\naaaaaaaaaa   aaaaaaaaaa"
   (cl-format nil "~@{~&~A~2,6@T~:*~A~}" 'a 'aa 'aaa 'aaaa 'aaaaa 'aaaaaa 'aaaaaaa 'aaaaaaaa 'aaaaaaaaa 'aaaaaaaaaa)
   "a     a\naa    aa\naaa   aaa\naaaa  aaaa\naaaaa       aaaaa\naaaaaa      aaaaaa\naaaaaaa     aaaaaaa\naaaaaaaa    aaaaaaaa\naaaaaaaaa   aaaaaaaaa\naaaaaaaaaa  aaaaaaaaaa"
@@ -215,15 +215,15 @@
   (cl-format nil "Max ~D: ~[Blue team ~D~;Red team ~D~:;No team ~A~].~%" 15, 1, 12)
   "Max 15: Red team 12.\n"
   (cl-format nil "Max ~D: ~[Blue team ~D~;Red team ~D~:;No team ~A~].~%" 
-	     15, -1, "(system failure)")
+             15, -1, "(system failure)")
   "Max 15: No team (system failure).\n"
 
   ;; Nested format tests
   (cl-format nil "Max ~D: ~[Blue team ~D~:[~; (complete success)~]~;Red team ~D~:;No team ~].~%" 
-	     15, 0, 7, true)
+             15, 0, 7, true)
   "Max 15: Blue team 7 (complete success).\n"
   (cl-format nil "Max ~D: ~[Blue team ~D~:[~; (complete success)~]~;Red team ~D~:;No team ~].~%" 
-	     15, 0, 7, false)
+             15, 0, 7, false)
   "Max 15: Blue team 7.\n"
 
   ;; Test the selector as part of the argument
@@ -392,7 +392,7 @@
     (binding [*out* stream]
      (doseq [row aseq]
        (doseq [col row]
-	 (cl-format true "~4D~7,vT" col column-width))
+         (cl-format true "~4D~7,vT" col column-width))
        (prn)))
     (.flush stream)
     (.toString (.getWriter stream))))
@@ -470,7 +470,7 @@
 (simple-tests cltl-E-scale-tests
   (map
     (fn [k] (format nil "Scale factor ~2D~:*: |~13,6,2,VE|" 
-		    (- k 5) 3.14159))              ;Prints 13 lines 
+                    (- k 5) 3.14159))              ;Prints 13 lines 
     (take 13 (integers 0)))
   '("Scale factor -5: | 0.000003E+06|"
     "Scale factor -4: | 0.000031E+05|"
@@ -598,16 +598,16 @@ but it was called with an argument of type short-float.\n")
 
 (simple-tests cltl-up-x3j13-tests
   (format nil 
-	  "~:{/~S~^ ...~}" 
-	  '((hot dog) (hamburger) (ice cream) (french fries))) 
+          "~:{/~S~^ ...~}" 
+          '((hot dog) (hamburger) (ice cream) (french fries))) 
   "/hot .../hamburger/ice .../french ..."
   (format nil 
-	  "~:{/~S~:^ ...~}" 
-	  '((hot dog) (hamburger) (ice cream) (french fries))) 
+          "~:{/~S~:^ ...~}" 
+          '((hot dog) (hamburger) (ice cream) (french fries))) 
   "/hot .../hamburger .../ice .../french"
 
   (format nil 
-	  "~:{/~S~#:^ ...~}"  ;; This is wrong in CLtL
-	  '((hot dog) (hamburger) (ice cream) (french fries))) 
+          "~:{/~S~#:^ ...~}"  ;; This is wrong in CLtL
+          '((hot dog) (hamburger) (ice cream) (french fries))) 
   "/hot .../hamburger")
 

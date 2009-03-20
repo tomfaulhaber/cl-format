@@ -11,11 +11,11 @@
    :extends java.io.Writer
    :init init
    :constructors {[java.io.Writer Integer] [], 
-		  [java.io.Writer] []}
+                  [java.io.Writer] []}
    :methods [[getColumn [] Integer]
-	     [getMaxColumn [] Integer]
-	     [setMaxColumn [Integer] Void]
-	     [getWriter [] java.io.Writer]]
+             [getMaxColumn [] Integer]
+             [setMaxColumn [Integer] Void]
+             [getWriter [] java.io.Writer]]
    :state state))
 
 (def *default-page-width* 72)
@@ -47,23 +47,23 @@
      (.write (get-field this :base) cbuf off len))
   ([this x]
      (condp 
-      =	    ;TODO put these back up when the parser understands condp 
+      =            ;TODO put these back up when the parser understands condp 
       (class x)
 
       String 
       (let [s #^String x
-	    nl (.lastIndexOf x (int \newline))]
-	(dosync (if (neg? nl)
-		  (set-field this :cur (+ (get-field this :cur) (count s)))
-		  (set-field this :cur (- (count s) nl 1))))
-	(.write (get-field this :base) s))
+            nl (.lastIndexOf x (int \newline))]
+        (dosync (if (neg? nl)
+                  (set-field this :cur (+ (get-field this :cur) (count s)))
+                  (set-field this :cur (- (count s) nl 1))))
+        (.write (get-field this :base) s))
 
       Integer
       (let [c #^Character x]
-	(dosync (if (= c (int \newline))
-		  (set-field this :cur 0)
-		  (set-field this :cur (inc (get-field this :cur)))))
-	(.write (get-field this :base) c)))))
+        (dosync (if (= c (int \newline))
+                  (set-field this :cur 0)
+                  (set-field this :cur (inc (get-field this :cur)))))
+        (.write (get-field this :base) c)))))
 
 (defn- -flush [this]) ;; Currently a no-op
 

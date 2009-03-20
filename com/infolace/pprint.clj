@@ -85,18 +85,18 @@ pretty printing the results of macro expansions"}
   (let [optsym (gensym "options-")]
     `(let [~optsym ~options]
        (binding [~@(mapcat 
-		    (fn [[key sym]] `(~sym (if (contains? ~optsym ~key)
-					     (~key ~optsym)
-					     (var-get (find-var (quote ~sym))))))
-		    (eval symbol-map))]
-	 ~@body))))
+                    (fn [[key sym]] `(~sym (if (contains? ~optsym ~key)
+                                             (~key ~optsym)
+                                             (var-get (find-var (quote ~sym))))))
+                    (eval symbol-map))]
+         ~@body))))
 
 ;; (defmacro binding-map [symbol-map options & body]
 ;;   (let [real-map (eval symbol-map)]
 ;;     `(binding [~@(mapcat 
-;; 		  (fn [[key val]] (if-let [var-name (key real-map)]
-;; 				    `(~var-name ~val)))
-;; 		  options)]
+;;                   (fn [[key val]] (if-let [var-name (key real-map)]
+;;                                     `(~var-name ~val)))
+;;                   options)]
 ;;        ~@body)))
 
 (defn pretty-writer? [x] (instance? PrettyWriter x))
@@ -106,8 +106,8 @@ pretty printing the results of macro expansions"}
 (defmacro #^{:private true} with-pretty-writer [base-writer & body]
   `(let [new-writer# (not (pretty-writer? ~base-writer))]
      (binding [*out* (if new-writer#
-		      (make-pretty-writer ~base-writer *print-right-margin* *print-miser-width*)
-		      ~base-writer)]
+                      (make-pretty-writer ~base-writer *print-right-margin* *print-miser-width*)
+                      ~base-writer)]
        ~@body
        (if new-writer# (.flush *out*)))))
 
@@ -119,39 +119,39 @@ recursive calls). Returns the string result if :stream is nil or nil otherwise."
   (let [options (merge {:stream true} (apply hash-map kw-args))]
     (binding-map write-option-table options 
       (let [optval (if (contains? options :stream) 
-		     (:stream options)
-		     true) 
-	    base-writer (condp = optval
-			  nil (java.io.StringWriter.)
-			  true *out*
-			  optval)]
-	(if *print-pretty*
-	  (with-pretty-writer base-writer
-	    ;; TODO better/faster dispatch mechanism!
-	    (loop [dispatch @*print-pprint-dispatch*]
-	      (let [[test func] (first dispatch)]
-		(cond
-		  (empty? dispatch) (if (and *print-suppress-namespaces* (symbol? object))
-				      (print (name object))
-				      (pr object))
-		  (test object) (func *out* object)
-		  :else (recur (next dispatch))))))
-	  (binding [*out* base-writer]
-	    (pr object)))
-	(if (nil? optval) 
-	  (.toString base-writer))))))
+                     (:stream options)
+                     true) 
+            base-writer (condp = optval
+                          nil (java.io.StringWriter.)
+                          true *out*
+                          optval)]
+        (if *print-pretty*
+          (with-pretty-writer base-writer
+            ;; TODO better/faster dispatch mechanism!
+            (loop [dispatch @*print-pprint-dispatch*]
+              (let [[test func] (first dispatch)]
+                (cond
+                  (empty? dispatch) (if (and *print-suppress-namespaces* (symbol? object))
+                                      (print (name object))
+                                      (pr object))
+                  (test object) (func *out* object)
+                  :else (recur (next dispatch))))))
+          (binding [*out* base-writer]
+            (pr object)))
+        (if (nil? optval) 
+          (.toString base-writer))))))
 
 (defn pprint 
   "Pretty print object to the optional output writer. If the writer is not provided, 
 print the object to the currently bound value of *out*."
   [object & more]
   (let [base-stream (if (pos? (count more))
-		 (first more)
-		 *out*)]
+                 (first more)
+                 *out*)]
     (with-pretty-writer base-stream
       (write object :pretty true)
       (if (not (= 0 (.getColumn *out*)))
-	(.write *out* (int \newline))))))
+        (.write *out* (int \newline))))))
 
 (defmacro pp 
   "A convenience macro that pretty prints the last thing output. This is
@@ -177,17 +177,17 @@ exactly equivalent to (pprint *1)."
 
 (defn- parse-lb-options [opts body]
   (loop [body body
-	 acc []]
+         acc []]
     (if (opts (first body))
       (recur (drop 2 body) (concat acc (take 2 body)))
       [(apply hash-map acc) body])))
 
 (defn- check-enumerated-arg [arg choices]
   (if-not (choices arg)
-	  (throw
-	   (IllegalArgumentException.
-	    ;; TODO clean up choices string
-	    (str "Bad argument: " arg ". It must be one of " choices)))))
+          (throw
+           (IllegalArgumentException.
+            ;; TODO clean up choices string
+            (str "Bad argument: " arg ". It must be one of " choices)))))
 
 (defmacro pprint-logical-block 
   "Execute the body as a pretty printing logical block with output to *out* which 
@@ -215,8 +215,8 @@ If the requested stream is not a PrettyWriter, this function does nothing."
   [kind & more] 
   (check-enumerated-arg kind #{:linear :miser :fill :mandatory})
   (let [stream (if (pos? (count more))
-		 (first more)
-		 *out*)]
+                 (first more)
+                 *out*)]
     (if (instance? PrettyWriter stream)
       (.newline stream kind))))
 
@@ -233,8 +233,8 @@ If the requested stream is not a PrettyWriter, this function does nothing."
   [relative-to n & more] 
   (check-enumerated-arg relative-to #{:block :current})
   (let [stream (if (pos? (count more))
-		 (first more)
-		 *out*)]
+                 (first more)
+                 *out*)]
     (if (instance? PrettyWriter stream)
       (.indent stream relative-to n))))
 
@@ -255,8 +255,8 @@ THIS FUNCTION IS NOT YET IMPLEMENTED."
   [kind colnum colinc & more] 
   (check-enumerated-arg kind #{:line :section :line-relative :section-relative})
   (let [stream (if (pos? (count more))
-		 (first more)
-		 *out*)]
+                 (first more)
+                 *out*)]
     (if (instance? PrettyWriter stream)
       (throw (UnsupportedOperationException. "pprint-tab is not yet implemented")))))
 

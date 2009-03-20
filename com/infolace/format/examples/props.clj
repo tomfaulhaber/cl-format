@@ -11,7 +11,7 @@
 
 (defn show-props [stream]
   (let [p (mapcat 
-	   #(vector (key %) (val %)) 
-	   (sort-by key (System/getProperties)))]
+           #(vector (key %) (val %)) 
+           (sort-by key (System/getProperties)))]
     (cl-format true "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
-	       "Property" "Value" ["" "" "" ""] p)))
+               "Property" "Value" ["" "" "" ""] p)))

@@ -14,8 +14,8 @@
   ([pattern] 
      (filter 
       (if pattern
-	(comp (partial re-find pattern) name ns-name)
-	(constantly true))
+        (comp (partial re-find pattern) name ns-name)
+        (constantly true))
       (sort-by ns-name (all-ns)))))
 
 (defn show-doc 
@@ -27,11 +27,11 @@
        ~%~{~{~a: ~{~a~^, ~}~%~a~%~}~^~%~}~2%~}" 
       (map 
        #(vector (ns-name %) 
-		(map
-		 (fn [f] 
-		   (let [f-meta ^(find-var (symbol (str (ns-name %)) (str f)))] 
-		     [f (:arglists f-meta) (:doc f-meta)]))
-		 (filter 
-		  (fn [a] (instance? clojure.lang.IFn a)) 
-		  (sort (map key (ns-publics %))))))
+                (map
+                 (fn [f] 
+                   (let [f-meta ^(find-var (symbol (str (ns-name %)) (str f)))] 
+                     [f (:arglists f-meta) (:doc f-meta)]))
+                 (filter 
+                  (fn [a] (instance? clojure.lang.IFn a)) 
+                  (sort (map key (ns-publics %))))))
        (ns-list pattern)))))

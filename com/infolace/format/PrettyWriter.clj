@@ -13,11 +13,11 @@
    :init init
    :constructors {[java.io.Writer Integer Object] [java.io.Writer Integer]}
    :methods [[startBlock [String String String] void]
-	     [endBlock [] void]
-	     [newline [clojure.lang.Keyword] void]
-	     [indent [clojure.lang.Keyword Integer] void]
-	     [getMiserWidth [] Object]
-	     [setMiserWidth [Object] void]]
+             [endBlock [] void]
+             [newline [clojure.lang.Keyword] void]
+             [indent [clojure.lang.Keyword Integer] void]
+             [getMiserWidth [] Object]
+             [setMiserWidth [Object] void]]
    :exposes-methods {write col-write}
    :state pwstate))
 
@@ -44,7 +44,7 @@
     `(do
        (defstruct ~type-name :type-tag ~@fields)
        (defn- ~(symbol (str "make-" name-str)) 
-	 [& vals#] (apply struct ~type-name ~(keyword name-str) vals#))
+         [& vals#] (apply struct ~type-name ~(keyword name-str) vals#))
        (defn- ~(symbol (str name-str "?")) [x#] (= (:type-tag x#) ~(keyword name-str))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52,9 +52,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstruct #^{:private true} logical-block
-	   :parent :section :start-col :indent
-	   :done-nl :intra-block-nl
-	   :prefix :per-line-prefix :suffix)
+           :parent :section :start-col :indent
+           :done-nl :intra-block-nl
+           :prefix :per-line-prefix :suffix)
 
 (defn ancestor? [parent child]
   (loop [child (:parent child)]
@@ -97,13 +97,13 @@
   [[writer max-columns] 
    (let [lb (struct logical-block nil nil (ref 0) (ref 0) (ref false) (ref false))]
      (ref {:logical-blocks lb 
-	   :sections nil
-	   :mode :writing
-	   :buffer []
-	   :buffer-block lb
-	   :buffer-level 1
-	   :miser-width miser-width
-	   :trailing-white-space nil}))])
+           :sections nil
+           :mode :writing
+           :buffer []
+           :buffer-block lb
+           :buffer-level 1
+           :miser-width miser-width
+           :trailing-white-space nil}))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions to write tokens in the output buffer
@@ -128,11 +128,11 @@
 (defmethod write-token :indent [this token]
   (let [lb (:logical-block token)]
     (ref-set (:indent lb) 
-	     (+ (:offset token)
-		(condp 
-		 = (:relative-to token)
-		 :block @(:start-col lb)
-		 :current (.getColumn this))))))
+             (+ (:offset token)
+                (condp 
+                 = (:relative-to token)
+                 :block @(:start-col lb)
+                 :current (.getColumn this))))))
 
 (defmethod write-token :buffer-blob [this token]
   (.col-write this (:data token)))
@@ -140,7 +140,7 @@
 (defmethod write-token :nl [this token]
 ;  (prlabel wt @(:done-nl (:logical-block token)))
   (if (and (not (= (:type token) :fill))
-	   @(:done-nl (:logical-block token)))
+           @(:done-nl (:logical-block token)))
     (emit-nl this token)
     (if-let [tws (getf :trailing-white-space)]
       (.col-write this tws)))
@@ -149,8 +149,8 @@
 (defn- write-tokens [this tokens force-trailing-whitespace]
   (doseq [token tokens]
     (if-not (= (:type-tag token) :nl)
-	    (if-let [tws (getf :trailing-white-space)]
-	      (.col-write this tws)))
+            (if-let [tws (getf :trailing-white-space)]
+              (.col-write this tws)))
     (write-token this token)
     (setf :trailing-white-space (:trailing-white-space token)))
   (when (and force-trailing-whitespace (getf :trailing-white-space))
@@ -176,8 +176,8 @@
 (defn- miser-nl? [this lb section]
   (let [miser-width (.getMiserWidth this)]
     (and miser-width
-	 (>= @(:start-col lb) (- (.getMaxColumn this) miser-width))
-	 (linear-nl? this lb section))))
+         (>= @(:start-col lb) (- (.getMaxColumn this) miser-width))
+         (linear-nl? this lb section))))
 
 (defmulti emit-nl? (fn [t _ _ _] (:type t)))
 
@@ -192,8 +192,8 @@
 (defmethod emit-nl? :fill [newl this section subsection]
   (let [lb (:logical-block newl)]
     (or @(:intra-block-nl lb)
-	(not (tokens-fit? this subsection))
-	(miser-nl? this lb section))))
+        (not (tokens-fit? this subsection))
+        (miser-nl? this lb section))))
 
 (defmethod emit-nl? :mandatory [_ _ _ _]
   true)
@@ -205,17 +205,17 @@
 
 (defn- get-section [buffer]
   (let [nl (first buffer) 
-	lb (:logical-block nl)
-	section (seq (take-while #(not (and (nl? %) (ancestor? (:logical-block %) lb)))
-				 (next buffer)))]
+        lb (:logical-block nl)
+        section (seq (take-while #(not (and (nl? %) (ancestor? (:logical-block %) lb)))
+                                 (next buffer)))]
     [section (seq (drop (inc (count section)) buffer))])) 
 
 (defn- get-sub-section [buffer]
   (let [nl (first buffer) 
-	lb (:logical-block nl)
-	section (seq (take-while #(let [nl-lb (:logical-block %)]
-				    (not (and (nl? %) (or (= nl-lb lb) (ancestor? nl-lb lb)))))
-			    (next buffer)))]
+        lb (:logical-block nl)
+        section (seq (take-while #(let [nl-lb (:logical-block %)]
+                                    (not (and (nl? %) (or (= nl-lb lb) (ancestor? nl-lb lb)))))
+                            (next buffer)))]
     section)) 
 
 (defn- update-nl-state [lb]
@@ -225,18 +225,18 @@
    (loop [lb (:parent lb)]
      (if lb
        (do (ref-set (:done-nl lb) true)
-	   (ref-set (:intra-block-nl lb) true)
-	   (recur (:parent lb)))))))
+           (ref-set (:intra-block-nl lb) true)
+           (recur (:parent lb)))))))
 
 (defn emit-nl [this nl]
   (.col-write this (int \newline))
   (dosync (setf :trailing-white-space nil))
   (let [lb (:logical-block nl)
-	prefix (:per-line-prefix lb)] 
+        prefix (:per-line-prefix lb)] 
     (if prefix 
       (.col-write this prefix))
     (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
-					   \space)))
+                                           \space)))
     (update-nl-state lb)))
 
 (defn- split-at-newline [tokens]
@@ -263,29 +263,29 @@
     (if a (write-tokens this a false))
     (if b
       (let [[section remainder] (get-section b)
-	    newl (first b)]
-;; 	(prlabel wts (toks section)) (prlabel wts (:type newl)) (prlabel wts (toks remainder)) 
-	(let [do-nl (emit-nl? newl this section (get-sub-section b))
-	      result (if do-nl 
-		       (do
-;; 			 (prlabel emit-nl (:type newl))
-			 (emit-nl this newl)
-			 (next b))
-		       b)
-	      long-section (not (tokens-fit? this result))
-	      result (if long-section
-		       (let [rem2 (write-token-string this section)]
-;;; 			     (prlabel recurse (toks rem2))
-			 (if (= rem2 section)
-			   (do ; If that didn't produce any output, it has no nls
-					; so we'll force it
-			     (write-tokens this section false)
-			     remainder)
-			   (into [] (concat rem2 remainder))))
-		       result)
-;;	      ff (prlabel wts (toks result))
-	      ] 
-	  result)))))
+            newl (first b)]
+;;         (prlabel wts (toks section)) (prlabel wts (:type newl)) (prlabel wts (toks remainder)) 
+        (let [do-nl (emit-nl? newl this section (get-sub-section b))
+              result (if do-nl 
+                       (do
+;;                          (prlabel emit-nl (:type newl))
+                         (emit-nl this newl)
+                         (next b))
+                       b)
+              long-section (not (tokens-fit? this result))
+              result (if long-section
+                       (let [rem2 (write-token-string this section)]
+;;;                              (prlabel recurse (toks rem2))
+                         (if (= rem2 section)
+                           (do ; If that didn't produce any output, it has no nls
+                                        ; so we'll force it
+                             (write-tokens this section false)
+                             remainder)
+                           (into [] (concat rem2 remainder))))
+                       result)
+;;              ff (prlabel wts (toks result))
+              ] 
+          result)))))
 
 (defn- write-line [this]
   (dosync
@@ -294,9 +294,9 @@
      (setf :buffer (into [] buffer))
      (if (not (tokens-fit? this buffer))
        (let [new-buffer (write-token-string this buffer)]
-;; 	 (prlabel wl new-buffer)
-	 (if-not (identical? buffer new-buffer)
-		 (recur new-buffer)))))))
+;;          (prlabel wl new-buffer)
+         (if-not (identical? buffer new-buffer)
+                 (recur new-buffer)))))))
 
 ;;; Add a buffer token to the buffer and see if it's time to start
 ;;; writing
@@ -324,19 +324,19 @@
       s
       (dosync 
        (let [prefix (:per-line-prefix (first (getf :logical-blocks)))] 
-	 (if (= :buffering (getf :mode))
-	   (do
-	     (add-to-buffer this (make-buffer-blob (first lines) nil))
-	     (write-buffered-output this))
-	   (.col-write this (first lines)))
-	 (.col-write this (int \newline))
-	 (doseq [l (next (butlast lines))]
-	   (.col-write this l)
-	   (.col-write this (int \newline))
-	   (if prefix
-	     (.col-write this prefix)))
-	 (setf :buffering :writing)
-	 (last lines))))))
+         (if (= :buffering (getf :mode))
+           (do
+             (add-to-buffer this (make-buffer-blob (first lines) nil))
+             (write-buffered-output this))
+           (.col-write this (first lines)))
+         (.col-write this (int \newline))
+         (doseq [l (next (butlast lines))]
+           (.col-write this l)
+           (.col-write this (int \newline))
+           (if prefix
+             (.col-write this prefix)))
+         (setf :buffering :writing)
+         (last lines))))))
 
 
 (defn write-white-space [this]
@@ -353,30 +353,30 @@
   ([this x]
 ;;     (prlabel write x (getf :mode))
      (condp 
-      =	    ;TODO put these back up when the parser understands condp 
+      =            ;TODO put these back up when the parser understands condp 
       (class x)
 
       String 
       (let [s0 (write-initial-lines this x)
-	    s (.replaceFirst s0 "\\s+$" "")
-	    white-space (.substring s0 (count s))
-	    mode (getf :mode)]
-	(if (= mode :writing)
-	  (dosync
-	   (write-white-space this)
-	   (.col-write this s)
-	   (setf :trailing-white-space white-space))
-	  (add-to-buffer this (make-buffer-blob s white-space))))
+            s (.replaceFirst s0 "\\s+$" "")
+            white-space (.substring s0 (count s))
+            mode (getf :mode)]
+        (if (= mode :writing)
+          (dosync
+           (write-white-space this)
+           (.col-write this s)
+           (setf :trailing-white-space white-space))
+          (add-to-buffer this (make-buffer-blob s white-space))))
 
       Integer
       (let [c #^Character x]
-	(if (= (getf :mode) :writing)
-	  (do 
-	    (write-white-space this)
-	    (.col-write this x))
-	  (if (= c (int \newline))
-	    (write-initial-lines this "\n")
-	    (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))
+        (if (= (getf :mode) :writing)
+          (do 
+            (write-white-space this)
+            (.col-write this x))
+          (if (= c (int \newline))
+            (write-initial-lines this "\n")
+            (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))
 
 (defn- -flush [this]
   (if (= (getf :mode) :buffering)
@@ -386,7 +386,7 @@
     (write-white-space this)))
 
 (defn- -close [this]
-  (-flush this))			;TODO: close underlying stream?
+  (-flush this))                        ;TODO: close underlying stream?
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Methods for PrettyWriter
@@ -395,17 +395,17 @@
 (defn- -startBlock [this prefix per-line-prefix suffix]
   (dosync 
    (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0)
-		    (ref false) (ref false)
-		    prefix per-line-prefix suffix)]
+                    (ref false) (ref false)
+                    prefix per-line-prefix suffix)]
      (setf :logical-blocks lb)
      (if (= (getf :mode) :writing)
        (do
-	 (write-white-space this)
-	 (if prefix 
-	   (.col-write this prefix))
-	 (let [col (.getColumn this)]
-	   (ref-set (:start-col lb) col)
-	   (ref-set (:indent lb) col)))
+         (write-white-space this)
+         (if prefix 
+           (.col-write this prefix))
+         (let [col (.getColumn this)]
+           (ref-set (:start-col lb) col)
+           (ref-set (:indent lb) col)))
        (add-to-buffer this (make-start-block lb))))))
 
 (defn- -endBlock [this]
@@ -413,9 +413,9 @@
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
        (do
-	 (write-white-space this)
-	 (if-let [suffix (:suffix lb)]
-	   (.col-write this suffix)))
+         (write-white-space this)
+         (if-let [suffix (:suffix lb)]
+           (.col-write this suffix)))
        (add-to-buffer this (make-end-block lb)))
      (setf :logical-blocks (:parent lb)))))
 
@@ -429,12 +429,12 @@
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
        (do
-	 (write-white-space this)
-	 (ref-set (:indent lb) 
-		  (+ offset (condp 
-			     = relative-to
-			     :block @(:start-col lb)
-			     :current (.getColumn this)))))
+         (write-white-space this)
+         (ref-set (:indent lb) 
+                  (+ offset (condp 
+                             = relative-to
+                             :block @(:start-col lb)
+                             :current (.getColumn this)))))
        (add-to-buffer this (make-indent lb relative-to offset))))))
 
 (defn- -getMiserWidth [this]
