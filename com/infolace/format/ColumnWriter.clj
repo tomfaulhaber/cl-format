@@ -49,20 +49,17 @@
      (let [#^java.io.Writer writer (get-field this :base)] 
        (.write writer cbuf off len)))
   ([#^com.infolace.format.ColumnWriter this x]
-     (condp 
-      =            ;TODO put these back up when the parser understands condp 
-      (class x)
+     (condp = (class x)
+       String 
+       (let [#^String s x
+	     nl (.lastIndexOf s (int \newline))]
+	 (dosync (if (neg? nl)
+		   (set-field this :cur (+ (get-field this :cur) (count s)))
+		   (set-field this :cur (- (count s) nl 1))))
+	 (.write #^java.io.Writer (get-field this :base) s))
 
-      String 
-      (let [#^String s x
-            nl (.lastIndexOf s (int \newline))]
-        (dosync (if (neg? nl)
-                  (set-field this :cur (+ (get-field this :cur) (count s)))
-                  (set-field this :cur (- (count s) nl 1))))
-        (.write #^java.io.Writer (get-field this :base) s))
-
-      Integer
-      (write-char this x))))
+       Integer
+       (write-char this x))))
 
 (defn- write-char [#^com.infolace.format.ColumnWriter this #^Integer c]
   (dosync (if (= c (int \newline))

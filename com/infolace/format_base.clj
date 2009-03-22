@@ -428,9 +428,9 @@ Note this should only be used for the last one in the sequence"
 (defn- readable-character [params navigator offsets]
   (let [[c navigator] (next-arg navigator)]
     (condp = (:char-format params)
-             \o (cl-format true "\\o~3,'0o" (int c))
-             \u (cl-format true "\\u~4,'0x" (int c))
-             nil (pr c))
+      \o (cl-format true "\\o~3,'0o" (int c))
+      \u (cl-format true "\\u~4,'0x" (int c))
+      nil (pr c))
     navigator))
 
 (defn- plain-character [params navigator offsets]
@@ -937,17 +937,14 @@ Note this should only be used for the last one in the sequence"
     (write ([cbuf off len] 
               (.write writer cbuf off len))
            ([x]
-              (condp 
-               = ;TODO put these back up when the parser understands condp 
-               (class x)
+              (condp = (class x)
+		String 
+		(let [s #^String x]
+		  (.write writer (.toLowerCase s)))
 
-               String 
-               (let [s #^String x]
-                 (.write writer (.toLowerCase s)))
-
-               Integer
-               (let [c #^Character x]
-                 (.write writer (int (Character/toLowerCase (char c))))))))))
+		Integer
+		(let [c #^Character x]
+		  (.write writer (int (Character/toLowerCase (char c))))))))))
 
 (defn- upcase-writer 
   "Returns a proxy that wraps writer, converting all characters to upper case"
@@ -958,17 +955,14 @@ Note this should only be used for the last one in the sequence"
     (write ([cbuf off len] 
               (.write writer cbuf off len))
            ([x]
-              (condp 
-               = ;TODO put these back up when the parser understands condp 
-               (class x)
+              (condp = (class x)
+		String 
+		(let [s #^String x]
+		  (.write writer (.toUpperCase s)))
 
-               String 
-               (let [s #^String x]
-                 (.write writer (.toUpperCase s)))
-
-               Integer
-               (let [c #^Character x]
-                 (.write writer (int (Character/toUpperCase (char c))))))))))
+		Integer
+		(let [c #^Character x]
+		  (.write writer (int (Character/toUpperCase (char c))))))))))
 
 (defn- capitalize-string
   "Capitalizes the words in a string. If first? is false, don't capitalize the 
@@ -999,27 +993,24 @@ Note this should only be used for the last one in the sequence"
   [writer]
   (let [last-was-whitespace? (ref true)] 
     (proxy [java.io.Writer] []
-     (close [] (.close writer))
-     (flush [] (.flush writer))
-     (write ([cbuf off len] 
-               (.write writer cbuf off len))
-            ([x]
-               (condp 
-                = ;TODO put these back up when the parser understands condp 
-                (class x)
+      (close [] (.close writer))
+      (flush [] (.flush writer))
+      (write ([cbuf off len] 
+		(.write writer cbuf off len))
+	     ([x]
+		(condp = (class x)
+		  String 
+		  (let [s #^String x]
+		    (.write writer (capitalize-string (.toLowerCase s) @last-was-whitespace?))
+		    (dosync 
+		     (ref-set last-was-whitespace? 
+			      (Character/isWhitespace (nth s (dec (count s)))))))
 
-                String 
-                (let [s #^String x]
-                  (.write writer (capitalize-string (.toLowerCase s) @last-was-whitespace?))
-                  (dosync 
-                   (ref-set last-was-whitespace? 
-                            (Character/isWhitespace (nth s (dec (count s)))))))
-
-                Integer
-                (let [c #^Character (char x)]
-                  (let [mod-c (if @last-was-whitespace? (Character/toUpperCase c) c)] 
-                   (.write writer (int mod-c))
-                   (dosync (ref-set last-was-whitespace? (Character/isWhitespace c)))))))))))
+		  Integer
+		  (let [c #^Character (char x)]
+		    (let [mod-c (if @last-was-whitespace? (Character/toUpperCase c) c)] 
+		      (.write writer (int mod-c))
+		      (dosync (ref-set last-was-whitespace? (Character/isWhitespace c)))))))))))
 
 (defn- init-cap-writer
   "Returns a proxy that wraps writer, capitalizing the first word"

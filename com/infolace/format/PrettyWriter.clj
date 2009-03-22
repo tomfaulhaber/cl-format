@@ -129,10 +129,9 @@
   (let [lb (:logical-block token)]
     (ref-set (:indent lb) 
              (+ (:offset token)
-                (condp 
-                 = (:relative-to token)
-                 :block @(:start-col lb)
-                 :current (.getColumn this))))))
+                (condp = (:relative-to token)
+		  :block @(:start-col lb)
+		  :current (.getColumn this))))))
 
 (defmethod write-token :buffer-blob [#^com.infolace.format.PrettyWriter this token]
   (.col-write this #^String (:data token)))
@@ -356,25 +355,22 @@
 
 (defn- -write 
   ([#^com.infolace.format.PrettyWriter this x]
-;;     (prlabel write x (getf :mode))
-     (condp 
-      =            ;TODO put these back up when the parser understands condp 
-      (class x)
+     ;;     (prlabel write x (getf :mode))
+     (condp = (class x)
+       String 
+       (let [#^String s0 (write-initial-lines this x)
+	     #^String s (.replaceFirst s0 "\\s+$" "")
+	     white-space (.substring s0 (count s))
+	     mode (getf :mode)]
+	 (if (= mode :writing)
+	   (dosync
+	    (write-white-space this)
+	    (.col-write this s)
+	    (setf :trailing-white-space white-space))
+	   (add-to-buffer this (make-buffer-blob s white-space))))
 
-      String 
-      (let [#^String s0 (write-initial-lines this x)
-            #^String s (.replaceFirst s0 "\\s+$" "")
-            white-space (.substring s0 (count s))
-            mode (getf :mode)]
-        (if (= mode :writing)
-          (dosync
-           (write-white-space this)
-           (.col-write this s)
-           (setf :trailing-white-space white-space))
-          (add-to-buffer this (make-buffer-blob s white-space))))
-
-      Integer
-      (write-char this x))))
+       Integer
+       (write-char this x))))
 
 (defn- write-char [#^com.infolace.format.PrettyWriter this #^Integer c]
   (if (= (getf :mode) :writing)
@@ -440,10 +436,9 @@
        (do
          (write-white-space this)
          (ref-set (:indent lb) 
-                  (+ offset (condp 
-                             = relative-to
-                             :block @(:start-col lb)
-                             :current (.getColumn this)))))
+                  (+ offset (condp = relative-to
+			      :block @(:start-col lb)
+			      :current (.getColumn this)))))
        (add-to-buffer this (make-indent lb relative-to offset))))))
 
 (defn- -getMiserWidth [#^com.infolace.format.PrettyWriter this]
