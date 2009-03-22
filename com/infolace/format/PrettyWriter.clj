@@ -112,20 +112,20 @@
 (declare emit-nl)
 
 (defmulti write-token #(:type-tag %2))
-(defmethod write-token :start-block [this token]
+(defmethod write-token :start-block [#^com.infolace.format.PrettyWriter this token]
   (let [lb (:logical-block token)]
     (dosync
-     (if-let [prefix (:prefix lb)] 
+     (if-let [#^String prefix (:prefix lb)] 
        (.col-write this prefix))
      (let [col (.getColumn this)]
        (ref-set (:start-col lb) col)
        (ref-set (:indent lb) col)))))
 
-(defmethod write-token :end-block [this token]
-  (if-let [suffix (:suffix (:logical-block token))] 
+(defmethod write-token :end-block [#^com.infolace.format.PrettyWriter this token]
+  (if-let [#^String suffix (:suffix (:logical-block token))] 
     (.col-write this suffix)))
 
-(defmethod write-token :indent [this token]
+(defmethod write-token :indent [#^com.infolace.format.PrettyWriter this token]
   (let [lb (:logical-block token)]
     (ref-set (:indent lb) 
              (+ (:offset token)
@@ -134,28 +134,29 @@
                  :block @(:start-col lb)
                  :current (.getColumn this))))))
 
-(defmethod write-token :buffer-blob [this token]
-  (.col-write this (:data token)))
+(defmethod write-token :buffer-blob [#^com.infolace.format.PrettyWriter this token]
+  (.col-write this #^String (:data token)))
 
-(defmethod write-token :nl [this token]
+(defmethod write-token :nl [#^com.infolace.format.PrettyWriter this token]
 ;  (prlabel wt @(:done-nl (:logical-block token)))
   (if (and (not (= (:type token) :fill))
            @(:done-nl (:logical-block token)))
     (emit-nl this token)
-    (if-let [tws (getf :trailing-white-space)]
+    (if-let [#^String tws (getf :trailing-white-space)]
       (.col-write this tws)))
   (dosync (setf :trailing-white-space nil)))
 
-(defn- write-tokens [this tokens force-trailing-whitespace]
+(defn- write-tokens [#^com.infolace.format.PrettyWriter this tokens force-trailing-whitespace]
   (doseq [token tokens]
     (if-not (= (:type-tag token) :nl)
-            (if-let [tws (getf :trailing-white-space)]
-              (.col-write this tws)))
+      (if-let [#^String tws (getf :trailing-white-space)]
+	(.col-write this tws)))
     (write-token this token)
     (setf :trailing-white-space (:trailing-white-space token)))
-  (when (and force-trailing-whitespace (getf :trailing-white-space))
-    (.col-write this (getf :trailing-white-space))
-    (setf :trailing-white-space nil)))
+  (let [#^String tws (getf :trailing-white-space)] 
+    (when (and force-trailing-whitespace tws)
+      (.col-write this tws)
+      (setf :trailing-white-space nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; emit-nl? method defs for each type of new line. This makes
@@ -163,7 +164,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defn- tokens-fit? [this tokens]
+(defn- tokens-fit? [#^com.infolace.format.PrettyWriter this tokens]
 ;  (prlabel tf? (.getColumn this) (buffer-length tokens))
   (< (+ (.getColumn this) (buffer-length tokens))
      (.getMaxColumn this)))
@@ -173,7 +174,7 @@
   (or @(:done-nl lb)
       (not (tokens-fit? this section))))
 
-(defn- miser-nl? [this lb section]
+(defn- miser-nl? [#^com.infolace.format.PrettyWriter this lb section]
   (let [miser-width (.getMiserWidth this)]
     (and miser-width
          (>= @(:start-col lb) (- (.getMaxColumn this) miser-width))
@@ -228,15 +229,16 @@
            (ref-set (:intra-block-nl lb) true)
            (recur (:parent lb)))))))
 
-(defn emit-nl [this nl]
+(defn emit-nl [#^com.infolace.format.PrettyWriter this nl]
   (.col-write this (int \newline))
   (dosync (setf :trailing-white-space nil))
   (let [lb (:logical-block nl)
-        prefix (:per-line-prefix lb)] 
+        #^String prefix (:per-line-prefix lb)] 
     (if prefix 
       (.col-write this prefix))
-    (.col-write this (apply str (replicate (- @(:indent lb) (count prefix))
-                                           \space)))
+    (let [#^String istr (apply str (repeat (- @(:indent lb) (count prefix))
+					  \space))] 
+      (.col-write this istr))
     (update-nl-state lb)))
 
 (defn- split-at-newline [tokens]
@@ -287,7 +289,7 @@
               ] 
           result)))))
 
-(defn- write-line [this]
+(defn- write-line [#^com.infolace.format.PrettyWriter this]
   (dosync
    (loop [buffer (getf :buffer)]
 ;;     (prlabel wl1 (toks buffer))
@@ -300,7 +302,7 @@
 
 ;;; Add a buffer token to the buffer and see if it's time to start
 ;;; writing
-(defn- add-to-buffer [this token]
+(defn- add-to-buffer [#^com.infolace.format.PrettyWriter this token]
 ;  (prlabel a2b token)
   (dosync
    (setf :buffer (conj (getf :buffer) token))
@@ -308,7 +310,7 @@
      (write-line this))))
 
 ;;; Write all the tokens that have been buffered
-(defn- write-buffered-output [this]
+(defn- write-buffered-output [#^com.infolace.format.PrettyWriter this]
   (write-line this)
   (if-let [buf (getf :buffer)]
     (do
@@ -318,19 +320,20 @@
 ;;; If there are newlines in the string, print the lines up until the last newline, 
 ;;; making the appropriate adjustments. Return the remainder of the string
 (defn- write-initial-lines 
-  [this s] 
+  [#^com.infolace.format.PrettyWriter this #^String s] 
   (let [lines (.split s "\n" -1)]
     (if (= (count lines) 1)
       s
       (dosync 
-       (let [prefix (:per-line-prefix (first (getf :logical-blocks)))] 
+       (let [#^String prefix (:per-line-prefix (first (getf :logical-blocks)))] 
          (if (= :buffering (getf :mode))
            (do
              (add-to-buffer this (make-buffer-blob (first lines) nil))
              (write-buffered-output this))
-           (.col-write this (first lines)))
+           (let [#^String l (first lines)]
+	     (.col-write this l)))
          (.col-write this (int \newline))
-         (doseq [l (next (butlast lines))]
+         (doseq [#^String l (next (butlast lines))]
            (.col-write this l)
            (.col-write this (int \newline))
            (if prefix
@@ -339,8 +342,8 @@
          (last lines))))))
 
 
-(defn write-white-space [this]
-  (if-let [tws (getf :trailing-white-space)]
+(defn write-white-space [#^com.infolace.format.PrettyWriter this]
+  (if-let [#^String tws (getf :trailing-white-space)]
     (dosync
      (.col-write this tws)
      (setf :trailing-white-space nil))))
@@ -349,16 +352,18 @@
 ;;; Writer overrides
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare write-char)
+
 (defn- -write 
-  ([this x]
+  ([#^com.infolace.format.PrettyWriter this x]
 ;;     (prlabel write x (getf :mode))
      (condp 
       =            ;TODO put these back up when the parser understands condp 
       (class x)
 
       String 
-      (let [s0 (write-initial-lines this x)
-            s (.replaceFirst s0 "\\s+$" "")
+      (let [#^String s0 (write-initial-lines this x)
+            #^String s (.replaceFirst s0 "\\s+$" "")
             white-space (.substring s0 (count s))
             mode (getf :mode)]
         (if (= mode :writing)
@@ -369,16 +374,18 @@
           (add-to-buffer this (make-buffer-blob s white-space))))
 
       Integer
-      (let [c #^Character x]
-        (if (= (getf :mode) :writing)
-          (do 
-            (write-white-space this)
-            (.col-write this x))
-          (if (= c (int \newline))
-            (write-initial-lines this "\n")
-            (add-to-buffer this (make-buffer-blob (str (char c)) nil))))))))
+      (write-char this x))))
 
-(defn- -flush [this]
+(defn- write-char [#^com.infolace.format.PrettyWriter this #^Integer c]
+  (if (= (getf :mode) :writing)
+    (do 
+      (write-white-space this)
+      (.col-write this c))
+    (if (= c \newline)
+      (write-initial-lines this "\n")
+      (add-to-buffer this (make-buffer-blob (str (char c)) nil)))))
+
+(defn- -flush [#^com.infolace.format.PrettyWriter this]
   (if (= (getf :mode) :buffering)
     (dosync 
      (write-tokens this (getf :buffer) true)
@@ -392,7 +399,9 @@
 ;;; Methods for PrettyWriter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- -startBlock [this prefix per-line-prefix suffix]
+(defn- -startBlock 
+  [#^com.infolace.format.PrettyWriter this 
+   #^String prefix #^String per-line-prefix #^String suffix]
   (dosync 
    (let [lb (struct logical-block (getf :logical-blocks) nil (ref 0) (ref 0)
                     (ref false) (ref false)
@@ -408,23 +417,23 @@
            (ref-set (:indent lb) col)))
        (add-to-buffer this (make-start-block lb))))))
 
-(defn- -endBlock [this]
+(defn- -endBlock [#^com.infolace.format.PrettyWriter this]
   (dosync
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
        (do
          (write-white-space this)
-         (if-let [suffix (:suffix lb)]
+         (if-let [#^String suffix (:suffix lb)]
            (.col-write this suffix)))
        (add-to-buffer this (make-end-block lb)))
      (setf :logical-blocks (:parent lb)))))
 
-(defn- -newline [this type]
+(defn- -newline [#^com.infolace.format.PrettyWriter this type]
   (dosync 
    (setf :mode :buffering)
    (add-to-buffer this (make-nl type (getf :logical-blocks)))))
 
-(defn- -indent [this relative-to offset]
+(defn- -indent [#^com.infolace.format.PrettyWriter this relative-to offset]
   (dosync 
    (let [lb (getf :logical-blocks)]
      (if (= (getf :mode) :writing)
@@ -437,9 +446,9 @@
                              :current (.getColumn this)))))
        (add-to-buffer this (make-indent lb relative-to offset))))))
 
-(defn- -getMiserWidth [this]
+(defn- -getMiserWidth [#^com.infolace.format.PrettyWriter this]
   (getf :miser-width))
 
-(defn- -setMiserWidth [this new-miser-width]
+(defn- -setMiserWidth [#^com.infolace.format.PrettyWriter this new-miser-width]
   (dosync (setf :miser-width new-miser-width)))
 

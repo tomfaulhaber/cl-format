@@ -24,10 +24,10 @@
   ([writer] (-init writer *default-page-width*))
   ([writer max-columns] [[] (ref {:max max-columns, :cur 0, :base writer})]))
 
-(defn- get-field [this sym]
+(defn- get-field [#^com.infolace.format.ColumnWriter this sym]
   (sym @(.state this)))
 
-(defn- set-field [this sym new-val] 
+(defn- set-field [#^com.infolace.format.ColumnWriter this sym new-val] 
   (alter (.state this) assoc sym new-val))
 
 (defn- -getColumn [this]
@@ -42,28 +42,33 @@
 (defn- -getWriter [this]
   (get-field this :base))
 
+(declare write-char)
+
 (defn- -write 
-  ([this cbuf off len] 
-     (.write (get-field this :base) cbuf off len))
-  ([this x]
+  ([#^com.infolace.format.ColumnWriter this #^chars cbuf #^Integer off #^Integer len] 
+     (let [#^java.io.Writer writer (get-field this :base)] 
+       (.write writer cbuf off len)))
+  ([#^com.infolace.format.ColumnWriter this x]
      (condp 
       =            ;TODO put these back up when the parser understands condp 
       (class x)
 
       String 
-      (let [s #^String x
-            nl (.lastIndexOf x (int \newline))]
+      (let [#^String s x
+            nl (.lastIndexOf s (int \newline))]
         (dosync (if (neg? nl)
                   (set-field this :cur (+ (get-field this :cur) (count s)))
                   (set-field this :cur (- (count s) nl 1))))
-        (.write (get-field this :base) s))
+        (.write #^java.io.Writer (get-field this :base) s))
 
       Integer
-      (let [c #^Character x]
-        (dosync (if (= c (int \newline))
-                  (set-field this :cur 0)
-                  (set-field this :cur (inc (get-field this :cur)))))
-        (.write (get-field this :base) c)))))
+      (write-char this x))))
+
+(defn- write-char [#^com.infolace.format.ColumnWriter this #^Integer c]
+  (dosync (if (= c (int \newline))
+	    (set-field this :cur 0)
+	    (set-field this :cur (inc (get-field this :cur)))))
+  (.write #^java.io.Writer (get-field this :base) c))
 
 (defn- -flush [this]) ;; Currently a no-op
 
