@@ -31,7 +31,7 @@
 ;;;
 ;;; Most other syntax stuff is dealt with directly by the formats (like (), [], {}, and #{})
 ;;; or directly by printing the objects using Clojure's built-in print functions (like
-;;; :keyword, \char, or ""). TODO: The notable exception is #() which is special-cased.
+;;; :keyword, \char, or ""). The notable exception is #() which is special-cased.
 
 (def reader-macros
      {'quote (int \'), 'clojure.core/meta (int \^), 'clojure.core/deref (int \@), 
