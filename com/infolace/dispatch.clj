@@ -263,12 +263,15 @@
 (def *code-table*
      (two-forms
       (add-core-ns
-       {'def pprint-def 
-	'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
+       {'def pprint-def, 
+	'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn, 'fn pprint-defn,
         'let pprint-let, 'loop pprint-let, 'binding pprint-let,
+        'with-local-vars pprint-let, 'with-open pprint-let, 'when-let pprint-let,
+	'if-let pprint-let, 'doseq pprint-let, 'dotimes pprint-let,
+	'when-first pprint-let,
         'if pprint-if, 'if-not pprint-if, 'when pprint-if,
         'cond pprint-cond, 'condp pprint-condp,
-        'fn* pprint-anon-func
+        'fn* pprint-anon-func,
         })))
 
 (defn pprint-code-list [writer alis]
