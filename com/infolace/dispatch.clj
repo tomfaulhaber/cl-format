@@ -94,6 +94,14 @@
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Atom %) pprint-atom]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Agent %) pprint-agent]))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Format something that looks like a simple def (sans metadata, since the reader
+;;; won't give it to us now).
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def pprint-def (formatter "~:<~w~^ ~@_~w~^ ~_~@{~w~^ ~_~}~:>"))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Format something that looks like a defn or defmacro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -255,7 +263,8 @@
 (def *code-table*
      (two-forms
       (add-core-ns
-       {'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
+       {'def pprint-def 
+	'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn,
         'let pprint-let, 'loop pprint-let, 'binding pprint-let,
         'if pprint-if, 'if-not pprint-if, 'when pprint-if,
         'cond pprint-cond, 'condp pprint-condp,
