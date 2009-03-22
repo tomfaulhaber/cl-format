@@ -65,6 +65,7 @@
    (> result 400)
    (cl-format true \"That number is too big\")
    (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))"
+
   (with-pprint-dispatch *code-dispatch*
     (write '(defn foo [x y] 
               (let [result (* x y)] 
@@ -77,6 +78,7 @@
     (if (> result 400)
       (cl-format true \"That number is too big\")
       (cl-format true \"The  result of ~d x ~d is ~d\" x y result))))"
+
   (binding [*print-pprint-dispatch* *simple-dispatch*
             *print-right-margin* 15] 
     (write '(fn (cons (car x) (cdr y))) :stream nil))
@@ -91,3 +93,25 @@
   )
 
 
+
+(simple-tests pprint-reader-macro-test
+  (with-pprint-dispatch *code-dispatch*
+    (write (read-string "(map #(first %) [[1 2 3] [4 5 6] [7]])")
+	   :stream nil))
+  "(map #(first %) [[1 2 3] [4 5 6] [7]])"
+
+  (with-pprint-dispatch *code-dispatch*
+    (write (read-string "^#'first")
+	   :stream nil))
+  "^#'first"
+
+  (with-pprint-dispatch *code-dispatch*
+    (write (read-string "@@(ref (ref 1))")
+	   :stream nil))
+  "@@(ref (ref 1))"
+
+  (with-pprint-dispatch *code-dispatch*
+    (write (read-string "'foo")
+	   :stream nil))
+  "'foo"
+)
