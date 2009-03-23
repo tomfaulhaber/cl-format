@@ -104,7 +104,7 @@
 ;;; won't give it to us now).
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def pprint-def (formatter "~:<~w~^ ~@_~w~^ ~_~@{~w~^ ~_~}~:>"))
+(def pprint-hold-first (formatter "~:<~w~^ ~@_~w~^ ~_~@{~w~^ ~_~}~:>"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Format something that looks like a defn or defmacro
@@ -279,15 +279,18 @@
 (def *code-table*
      (two-forms
       (add-core-ns
-       {'def pprint-def, 
+       {'def pprint-hold-first, 'defonce pprint-hold-first, 
 	'defn pprint-defn, 'defn- pprint-defn, 'defmacro pprint-defn, 'fn pprint-defn,
         'let pprint-let, 'loop pprint-let, 'binding pprint-let,
         'with-local-vars pprint-let, 'with-open pprint-let, 'when-let pprint-let,
 	'if-let pprint-let, 'doseq pprint-let, 'dotimes pprint-let,
 	'when-first pprint-let,
-        'if pprint-if, 'if-not pprint-if, 'when pprint-if,
+        'if pprint-if, 'if-not pprint-if, 'when pprint-if, 'when-not pprint-if,
         'cond pprint-cond, 'condp pprint-condp,
         'fn* pprint-anon-func,
+        '. pprint-hold-first, '.. pprint-hold-first, '-> pprint-hold-first,
+        'locking pprint-hold-first, 'struct pprint-hold-first,
+        'struct-map pprint-hold-first, 
         })))
 
 (defn pprint-code-list [writer alis]
