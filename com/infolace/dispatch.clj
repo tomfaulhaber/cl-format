@@ -49,6 +49,10 @@
 ;; as data (as opposed to code).
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; TODO: inline these formatter statements into funcs so that we
+;;; are a little easier on the stack. (Or, do "real" compilation, a
+;;; la Common Lisp)
+
 (def pprint-simple-list (formatter "~:<~@{~w~^ ~_~}~:>"))
 (defn pprint-list [writer alis]
   (if-not (pprint-reader-macro writer alis)
@@ -240,7 +244,19 @@
 ;;; special forms).
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def pprint-simple-code-list (formatter "~:<~1I~@{~w~^ ~_~}~:>"))
+;;; This is the equivalent of (formatter "~:<~1I~@{~w~^ ~_~}~:>"), but is
+;;; easier on the stack.
+
+(defn pprint-simple-code-list [writer alis]
+  (pprint-logical-block writer :prefix "(" :suffix ")"
+    (pprint-indent :block 1)
+    (loop [alis (seq alis)]
+      (when alis
+	(write (first alis))
+	(when (next alis)
+	  (.write *out* " ")
+	  (pprint-newline :linear)
+	  (recur (next alis)))))))
 
 ;;; Take a map with symbols as keys and add versions with no namespace.
 ;;; That is, if ns/sym->val is in the map, add sym->val to the result.
@@ -276,9 +292,10 @@
 
 (defn pprint-code-list [writer alis]
   (if-not (pprint-reader-macro writer alis) 
-          (if-let [special-form (*code-table* (first alis))]
-            (special-form writer alis)
-            (pprint-simple-code-list writer alis))))
+    (if-let [special-form (*code-table* (first alis))]
+      (special-form writer alis)
+      (pprint-simple-code-list writer alis))))
+
 (dosync (alter *code-dispatch* conj [list? pprint-code-list]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Cons %) pprint-code-list]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.LazySeq %) pprint-code-list]))

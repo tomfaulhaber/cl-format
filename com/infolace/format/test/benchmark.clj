@@ -1,4 +1,4 @@
-;   Copyright (c) Tom Faulhaber, Dec 2008. All rights reserved.
+;   Copyright (c) Tom Faulhaber, Mar 2009. All rights reserved.
 ;   The use and distribution terms for this software are covered by the
 ;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
 ;   which can be found in the file epl-v10.html at the root of this distribution.
@@ -17,8 +17,7 @@
               *print-suppress-namespaces* true] 
       (loop [form (read r false :eof-special-token)]
         (when (not= form :eof-special-token) 
-          (if (not (= (first form) 'defmacro)) ; skip the macros (and backquotes) for now
-            (pprint form))
+          (pprint form)
           (recur (read r false :eof-special-token)))))))
 
 (defn do-timing [iters]
@@ -38,9 +37,18 @@
      func#))
 " (read))))
 
-(defn explode [] 
+(defn explode-min [] 
   (binding [*print-pprint-dispatch* *code-dispatch*
               *print-suppress-namespaces* true]
 ;;    (pprint (with-in-str "`([([(init-navigator)])])" 
     (pprint (with-in-str "`[[[[[init-navigator]]]]]" 
               (read)))))
+
+(defn explode [] 
+  (binding [*print-pprint-dispatch* *code-dispatch*
+              *print-suppress-namespaces* true]
+    (loop [i 1]
+      (println "Iteration" i)
+      (with-out-str
+	(pprint (read-string (str "`" (apply str (repeat i \[)) "init-navigator" (apply str (repeat i \]))))))
+      (recur (inc i)))))
