@@ -19,7 +19,7 @@
       (sort-by ns-name (all-ns)))))
 
 (defn show-doc 
-  ([] (ns-contents nil)) 
+  ([] (show-doc nil)) 
   ([pattern] 
      (cl-format 
       true 
@@ -35,3 +35,8 @@
                   (fn [a] (instance? clojure.lang.IFn a)) 
                   (sort (map key (ns-publics %))))))
        (ns-list pattern)))))
+
+(defn create-api-file [pattern out-file]
+  (with-open [f (java.io.FileWriter. out-file)]
+    (binding [*out* f]
+      (show-doc pattern))))
