@@ -139,7 +139,7 @@ recursive calls). Returns the string result if :stream is nil or nil otherwise."
           (binding [*out* base-writer]
             (pr object)))
         (if (nil? optval) 
-          (.toString base-writer))))))
+          (.toString #^java.io.StringWriter base-writer))))))
 
 (defn pprint 
   "Pretty print object to the optional output writer. If the writer is not provided, 
@@ -199,9 +199,10 @@ After the writer, the caller can optionally specify :prefix, :per-line-prefix, a
   [base-stream & body]
   (let [[options body] (parse-lb-options #{:prefix :per-line-prefix :suffix} body)]
     `(with-pretty-writer ~base-stream
-       (.startBlock *out* ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
+       (.startBlock #^PrettyWriter *out*
+		    ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
        ~@body
-       (.endBlock *out*)
+       (.endBlock #^PrettyWriter *out*)
        nil)))
 
 (defn pprint-newline
@@ -218,7 +219,7 @@ If the requested stream is not a PrettyWriter, this function does nothing."
                  (first more)
                  *out*)]
     (if (instance? PrettyWriter stream)
-      (.newline stream kind))))
+      (.newline #^PrettyWriter stream kind))))
 
 (defn pprint-indent 
   "Create an indent at this point in the pretty printing stream. This defines how 
@@ -236,7 +237,7 @@ If the requested stream is not a PrettyWriter, this function does nothing."
                  (first more)
                  *out*)]
     (if (instance? PrettyWriter stream)
-      (.indent stream relative-to n))))
+      (.indent #^PrettyWriter stream relative-to n))))
 
 ;; TODO a real implementation for pprint-tab
 (defn pprint-tab 
