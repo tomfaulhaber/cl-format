@@ -115,14 +115,14 @@
   (if (seq alis)
     (do
       (if has-doc-str?
-        (cl-format true " ~_")
-        (cl-format true " ~@_"))
-      (cl-format true "~{~w~^ ~_~}" alis))))
+        ((formatter " ~_") true)
+        ((formatter " ~@_") true))
+      ((formatter "~{~w~^ ~_~}") true alis))))
 
 ;;; Format the param and body sublists of a defn with multiple arities
 (defn- multi-defn [alis has-doc-str?]
   (if (seq alis)
-    (cl-format true " ~_~{~w~^ ~_~}" alis)))
+    ((formatter " ~_~{~w~^ ~_~}") true alis)))
 
 ;;; TODO: figure out how to support capturing metadata in defns (we might need a 
 ;;; special reader)
@@ -136,11 +136,11 @@
                              [(first stuff) (next stuff)]
                              [nil stuff])]
       (pprint-logical-block writer :prefix "(" :suffix ")"
-        (cl-format true "~w ~1I~@_~w" defn-sym defn-name)
+        ((formatter "~w ~1I~@_~w") true defn-sym defn-name)
         (if doc-str
-          (cl-format true " ~_~w" doc-str))
+          ((formatter " ~_~w") true doc-str))
         (if attr-map
-          (cl-format true " ~_~w" attr-map))
+          ((formatter " ~_~w") true attr-map))
         ;; Note: the multi-defn case will work OK for malformed defns too
         (cond
          (vector? (first stuff)) (single-defn stuff (or doc-str attr-map))
@@ -171,9 +171,9 @@
     (pprint-logical-block writer :prefix "(" :suffix ")"
       (if (and (next alis) (vector? (second alis)))
         (do
-          (cl-format true "~w ~1I~@_" base-sym)
+          ((formatter "~w ~1I~@_") true base-sym)
           (pprint-binding-form *out* (second alis))
-          (cl-format true " ~_~{~w~^ ~_~}" (next (rest alis))))
+          ((formatter " ~_~{~w~^ ~_~}") true (next (rest alis))))
         (pprint-simple-code-list *out* alis)))))
 
 
@@ -207,7 +207,7 @@
   (if (> (count alis) 3) 
     (pprint-logical-block writer :prefix "(" :suffix ")"
       (pprint-indent :block 1)
-      (apply cl-format true "~w ~@_~w ~@_~w ~_" alis)
+      (apply (formatter "~w ~@_~w ~@_~w ~_") true alis)
       (loop [alis (seq (drop 3 alis))]
         (when alis
           (pprint-logical-block *out* alis
@@ -236,7 +236,7 @@
                                       #(vector %1 (str \% %2)) 
                                       args 
                                       (range 1 (inc (count args))))))]
-        (cl-format writer "~<#(~;~@{~w~^ ~_~}~;)~:>" nlis))
+        ((formatter "~<#(~;~@{~w~^ ~_~}~;)~:>") writer nlis))
       (pprint-simple-code-list writer alis))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
