@@ -64,6 +64,9 @@
 (def pprint-vector (formatter "~<[~;~@{~w~^ ~_~}~;]~:>"))
 (dosync (alter *simple-dispatch* conj [vector? pprint-vector]))
 
+(def pprint-array (formatter "~<[~;~@{~w~^, ~:_~}~;]~:>"))
+(dosync (alter *simple-dispatch* conj [#(and % (.isArray (class %))) pprint-array]))
+
 (def pprint-map (formatter "~<{~;~@{~<~w~^ ~_~w~:>~^, ~_~}~;}~:>"))
 (dosync (alter *simple-dispatch* conj [map? pprint-map]))
 
@@ -92,6 +95,7 @@
 (declare pprint-simple-code-list)
 
 (dosync (alter *code-dispatch* conj [vector? pprint-vector]))
+(dosync (alter *code-dispatch* conj [#(and % (.isArray (class %))) pprint-array]))
 (dosync (alter *code-dispatch* conj [map? pprint-map]))
 (dosync (alter *code-dispatch* conj [set? pprint-set]))
 (dosync (alter *code-dispatch* conj [#(instance? clojure.lang.Ref %) pprint-ref]))
