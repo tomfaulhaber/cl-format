@@ -1656,6 +1656,7 @@ of parameters as well."
 to cl-format just like a plain format string. Use this function for improved 
 performance when you're using the same format string repeatedly"
   [ format-str ]
+;  (prlabel compiling format-str)
   (binding [*format-str* format-str]
     (process-nesting
      (first 
@@ -1719,8 +1720,10 @@ output to a string) in which case it returns the resulting string.
 
 format-in can be either a control string or a previously compiled format."
   [format-in]
-  `(let [compiled-format# (if (string? ~format-in) (compile-format ~format-in) ~format-in)
-         func# (fn [stream# & args#]
-                 (let [navigator# (init-navigator args#)]
-                   (execute-format stream# compiled-format# navigator#)))]
-     func#))
+  (let [cf (gensym "compiled-format")]
+    `(let [format-in# ~format-in]
+       (do (defonce test-format# format-in#)
+           (defonce ~cf (if (string? format-in#) (compile-format format-in#) format-in#))
+           (fn [stream# & args#]
+             (let [navigator# (init-navigator args#)]
+               (execute-format stream# ~cf navigator#)))))))
