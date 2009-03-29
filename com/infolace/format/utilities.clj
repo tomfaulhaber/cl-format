@@ -90,6 +90,6 @@ beginning of aseq"
        
 (defmacro prlabel [prefix arg & more-args]
   "Print args to *err* in name = value format"
-  (cons 'prerr (cons (list 'quote prefix) (mapcat #(list (list 'quote %) "=" %) 
+  `(prerr ~@(cons (list 'quote prefix) (mapcat #(list (list 'quote %) "=" %) 
                                                   (cons arg more-args)))))
 
