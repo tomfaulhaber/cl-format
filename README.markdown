@@ -168,6 +168,21 @@ insert a newline between the "if" and its condition when in miser style.
 Don't print namespaces with symbols. This is particularly useful when 
 pretty printing the results of macro expansions
 
+**\*print-level\***: Default: **nil**
+
+As with the regular Clojure print function, this variable controls the 
+depth of structure that is printed. The argument itself is level 0,
+the first level of a collection is level 1, etc. When the structure
+gets deeper than the specified \*print-level\*, a hash sign (#) is
+printed.
+
+For example:
+
+    user=> (binding [*print-level* 2] (pprint '(a b (c d) ((e) ((f d) g)))))
+    (a b (c d) (# #))
+    nil
+    user=> 
+
 #### Current limitations and future plans ####
 
 This is an early version release of the pretty printer and there is
@@ -178,7 +193,7 @@ Here are some examples:
 * Support all the types and forms in Clojure (most of the way there now).
 * Customized pretty printing functions and dispatch tables. (They are
 there under the hood, but the implementation is still evolving.)
-* Support for limiting pretty printing based on length and depth.
+* Support for limiting pretty printing based on length and line counts.
 * Support for circular and shared substructure detection.
 * Finishing the integration with the format function (support for ~/
 and tabular pretty printing).

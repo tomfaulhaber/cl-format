@@ -14,7 +14,7 @@
 
 ;;;
 ;;; *print-length*, *print-level* and *print-dup* are defined in clojure.core
-;;; TODO: use *print-length*, *print-level* and *print-dup* here (or are they
+;;; TODO: use *print-length* and *print-dup* here (or are they
 ;;; supplanted by other variables?)
 
 
@@ -56,6 +56,15 @@ levels of nesting."}
  #^{ :doc "Don't print namespaces with symbols. This is particularly useful when 
 pretty printing the results of macro expansions"}
  *print-suppress-namespaces* nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Internal variables that keep track of where we are in the 
+;; structure
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def #^{ :private true } *current-level* 0)
+
+;; TODO: add variables for length, lines.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Support for the write function
@@ -199,10 +208,13 @@ After the writer, the caller can optionally specify :prefix, :per-line-prefix, a
   [base-stream & body]
   (let [[options body] (parse-lb-options #{:prefix :per-line-prefix :suffix} body)]
     `(with-pretty-writer ~base-stream
-       (.startBlock #^PrettyWriter *out*
-		    ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
-       ~@body
-       (.endBlock #^PrettyWriter *out*)
+       (if (and *print-level* (>= *current-level* *print-level*)) 
+         (.write #^PrettyWriter *out* "#")
+         (binding [*current-level* (inc *current-level*)] 
+           (.startBlock #^PrettyWriter *out*
+                        ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
+           ~@body
+           (.endBlock #^PrettyWriter *out*)))
        nil)))
 
 (defn pprint-newline
