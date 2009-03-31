@@ -1409,8 +1409,9 @@ Note this should only be used for the last one in the sequence"
                    (if (:colon params) [:pretty true] []))]
      (fn [params navigator offsets]
        (let [[arg navigator] (next-arg navigator)]
-         (apply write arg bindings)
-         navigator))))
+         (if (apply write arg bindings)
+           [:up-arrow navigator]
+           navigator)))))
 
   (\_
    []

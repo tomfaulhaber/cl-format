@@ -78,7 +78,7 @@ simply use:
     (pprint obj)
 
 to print your object. If you wish to write to
-another stream besides *out*, you can use:
+another stream besides \*out\*, you can use:
 
     (write obj :pretty true :stream foo)
 
@@ -183,6 +183,27 @@ For example:
     nil
     user=> 
 
+**\*print-length\***: Default: **nil**
+
+As with the regular Clojure print function, this variable controls the 
+number of items that are printed at each layer of structure. When a
+layer has too many items, elipses (...) are displayed. 
+
+For example:
+
+    user=> (defn foo [x] (for [i (range x) ] (range 1 (- x (dec i)))))
+    #'user/foo
+    user=> (binding [*print-length* 6] (pprint (foo 10)))
+    ((1 2 3 4 5 6 ...)
+     (1 2 3 4 5 6 ...)
+     (1 2 3 4 5 6 ...)
+     (1 2 3 4 5 6 ...)
+     (1 2 3 4 5 6)
+     (1 2 3 4 5)
+     ...)
+    nil
+    user=>
+
 #### Current limitations and future plans ####
 
 This is an early version release of the pretty printer and there is
@@ -193,7 +214,7 @@ Here are some examples:
 * Support all the types and forms in Clojure (most of the way there now).
 * Customized pretty printing functions and dispatch tables. (They are
 there under the hood, but the implementation is still evolving.)
-* Support for limiting pretty printing based on length and line counts.
+* Support for limiting pretty printing based on line counts.
 * Support for circular and shared substructure detection.
 * Finishing the integration with the format function (support for ~/
 and tabular pretty printing).

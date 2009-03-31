@@ -14,8 +14,9 @@
 
 ;;;
 ;;; *print-length*, *print-level* and *print-dup* are defined in clojure.core
-;;; TODO: use *print-length* and *print-dup* here (or are they
-;;; supplanted by other variables?)
+;;; TODO: use *print-dup* here (or is it supplanted by other variables?)
+;;; TODO: make dispatch items like "(let..." get counted in *print-length*
+;;; constructs
 
 
 (def
@@ -63,6 +64,8 @@ pretty printing the results of macro expansions"}
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def #^{ :private true } *current-level* 0)
+
+(def #^{ :private true } *current-length* nil)
 
 ;; TODO: add variables for length, lines.
 
@@ -133,22 +136,28 @@ recursive calls). Returns the string result if :stream is nil or nil otherwise."
             base-writer (condp = optval
                           nil (java.io.StringWriter.)
                           true *out*
-                          optval)]
+                          optval)
+            length-reached (and *current-length* *print-length* (>= *current-length* *print-length*))]
         (if *print-pretty*
           (with-pretty-writer base-writer
-            ;; TODO better/faster dispatch mechanism!
-            (loop [dispatch @*print-pprint-dispatch*]
-              (let [[test func] (first dispatch)]
-                (cond
-                  (empty? dispatch) (if (and *print-suppress-namespaces* (symbol? object))
-                                      (print (name object))
-                                      (pr object))
-                  (test object) (func *out* object)
-                  :else (recur (next dispatch))))))
+            (if length-reached
+              (print "...")
+              ;; TODO better/faster dispatch mechanism!
+              (do
+                (if *current-length* (set! *current-length* (inc *current-length*)))
+                (loop [dispatch @*print-pprint-dispatch*]
+                  (let [[test func] (first dispatch)]
+                    (cond
+                      (empty? dispatch) (if (and *print-suppress-namespaces* (symbol? object))
+                                          (print (name object))
+                                          (pr object))
+                      (test object) (func *out* object)
+                      :else (recur (next dispatch))))))))
           (binding [*out* base-writer]
             (pr object)))
         (if (nil? optval) 
-          (.toString #^java.io.StringWriter base-writer))))))
+          (.toString #^java.io.StringWriter base-writer)
+          length-reached)))))
 
 (defn pprint 
   "Pretty print object to the optional output writer. If the writer is not provided, 
@@ -210,7 +219,8 @@ After the writer, the caller can optionally specify :prefix, :per-line-prefix, a
     `(with-pretty-writer ~base-stream
        (if (and *print-level* (>= *current-level* *print-level*)) 
          (.write #^PrettyWriter *out* "#")
-         (binding [*current-level* (inc *current-level*)] 
+         (binding [*current-level* (inc *current-level*)
+                   *current-length* 0] 
            (.startBlock #^PrettyWriter *out*
                         ~(:prefix options) ~(:per-line-prefix options) ~(:suffix options))
            ~@body
