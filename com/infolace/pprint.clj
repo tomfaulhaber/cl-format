@@ -84,32 +84,27 @@ pretty printing the results of macro expansions"}
       :level            'clojure.core/*print-level*,
       :lines            'com.infolace.format/*print-lines*,
       :miser-width      'com.infolace.format/*print-miser-width*,
-      :pprint-dispatch  'com.infolace.format/*print-pprint-dispatch*,
+      :dispatch         'com.infolace.format/*print-pprint-dispatch*,
       :pretty           'com.infolace.format/*print-pretty*,
       ;;:radix            *print-radix*,
       :readably         'clojure.core/*print-readably*,
-      :right-margin     'com.infolace.format/*print-right-margin*})
+      :right-margin     'com.infolace.format/*print-right-margin*,
+      :suppress-namespaces ''com.infolace.format/*print-suppress-namespaces*})
 
 
-;; TODO: build a macro that only rebinds changed things (base it on the
-;; implementation of "binding")
-(defmacro #^{:private true} binding-map [symbol-map options & body]
-  (let [optsym (gensym "options-")]
-    `(let [~optsym ~options]
-       (binding [~@(mapcat 
-                    (fn [[key sym]] `(~sym (if (contains? ~optsym ~key)
-                                             (~key ~optsym)
-                                             (var-get (find-var (quote ~sym))))))
-                    (eval symbol-map))]
-         ~@body))))
+(defmacro #^{:private true} binding-map [amap & body]
+  (let []
+    `(do
+       (. clojure.lang.Var (pushThreadBindings ~amap))
+       (try
+        ~@body
+        (finally
+         (. clojure.lang.Var (popThreadBindings)))))))
 
-;; (defmacro binding-map [symbol-map options & body]
-;;   (let [real-map (eval symbol-map)]
-;;     `(binding [~@(mapcat 
-;;                   (fn [[key val]] (if-let [var-name (key real-map)]
-;;                                     `(~var-name ~val)))
-;;                   options)]
-;;        ~@body)))
+(defn- table-ize [t m] 
+  (apply hash-map (mapcat 
+                   #(when-let [v (get t (key %))] [(find-var v) (val %)]) 
+                   m)))
 
 (defn pretty-writer? [x] (instance? PrettyWriter x))
 (defn make-pretty-writer [base-writer right-margin miser-width]
@@ -129,7 +124,7 @@ Use the options argument to override individual variables for this call (and any
 recursive calls). Returns the string result if :stream is nil or nil otherwise."
   [object & kw-args]
   (let [options (merge {:stream true} (apply hash-map kw-args))]
-    (binding-map write-option-table options 
+    (binding-map (table-ize write-option-table options) 
       (let [optval (if (contains? options :stream) 
                      (:stream options)
                      true) 
