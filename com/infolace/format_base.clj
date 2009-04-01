@@ -118,7 +118,7 @@
 
 (defn- format-ascii [print-func params arg-navigator offsets]
   (let [ [arg arg-navigator] (next-arg arg-navigator) 
-         base-output (print-func arg)
+         #^String base-output (print-func arg)
          base-width (.length base-output)
          min-width (+ base-width (:minpad params))
          width (if (>= min-width (:mincol params)) 
@@ -145,7 +145,8 @@
    (integer? x) true
    (decimal? x) (>= (.ulp (.stripTrailingZeros (bigdec 0))) 1) ; true iff no fractional part
    (float? x)   (= x (Math/floor x))
-   (ratio? x)   (= 0 (rem (.numerator x) (.denominator x)))
+   (ratio? x)   (let [#^clojure.lang.Ratio r x]
+                  (= 0 (rem (.numerator r) (.denominator r))))
    :else        false))
 
 (defn- remainders [base val]
@@ -161,7 +162,8 @@
   "Return val as a string in the given base"
   (let [xlated-val (cond
                     (float? val) (bigdec val)
-                    (ratio? val) (/ (.numerator val) (.denominator val))
+                    (ratio? val) (let [#^clojure.lang.Ratio r val] 
+                                   (/ (.numerator r) (.denominator r)))
                     :else val)] 
     (apply str 
           (map 
@@ -195,13 +197,13 @@ for improved performance"
                               commas (repeat (count groups) (:commachar params))]
                           (apply str (next (interleave commas groups))))
                         raw-str)
-            signed-str (cond
-                        neg (str "-" group-str)
-                        (:at params) (str "+" group-str)
-                        true group-str)
+            #^String signed-str (cond
+                                  neg (str "-" group-str)
+                                  (:at params) (str "+" group-str)
+                                  true group-str)
             padded-str (if (< (.length signed-str) (:mincol params))
                          (str (apply str (repeat (- (:mincol params) (.length signed-str)) 
-                                                    (:padchar params)))
+                                                 (:padchar params)))
                               signed-str)
                          signed-str)]
         (print padded-str))
@@ -465,8 +467,8 @@ Note this should only be used for the last one in the sequence"
 ;; TODO - return exponent as int to eliminate double conversion
 (defn- float-parts-base
   "Produce string parts for the mantissa (normalized 1-9) and exponent"
-  [f]
-  (let [s (.toLowerCase (.toString f))
+  [#^Object f]
+  (let [#^String s (.toLowerCase (.toString f))
         exploc (.indexOf s (int \e))]
     (if (neg? exploc)
       (let [dotloc (.indexOf s (int \.))]
@@ -478,11 +480,11 @@ Note this should only be used for the last one in the sequence"
 
 (defn- float-parts [f]
   "Take care of leading and trailing zeros in decomposed floats"
-  (let [[m e] (float-parts-base f)
+  (let [[m #^String e] (float-parts-base f)
         m1 (rtrim m \0)
         m2 (ltrim m1 \0)
         delta (- (count m1) (count m2))
-        e (if (and (pos? (count e)) (= (nth e 0) \+)) (subs e 1) e)]
+        #^String e (if (and (pos? (count e)) (= (nth e 0) \+)) (subs e 1) e)]
     (if (empty? m2)
       ["0" 0]
       [m2 (- (Integer/valueOf e) delta)])))
@@ -501,7 +503,7 @@ Note this should only be used for the last one in the sequence"
       (if round-pos
         (if (> len round-pos)
           (let [round-char (nth m1 round-pos)
-                result (subs m1 0 round-pos)]
+                #^String result (subs m1 0 round-pos)]
             (if (>= (int round-char) (int \5))
               (let [result-val (Integer/valueOf result)
                     leading-zeros (subs result 0 (min (prefix-count result \0) (- round-pos 1)))
@@ -590,7 +592,7 @@ Note this should only be used for the last one in the sequence"
             expchar (or (:exponentchar params) \E)
             add-sign (or (:at params) (neg? arg))
             prepend-zero (<= k 0)
-            scaled-exp (- exp (dec k))
+            #^Integer scaled-exp (- exp (dec k))
             scaled-exp-str (str (Math/abs scaled-exp))
             scaled-exp-str (str expchar (if (neg? scaled-exp) \- \+) 
                                 (if e (apply str 
@@ -676,14 +678,14 @@ Note this should only be used for the last one in the sequence"
 ;; the function to render ~$ directives
 ;; TODO: support rationals. Back off to ~D/~A is the appropriate cases
 (defn- dollar-float [params navigator offsets]
-  (let [[arg navigator] (next-arg navigator)
+  (let [[#^Double arg navigator] (next-arg navigator)
         [mantissa exp] (float-parts (Math/abs arg))
         d (:d params) ; digits after the decimal
         n (:n params) ; minimum digits before the decimal
         w (:w params) ; minimum field width
         add-sign (and (:at params) (not (neg? arg)))
         [rounded-mantissa scaled-exp _] (round-str mantissa exp d nil)
-        fixed-repr (get-fixed rounded-mantissa scaled-exp d)
+        #^String fixed-repr (get-fixed rounded-mantissa scaled-exp d)
         full-repr (str (apply str (repeat (- n (.indexOf fixed-repr (int \.))) \0)) fixed-repr)
         full-len (+ (count full-repr) (if add-sign 1 0))]
     (print (str
@@ -883,7 +885,8 @@ Note this should only be used for the last one in the sequence"
                                       (realize-parameter-list p navigator))
         navigator (or new-navigator navigator)
         min-remaining (or (first (:min-remaining else-params)) 0)
-        max-columns (or (first (:max-columns else-params)) (.getMaxColumn *out*))
+        max-columns (or (first (:max-columns else-params))
+                        (.getMaxColumn #^PrettyWriter *out*))
         clauses (:clauses params)
         [strs navigator] (render-clauses clauses navigator (:base-args params))
         slots (max 1
@@ -901,7 +904,8 @@ Note this should only be used for the last one in the sequence"
         pad (max minpad (quot total-pad slots))
         extra-pad (- total-pad (* pad slots))
         pad-str (apply str (repeat pad (:padchar params)))]
-    (if (and eol-str (> (+ (.getColumn *out*) min-remaining result-columns) max-columns))
+    (if (and eol-str (> (+ (.getColumn #^PrettyWriter *out*) min-remaining result-columns) 
+                        max-columns))
       (print eol-str))
     (loop [slots slots
            extra-pad extra-pad
@@ -930,11 +934,11 @@ Note this should only be used for the last one in the sequence"
 
 (defn- downcase-writer 
   "Returns a proxy that wraps writer, converting all characters to lower case"
-  [writer]
+  [#^java.io.Writer writer]
   (proxy [java.io.Writer] []
     (close [] (.close writer))
     (flush [] (.flush writer))
-    (write ([cbuf off len] 
+    (write ([#^chars cbuf #^Integer off #^Integer len] 
               (.write writer cbuf off len))
            ([x]
               (condp = (class x)
@@ -948,11 +952,11 @@ Note this should only be used for the last one in the sequence"
 
 (defn- upcase-writer 
   "Returns a proxy that wraps writer, converting all characters to upper case"
-  [writer]
+  [#^java.io.Writer writer]
   (proxy [java.io.Writer] []
     (close [] (.close writer))
     (flush [] (.flush writer))
-    (write ([cbuf off len] 
+    (write ([#^chars cbuf #^Integer off #^Integer len] 
               (.write writer cbuf off len))
            ([x]
               (condp = (class x)
@@ -968,7 +972,7 @@ Note this should only be used for the last one in the sequence"
   "Capitalizes the words in a string. If first? is false, don't capitalize the 
                                       first character of the string even if it's a letter."
   [s first?]
-  (let [f (first s) 
+  (let [#^Character f (first s) 
         s (if (and first? f (Character/isLetter f))
             (str (Character/toUpperCase f) (subs s 1))
             s)]
@@ -983,48 +987,51 @@ Note this should only be used for the last one in the sequence"
                        offset (and match (inc (.start m)))]
                    (if offset
                      [(str (subs s 0 offset) 
-                           (Character/toUpperCase (nth s offset)))
+                           (Character/toUpperCase #^Character (nth s offset)))
                       (subs s (inc offset))]
                      [s nil]))))
              s)))))
 
 (defn- capitalize-word-writer
   "Returns a proxy that wraps writer, captializing all words"
-  [writer]
+  [#^java.io.Writer writer]
   (let [last-was-whitespace? (ref true)] 
     (proxy [java.io.Writer] []
       (close [] (.close writer))
       (flush [] (.flush writer))
-      (write ([cbuf off len] 
-		(.write writer cbuf off len))
-	     ([x]
-		(condp = (class x)
-		  String 
-		  (let [s #^String x]
-		    (.write writer (capitalize-string (.toLowerCase s) @last-was-whitespace?))
-		    (dosync 
-		     (ref-set last-was-whitespace? 
-			      (Character/isWhitespace (nth s (dec (count s)))))))
+      (write 
+       ([#^chars cbuf #^Integer off #^Integer len] 
+          (.write writer cbuf off len))
+       ([x]
+          (condp = (class x)
+            String 
+            (let [s #^String x]
+              (.write writer 
+                      #^String (capitalize-string (.toLowerCase s) @last-was-whitespace?))
+              (dosync 
+               (ref-set last-was-whitespace? 
+                        (Character/isWhitespace 
+                         #^Character (nth s (dec (count s)))))))
 
-		  Integer
-		  (let [c #^Character (char x)]
-		    (let [mod-c (if @last-was-whitespace? (Character/toUpperCase c) c)] 
-		      (.write writer (int mod-c))
-		      (dosync (ref-set last-was-whitespace? (Character/isWhitespace c)))))))))))
+            Integer
+            (let [c (char x)]
+              (let [mod-c (if @last-was-whitespace? (Character/toUpperCase #^Character (char x)) c)] 
+                (.write writer (int mod-c))
+                (dosync (ref-set last-was-whitespace? (Character/isWhitespace #^Character (char x))))))))))))
 
 (defn- init-cap-writer
   "Returns a proxy that wraps writer, capitalizing the first word"
-  [writer]
+  [#^java.io.Writer writer]
   (let [capped (ref false)] 
     (proxy [java.io.Writer] []
       (close [] (.close writer))
       (flush [] (.flush writer))
-      (write ([cbuf off len] 
+      (write ([#^chars cbuf #^Integer off #^Integer len] 
                 (.write writer cbuf off len))
              ([x]
                 (condp = (class x)
                  String 
-                 (let [s #^String (.toLowerCase x)]
+                 (let [s (.toLowerCase #^String x)]
                    (if (not @capped) 
                      (let [m (re-matcher #"\S" s)
                            match (re-find m)
@@ -1032,8 +1039,8 @@ Note this should only be used for the last one in the sequence"
                        (if offset
                          (do (.write writer 
                                    (str (subs s 0 offset) 
-                                        (Character/toUpperCase (nth s offset))
-                                        (.toLowerCase (subs s (inc offset)))))
+                                        (Character/toUpperCase #^Character (nth s offset))
+                                        (.toLowerCase #^String (subs s (inc offset)))))
                            (dosync (ref-set capped true)))
                          (.write writer s))) 
                      (.write writer (.toLowerCase s))))
@@ -1067,14 +1074,14 @@ Note this should only be used for the last one in the sequence"
 ;; TODO: make an automatic newline for non-ColumnWriters
 (defn fresh-line []
   "Make a newline if the Writer is not already at the beginning of the line.
-(N.B. Only works on ColumnWriters right now.)"
-  (if (not (= 0 (.getColumn *out*)))
+N.B. Only works on ColumnWriters right now."
+  (if (not (= 0 (.getColumn #^PrettyWriter *out*)))
     (prn)))
 
 (defn- absolute-tabulation [params navigator offsets]
   (let [colnum (:colnum params) 
         colinc (:colinc params)
-        current (.getColumn *out*)
+        current (.getColumn #^PrettyWriter *out*)
         space-count (cond
                      (< current colnum) (- colnum current)
                      (= colinc 0) 0
@@ -1085,7 +1092,7 @@ Note this should only be used for the last one in the sequence"
 (defn- relative-tabulation [params navigator offsets]
   (let [colrel (:colnum params) 
         colinc (:colinc params)
-        start-col (+ colrel (.getColumn *out*))
+        start-col (+ colrel (.getColumn #^PrettyWriter *out*))
         offset (if (pos? colinc) (rem start-col colinc) 0)
         space-count (+ colrel (if (= 0 offset) 0 (- colinc offset)))]
     (print (apply str (repeat space-count \space))))
@@ -1452,7 +1459,7 @@ Note this should only be used for the last one in the sequence"
 (defn- extract-params [s offset] 
   (consume extract-param [s offset false]))
 
-(defn- translate-param [[p offset]]
+(defn- translate-param [[#^String p offset]]
   "Translate the string representation of a param to the internalized
                                       representation"
   [(cond 
@@ -1527,7 +1534,7 @@ of parameters as well."
   (let [[raw-params [rest offset]] (extract-params s offset)
         [_ [rest offset flags]] (extract-flags rest offset)
         directive (first rest)
-        def (get directive-table (Character/toUpperCase directive))
+        def (get directive-table (Character/toUpperCase #^Character directive))
         params (if def (map-params def (map translate-param raw-params) flags offset))]
     (if (not directive)
       (format-error "Format string ended in the middle of a directive" offset))
@@ -1662,7 +1669,7 @@ performance when you're using the same format string repeatedly"
     (process-nesting
      (first 
       (consume 
-       (fn [[s offset]]
+       (fn [[#^String s offset]]
          (if (empty? s)
            [nil s]
            (let [tilde (.indexOf s (int \~))]
@@ -1687,14 +1694,14 @@ column number or pretty printing"
         (recur (next format))))))
 
 (defn execute-format [stream format args]
-  (let [real-stream (cond 
-                     (not stream) (java.io.StringWriter.)
-                     (true? stream) *out*
-                     :else stream)
-        wrapped-stream (if (and (needs-pretty format) 
-                                (not (instance? PrettyWriter real-stream)))
-                         (pretty-writer real-stream)
-                         real-stream)]
+  (let [#^java.io.Writer real-stream (cond 
+                                       (not stream) (java.io.StringWriter.)
+                                       (true? stream) *out*
+                                       :else stream)
+        #^java.io.Writer wrapped-stream (if (and (needs-pretty format) 
+                                                 (not (instance? PrettyWriter real-stream)))
+                                          (pretty-writer real-stream)
+                                          real-stream)]
     (binding [*out* wrapped-stream]
       (try
        (map-passing-context 
@@ -1710,7 +1717,7 @@ column number or pretty printing"
         format)
        (finally
         (if-not (identical? real-stream wrapped-stream)
-                (.flush wrapped-stream))))
+          (.flush wrapped-stream))))
       (if (not stream) (.toString real-stream)))))
 
 

@@ -163,7 +163,7 @@ print the object to the currently bound value of *out*."
                  *out*)]
     (with-pretty-writer base-stream
       (write object :pretty true)
-      (if (not (= 0 (.getColumn *out*)))
+      (if (not (= 0 (.getColumn #^PrettyWriter *out*)))
         (.write *out* (int \newline))))))
 
 (defmacro pp 
