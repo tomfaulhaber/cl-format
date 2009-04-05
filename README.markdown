@@ -1,10 +1,17 @@
 ## Pretty Printing and Format for Clojure ##
 
-**Note:** The current version of cl-format requires the lazy version of Clojure
-which, as of this writing, is only available directly from the
-subversion repository. If you are running on an older version of
-Clojure, grab the v1.0.1 tag from the git repository. However, the
-older version doesn't support pretty printing.
+**IMPORTANT:** cl-format has been moved into clojure.contrib. The code
+here is no longer maintained. This README describes the version in
+clojure.contrib (which is at [http://code.google.com/p/clojure-contrib/](http://code.google.com/p/clojure-contrib/).)
+
+To use pretty printing in clojure.contrib, it is necessary to build
+clojure.contrib with compiled classes. To do this, you must tell
+ant where to find clojure.jar. For me, this looks like:
+
+     ant -Dclojure.jar=../clojure/clojure.jar 
+
+because I keep clojure source and clojure.contrib source right next to
+each other. Just point the pathname to wherever you keep clojure.jar.
 
 ### Overview ###
 
@@ -16,7 +23,7 @@ The pretty printer is easy to use:
     user=> (println (for [x (range 10)] (range x)))
     (() (0) (0 1) (0 1 2) (0 1 2 3) (0 1 2 3 4) (0 1 2 3 4 5) (0 1 2 3 4 5 6) (0 1 2 3 4 5 6 7) (0 1 2 3 4 5 6 7 8))
     nil
-    user=> (use 'com.infolace.format)             
+    user=> (use 'clojure.contrib.pprint)             
     nil
     user=> (pprint (for [x (range 10)] (range x)))         
     (()
@@ -44,8 +51,8 @@ that it's called cl-format in Clojure because format existed and meant
 something different).
 
 All the functions and variables described here are in the
-com.infolace.format namespace. Using them is as simple as adding
-cl-format.jar to your classpath and adding a (:use com.infolace.format) to
+clojure.contrib.pprint namespace. Using them is as simple as adding
+cl-format.jar to your classpath and adding a (:use clojure.contrib.pprint) to
 your namespace declarations.
 
 cl-format is being developed by Tom Faulhaber (to mail me you can use
@@ -301,82 +308,28 @@ The custom dispatch table functionality is not fully fleshed out yet.
 
 Next up: 
 
-* Debug pretty printer functionality
 * Support for ~/
-* Build up standard dispatch tables
 * Documentation of the pretty printer.
 * Restructure unit tests into modular chunks.
-* Ant support for running unit tests
 * Import tests from CLISP and SBCL.
 * Unit tests for exception conditions.
 * Interactive documentation
  
 ### How to use cl-format ###
 
-#### Installing using the JAR ####
-
-The easiest way to install cl-format is just to grab the the jar from
-github: 
-[http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar](http://github.com/tomfaulhaber/cl-format/raw/master/release/cl-format.jar). This
-is not always the exact latest, but it does get updated when there are
-significant changes. 
-
-Add the jar to your classpath and proceed to the section *Loading
-cl-format in your program* below to start using it. (I use the
-clojure-extras shell script which automatically adds the JAR files in
-my ~/.clojure directory, so I just copy cl-format.jar there.)
-
-#### Use the source, Luke ####
-
-If you'd like to start from the source, here's how.
-
-Building and installing the library is pretty easy. There are a few
-requirements, which you have probably already met if you're running
-Clojure:
-
-* The Java SDK, version 1.5 or later.
-* The Ant build tool
-* A built version of clojure.jar, the clojure library
-
-Once you have these, follow these steps:
-
-1. Download the cl-format sources. They are hosted on github. This
-gives you two choices. You can either (1) just grab the latest tarball by
-going to github @
-[http://github.com/tomfaulhaber/cl-format](http://github.com/tomfaulhaber/cl-format/)
-and clicking on the download link or (2) clone the git repository with
-"git clone git://github.com/tomfaulhaber/cl-format.git"
-
-2. If you started from a tarball, untar it into a directory and cd to
-it. If you cloned the git repository, cd into that directory.
-
-3. Edit build.xml so that the clojure-jar property points at the
-clojure JAR file. The default is that it is in the clojure source
-directory parallel to the cl-format directory.
-
-4. Run "ant clean" and "ant" in the root directory of the
-distribution. This should build the cl-format.jar library file.
-
-5. Add the cl-format.jar file to your classpath. I use the
-clojure-extras shell script which automatically adds the JAR files in
-my ~/.clojure directory, so I just copy cl-format.jar there.
-
-Now you're ready to format! See the next section for how to use
-cl-format from a Clojure program.
-
 #### Loading cl-format in your program ####
 
 Once cl-format is in your path, adding it to your code is easy:
 
     (ns your-namespace-here
-      (:use com.infolace.format))
+      (:use clojure.contrib.pprint))
 
 If you want to refer to the cl-format function as "format" (rather
 than using the clojure function of that name), you can use this idiom:
 
     (ns your-namespace-here
       (:refer-clojure :exclude [format])
-      (:use com.infolace.format))
+      (:use clojure.contrib.pprint))
 
     (def format cl-format)
 
@@ -385,8 +338,8 @@ for instance, or maybe just because old habits die hard.
 
 From the REPL, you can grab it using (require) and (refer):
 
-    (require 'com.infolace.format)
-    (refer 'com.infolace.format)
+    (require 'clojure.contrib.pprint)
+    (refer 'clojure.contrib.pprint)
 
 #### Calling cl-format ####
 
@@ -434,12 +387,12 @@ For example:
 Writers in Java have no real idea of current column or device page width, so the format
 directives that want to work relative to the current position on the
 page have nothing to work with. To deal with this, cl-format contains
-an extension to writer called ColumnWriter. ColumnWriter watches the
+an extension to writer called PrettyWriter. PrettyWriter watches the
 output and keeps track of what column the current output is going to.
 
 When you call format and your format includes a directive that cares
 about what column it's in (~T, ~&, ~<...~>), cl-format will
-automatically wrap the Writer you passed in with a ColumnWriter. This
+automatically wrap the Writer you passed in with a PrettyWriter. This
 means that by default all cl-format statements act like they begin on
 a fresh line and have a page width of 72.
 
@@ -447,14 +400,14 @@ For many applications, these assumptions are fine and you need to do
 nothing more. But sometimes you want to use multiple cl-format calls
 that output partial lines. You may also want to mix cl-format calls
 with the native clojure calls like print. If you want stay
-column-aware while doingg this you need to create a ColumnWriter of
+column-aware while doingg this you need to create a PrettyWriter of
 your own (and possibly bind it to *out*).
 
 As an example of this, this function takes a nested list and prints it
 as a table (returning the result as a string):
 
     (defn list-to-table [aseq column-width]
-      (let [stream (ColumnWriter. (java.io.StringWriter.))]
+      (let [stream (PrettyWriter. (java.io.StringWriter.))]
         (binding [*out* stream]
          (doseq [row aseq]
            (doseq [col row]
@@ -464,7 +417,7 @@ as a table (returning the result as a string):
 
 (In reality, you'd probably do this as a single call to cl-format.)
 
-The constructor to ColumnWriter takes the Writer it's wrapping and
+The constructor to PrettyWriter takes the Writer it's wrapping and
 (optionally) the page width (in columns) for use with ~<...~>. 
 
 ### Examples ###
@@ -478,7 +431,7 @@ The following function uses cl-format to dump a columnized table of the Java sys
         (cl-format stream "~30A~A~%~{~20,,,'-A~10A~}~%~{~30A~S~%~}" 
     	           "Property" "Value" ["" "" "" ""] p)))
     
-There are some more examples in the com.infolace.format.examples
+There are some more examples in the clojure.contrib.pprint.examples
 package:
 
 * hexdump - a program that uses cl-format to create a standard
